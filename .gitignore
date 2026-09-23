@@ -3,3 +3,6 @@ obj/
 *.user
 *.userprefs
 .DS_Store
+
+# Cross-mod audit — not published without the other authors agreeing
+CONFLICTS.md
