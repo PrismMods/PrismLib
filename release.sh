@@ -5,7 +5,8 @@
 # prismlib.json is the feed PrismBootstrap reads. Its sha256 is computed from the DLL built RIGHT
 # HERE, so publish the same file: upload bin/Release/PrismLib.dll to the tag's release, then push.
 # A mismatch is not a broken install — the bootstrapper discards the download and every mod falls
-# back to running standalone, silently.
+# back to running standalone, silently. raw.githubusercontent caches the feed for a few minutes, so
+# a fresh release is not visible to clients (or to lib/update-prismlib.sh) straight away.
 set -euo pipefail
 cd "$(dirname "$0")"
 
