@@ -43,6 +43,17 @@ private static void UsePrism()
 }
 ```
 
+**Two rules for the bridge class, both learned the hard way.** A PrismLib type may appear in a
+method BODY, never in a FIELD: field types are part of the class layout and are resolved when the
+type itself loads, before any method runs. A `private static ModHandle _me;` made the bridge
+unloadable, so `Ensure()` never ran, so the library it would have installed stayed missing — and
+UMM reported the whole mod as `OnToggle: TypeLoadException` and skipped it. Hold them as `object`
+and cast at use. Second, no caller outside the bridge may mention a PrismLib type, and any bridge
+method whose body touches one must be called behind `if (PrismBridge.Available)`.
+
+`tools/check-bridge.sh <Mod.dll> <Namespace.PrismBridge>` verifies both on a built mod, by loading
+it with PrismLib absent. Run it before shipping; the failure is invisible in-game.
+
 ### Claims
 
 ```csharp
