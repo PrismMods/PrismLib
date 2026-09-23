@@ -56,7 +56,14 @@ rather than fighting the first every frame. Claims describe intent, they do not 
 can stop a mod writing `RDC.auto` directly. What they buy is that a mod can ask, and that when a user
 reports "autoplay is broken" the log names the owner instead of leaving three suspects.
 
-`StateKey`: `Autoplay`, `NoFail`, `EditorCamera`, `PathLock`, `EditorHud`, `GamePanels`.
+`StateKey`: `Autoplay`, `NoFail`, `EditorCamera`, `PathLock`, `EditorHud`, `GamePanels`, `GameHud`,
+`InputCapture`.
+
+`InputCapture` is the one worth calling out. Bismuth blocks the keyboard game-wide while its panel
+is open, so every Sapphire hotkey silently dies for as long as that panel is up — a mod cannot see
+that from its own side. The holder takes the claim while it swallows keys; everyone else checks
+`Claims.OwnerOf(StateKey.InputCapture)` once, in whatever function reads their hotkeys, and stands
+down.
 
 ### Keys
 

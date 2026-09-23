@@ -51,6 +51,11 @@ static class PrismLibTest
         Check(Claims.OwnerOf(StateKey.PathLock) == null && Claims.OwnerOf(StateKey.EditorHud) == null, "ReleaseAll drops every key one mod held");
         Check(Claims.OwnerOf(StateKey.Autoplay) == "Bismuth", "ReleaseAll leaves other mods alone");
 
+        Check(Claims.OwnerOf(StateKey.InputCapture) == null, "nobody holds the keyboard by default");
+        using (b.ClaimState(StateKey.InputCapture, "panel open"))
+            Check(Claims.OwnerOf(StateKey.InputCapture) == "Bismuth" && !a.OwnsState(StateKey.InputCapture),
+                  "a keyboard grab is visible to the mod that must stand down");
+
         Console.WriteLine("keys");
         Keys.KeyName = i => "K" + i;
         KeyBinding clashA = null, clashB = null;

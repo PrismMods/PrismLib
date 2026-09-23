@@ -13,6 +13,8 @@ namespace PrismLib
         PathLock,        // scnEditor.lockPathEditing
         EditorHud,       // the game's corner icons / control tip / placement rings
         GamePanels,      // the game's own event + settings panels (hidden by a native replacement)
+        GameHud,         // the gameplay HUD: no-fail badge, progress, attempt counter
+        InputCapture,    // the keyboard itself — held while a mod swallows keys game-wide
     }
 
     /* Who owns a piece of game state right now.
