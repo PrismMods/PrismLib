@@ -123,7 +123,9 @@ namespace PrismLib.Bootstrap
 
         private static void UpdateIfNewer(string path)
         {
-            var feed = Fetch();
+            // Quiet: a background update that cannot reach GitHub is not actionable — the mod is
+            // already running on a good copy — and the thread is aborted outright at shutdown.
+            var feed = Fetch(true);
             if (feed == null) return;
             var have = VersionOf(path);
             if (have != null && have >= feed.Version) return;
@@ -167,11 +169,11 @@ namespace PrismLib.Bootstrap
 
         private sealed class FeedEntry { public Version Version; public string Url; public string Sha256; }
 
-        private static FeedEntry Fetch()
+        private static FeedEntry Fetch(bool quiet = false)
         {
             try
             {
-                byte[] raw = Get(Feed);
+                byte[] raw = Get(Feed, quiet);
                 if (raw == null) return null;
                 string json = System.Text.Encoding.UTF8.GetString(raw);
                 // Three flat string fields; a JSON dependency would be the only reason this file
@@ -190,7 +192,7 @@ namespace PrismLib.Bootstrap
             return m.Success ? m.Groups[1].Value : null;
         }
 
-        private static byte[] Get(string url)
+        private static byte[] Get(string url, bool quiet = false)
         {
             try
             {
@@ -209,7 +211,7 @@ namespace PrismLib.Bootstrap
                     return ms.ToArray();
                 }
             }
-            catch (Exception e) { Say("GET " + url + " failed: " + e.Message); return null; }
+            catch (Exception e) { if (!quiet) Say("GET " + url + " failed: " + e.Message); return null; }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

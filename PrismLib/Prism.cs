@@ -20,7 +20,7 @@ namespace PrismLib
         /* Bump the MINOR for additive API, the MAJOR for a break. The bootstrapper in each mod
            compares this against what it requires and loads the newest copy it can find, so three
            mods shipping three different builds converge on one assembly at runtime. */
-        public static readonly Version Version = new Version(0, 2, 0);
+        public static readonly Version Version = new Version(0, 2, 1);
 
         private static readonly Dictionary<string, ModHandle> _mods = new Dictionary<string, ModHandle>(StringComparer.OrdinalIgnoreCase);
         private static readonly object _lock = new object();
