@@ -104,10 +104,51 @@ A mod declares what a setting *is* and how to read and write it; the mod keeps i
 its own look. `Settings.Search("bpm")` then answers across every loaded mod — which is Quartz's real
 problem, hundreds of settings and no way to find one.
 
+## PrismLib.UI
+
+A second assembly, for the parts of the interface the mods were copying between each other. It
+references Unity; `PrismLib.dll` stays plain BCL so it can load before anything and be tested
+outside the game.
+
+**Mods ship it, the bootstrapper does not install it.** Claims need a single shared instance across
+mods — UI does not. Two mods each drawing their own toast is correct, and `ToastStack` keeps them
+from overlapping by GameObject name rather than shared memory. So it is an ordinary dependency
+beside the mod's own DLL, which is what lets its call sites skip the `Available` guard that every
+`PrismLib` call needs. `lib/update-prismlib.sh` fetches both; the mod's deploy and release copy
+`PrismLib.UI.dll` into the mod folder.
+
+```csharp
+_toast = new Toast("Sapphire");              // canvas becomes "SapphireUpdateToastCanvas"
+_toast.Theme.Accent = Theme.Accent;          // mutable, so a runtime re-skin follows
+_toast.Set(new ToastContent {                // null hides; call it every tick
+    Key = "avail:" + tag,                    // identity: dismissing this one doesn't suppress the next
+    Title = "Update available: " + tag,
+    Hint = "Click to update",
+    AutoHide = true,
+    OnClick = () => UpdateService.Install(),
+});
+_toast.Tick();
+```
+
+`Toast` owns the card — building, slotting, sliding, hover, the × that fades in on hover, the
+progress bar, the dismiss-key bookkeeping that stops a timed-out card sliding straight back in. The
+host owns the meaning and pushes it in as plain strings, which also keeps Unity objects on the main
+thread when the update check runs on a worker.
+
+`ToastStack` is the cross-mod convention: canvas `<Mod>UpdateToastCanvas`, card `UpdateToast`,
+measured in screen pixels so a foreign canvas with a different scaler still reports the box it
+covers. Quartz already follows it, so its toast and ours stack instead of overlapping.
+
 ## Status
 
-Stage 1: arbitration (claims, keys, settings schema). The shared settings renderer is stage 2, and
-adoption goes Sapphire first, then Quartz, then Bismuth.
+Stage 1, arbitration (claims, keys, settings schema): done, adopted by Sapphire and Bismuth. Quartz
+is waiting.
+
+PrismLib.UI has the update toast. More of the shared interface follows the same rule: it belongs
+here when both mods would otherwise keep their own copy, and it stays in the mod when it needs that
+mod's own state. A shared settings *renderer* is deliberately not planned — Quartz already generates
+settings pages from a settings class, and a third one would be the duplication this is meant to
+remove.
 
 ## Licence
 
