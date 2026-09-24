@@ -59,17 +59,44 @@ namespace PrismLib.UI.Toolkit
                 // UI Toolkit draws through TextCore, not TMP: FontDefinition wants a
                 // TextCore FontAsset, and TMP_FontAsset is NOT one. A mod that only has the TMP
                 // asset should pass the plain Font it was built from instead — see SetFont.
-                if (font != null) Root.style.unityFontDefinition = FontDefinition.FromSDFFont(font);
+                if (font != null)
+                {
+                    Root.style.unityFontDefinition = FontDefinition.FromSDFFont(font);
+                    Ui.Log("Surface '" + name + "': SDF font " + font.name);
+                }
+                else SetFont(null);   // never leave a panel fontless; see Fallback
             }
         }
 
-        /// Fallback for hosts that only have a legacy Font (what FontLoader hands back before it
-        /// builds the TMP asset). Lower quality than an SDF font, but it renders.
+        /* Fallback for hosts that only have a legacy Font. Passing null is fine and normal: a mod
+           holding a TMP_FontAsset usually CANNOT produce one, because TMP_FontAsset.sourceFontFile
+           is an editor-time reference and comes back null in a player build. That is what happened
+           the first time this panel opened, and a panel with no font draws no text at all. */
         public void SetFont(Font font)
         {
-            if (Root == null || font == null) { Ui.Log("Surface: SetFont ignored (root or font null)"); return; }
-            Root.style.unityFontDefinition = FontDefinition.FromFont(font);
-            Ui.Log("Surface: font set to " + font.name);
+            if (Root == null) { Ui.Log("Surface: SetFont ignored, no root"); return; }
+            var f = font ?? Fallback();
+            if (f == null) { Ui.Log("Surface: NO FONT AVAILABLE — labels will be blank"); return; }
+            Root.style.unityFontDefinition = FontDefinition.FromFont(f);
+            Ui.Log("Surface: font " + f.name + (font == null ? " (OS fallback)" : ""));
+        }
+
+        private static Font _fallback;
+
+        /* An OS font, built once. Cheap insurance: every mod has a different font pipeline and any
+           of them can hand over null, but a debug window that renders nothing is worse than one in
+           the wrong typeface. Not safe during the loader's static-ctor window (Time.frameCount 0),
+           which is why it is built on demand rather than at load. */
+        private static Font Fallback()
+        {
+            if (_fallback != null) return _fallback;
+            try
+            {
+                _fallback = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans" }, 16);
+            }
+            catch (Exception e) { Ui.Log("Surface: OS font fallback failed: " + e.Message); }
+            return _fallback;
         }
 
         public bool Visible
