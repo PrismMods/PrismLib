@@ -137,6 +137,8 @@ namespace PrismLib.UI.Toolkit
             if (_hasAlpha) _a = Channel("A", v => { _colour.a = v; Sync(false); });
 
             var hexRow = Ui.Row(_body);
+            hexRow.style.minHeight = 26f;
+            hexRow.style.marginTop = Tokens.Gap;
             var hl = Ui.Muted("Hex", hexRow);
             hl.style.width = 32f;
             _hexField = new TextField { value = "" };
@@ -226,6 +228,8 @@ namespace PrismLib.UI.Toolkit
         private Slider Channel(string name, Action<float> set)
         {
             var row = Ui.Row(_body);
+            row.style.minHeight = 24f;
+            row.style.marginTop = 3f;
             var l = Ui.Muted(name, row);
             l.style.width = 16f;
             var s = new Slider(0f, 1f);

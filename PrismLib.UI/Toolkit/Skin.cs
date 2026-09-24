@@ -37,8 +37,16 @@ namespace PrismLib.UI.Toolkit
                 dragger.style.height = 12f;
                 Ui.SetRadius(dragger, 6f);
                 Ui.SetBorderWidth(dragger, 0f);
-                dragger.style.marginTop = -4f;
+                /* Centre it on the track. The dragger is absolutely positioned inside the drag
+                   container and the default theme centres it with align-self — which a runtime mod
+                   does not get, so it sat at the top of the container, floating above the line it
+                   is supposed to be on. */
+                dragger.style.top = Length.Percent(50f);
+                dragger.style.marginTop = -6f;
             }
+            // The drag container is what gives the row its height; the default theme sizes it.
+            var drag = slider.Q(className: "unity-base-slider__drag-container");
+            if (drag != null) drag.style.height = 16f;
             var label = slider.Q<Label>(className: "unity-base-field__label");
             if (label != null) label.style.display = DisplayStyle.None;   // the row already has one
         }
@@ -128,29 +136,39 @@ namespace PrismLib.UI.Toolkit
         public static void Wheel(VisualElement root, Vector2 pointerScreen, float delta)
         {
             if (root == null || root.panel == null || Mathf.Approximately(delta, 0f)) return;
+
+            var lists = root.Query<ScrollView>().ToList();
+            var point = RuntimePanelUtils.ScreenToPanel(root.panel, pointerScreen);
+
+            ScrollView target = null, biggest = null;
+            foreach (var sv in lists)
+            {
+                var b = sv.worldBound;
+                if (biggest == null || b.width * b.height > biggest.worldBound.width * biggest.worldBound.height)
+                    biggest = sv;
+                if (!b.Contains(point)) continue;
+                // Innermost wins: a list inside a scrolling page should take the wheel.
+                if (target == null || b.width * b.height < target.worldBound.width * target.worldBound.height)
+                    target = sv;
+            }
+
+            /* Falling back to the biggest scroller when the point misses everything is deliberate.
+               Getting the pointer into panel space depends on the panel's scale mode and on which
+               screen coordinates the host reports, and a window you cannot scroll is a worse
+               outcome than one that scrolls its main list when the pointer is over its chrome. */
+            bool missed = target == null;
+            if (missed) target = biggest;
+
             if (!_reported)
             {
                 _reported = true;
-                if (!_sawWheelEvent) Ui.Log("Skin: scrolling by polled wheel (host sends no WheelEvent)");
-            }
-
-            /* ScreenToPanel takes Unity screen coordinates as they come — origin bottom-left — and
-               returns panel space, origin top-left. Flipping y first, as this did, flips it twice
-               and lands the point on the wrong half of the window.
-
-               And the target is found by testing worldBound rather than by panel.Pick: picking
-               honours pickingMode, and half the elements in these panels set it to Ignore so that
-               clicks fall through to the row beneath. A scroll wheel does not care about any of
-               that — it belongs to whatever box the pointer is inside. */
-            var point = RuntimePanelUtils.ScreenToPanel(root.panel, pointerScreen);
-
-            ScrollView target = null;
-            foreach (var sv in root.Query<ScrollView>().ToList())
-            {
-                if (!sv.worldBound.Contains(point)) continue;
-                // Innermost wins: a nested list inside a scrolling page should take the wheel.
-                if (target == null || sv.worldBound.width * sv.worldBound.height
-                                    < target.worldBound.width * target.worldBound.height) target = sv;
+                Ui.Log("Skin wheel: delta=" + delta.ToString("0.##")
+                       + " screen=" + pointerScreen.x.ToString("0") + "," + pointerScreen.y.ToString("0")
+                       + " panel=" + point.x.ToString("0") + "," + point.y.ToString("0")
+                       + " scrollviews=" + lists.Count
+                       + (target == null ? " NONE FOUND"
+                          : " target=" + target.worldBound + (missed ? " (fallback, point missed all)" : ""))
+                       + (_sawWheelEvent ? "" : " [host sends no WheelEvent]"));
             }
             if (target == null) return;
 

@@ -26,6 +26,7 @@ namespace PrismLib.UI.Toolkit
         {
             var row = Ui.Row(parent);
             row.style.minHeight = RowHeight;
+            row.style.marginBottom = 2f;
             row.style.justifyContent = Justify.SpaceBetween;
             row.style.paddingLeft = 4f;
             row.style.paddingRight = 4f;
