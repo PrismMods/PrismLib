@@ -105,6 +105,9 @@ namespace PrismLib.UI.Toolkit
 
             _body = new ScrollView(ScrollViewMode.Vertical);
             _body.style.flexGrow = 1f;
+            // The scrolling column must size to its content; letting it shrink is what makes rows
+            // pile up instead of scrolling.
+            _body.contentContainer.style.flexShrink = 0f;
             _window.Body.Add(_body);
 
             _status = Ui.Muted("", _window.Footer);

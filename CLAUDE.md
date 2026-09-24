@@ -112,10 +112,15 @@ Three landmines, all found by the first panel that opened:
 - **A panel with no font draws no text.** `TMP_FontAsset.sourceFontFile` is an editor-time reference
   and is null in a player build, so mods generally cannot supply a `Font`; `Surface` falls back to
   `Font.CreateDynamicFontFromOSFont` (on demand — not safe at `Time.frameCount == 0`).
-- **Flex items shrink by default.** Chrome next to something with `flexGrow` gets squeezed toward
-  zero and its labels spill out and overlap. Rows set `flexShrink = 0`; so must any other fixed
-  element. An absolutely positioned element with only `left`/`top` is sized by its CONTENT — pin all
-  four offsets.
+- **Flex items shrink by default, and `Ui.Box` turns that off.** The CSS default of `flexShrink: 1`
+  assumes a layout that would rather squash than overflow; a settings page wants the opposite —
+  something too tall should SCROLL, not compress until its text prints through the row below. Three
+  separate overlaps came from it (the debug panel's header under its tab bar, a section's rows
+  through the next section's heading, keybind labels through each other), so every `Ui.Box` and
+  everything built on it now defaults to `flexShrink = 0`. Anything that genuinely should absorb
+  slack sets it back to 1 on itself. A `ScrollView`'s `contentContainer` is not a `Box`, so it needs
+  setting by hand. An absolutely positioned element with only `left`/`top` is sized by its
+  CONTENT — pin all four offsets.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at
 once.

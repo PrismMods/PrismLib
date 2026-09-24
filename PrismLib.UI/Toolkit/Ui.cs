@@ -34,6 +34,16 @@ namespace PrismLib.UI.Toolkit
         {
             var e = new VisualElement();
             e.style.flexDirection = FlexDirection.Column;
+            /* flexShrink 0 by default, against the flexbox norm of 1.
+
+               The CSS default assumes a layout that would rather squash than overflow. A settings
+               page wants the opposite: rows and sections have a real height, and something too tall
+               for its container should SCROLL, not compress until its text prints through the row
+               below. Three separate overlaps — the debug panel's header under its tab bar, a
+               section's rows through the next section's heading, and labels through each other —
+               were all this one default, so it is set once here. Anything that genuinely should
+               absorb slack sets flexShrink back to 1 on itself. */
+            e.style.flexShrink = 0f;
             parent?.Add(e);
             return e;
         }
@@ -43,11 +53,6 @@ namespace PrismLib.UI.Toolkit
             var e = Box(parent);
             e.style.flexDirection = FlexDirection.Row;
             e.style.alignItems = Align.Center;
-            /* Flex items shrink by default. In a fixed-height column next to something with
-               flexGrow (a list), a row gets squeezed toward zero height and its labels spill out
-               and overlap whatever is above — which is exactly how the debug panel first drew, with
-               the tab bar sitting on top of the title. A row is chrome: it keeps its size. */
-            e.style.flexShrink = 0f;
             return e;
         }
 
