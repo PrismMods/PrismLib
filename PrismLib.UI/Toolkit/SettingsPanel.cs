@@ -112,10 +112,10 @@ namespace PrismLib.UI.Toolkit
         {
             // Named from the title, so a mod's own menu and the library's window are distinct
             // GameObjects with distinct saved geometry rather than two things called the same.
-            _surface = new Surface("Prism" + Slug(title) + "Panel", 30000f, font);
+            _surface = new Surface(Slug(title) + "Panel", 30000f, font);
             if (_surface.Root == null) return;
 
-            _window = new Window(_surface.Root, "Prism" + Slug(title), title,
+            _window = new Window(_surface.Root, Slug(title), title,
                                  new Rect(120f, 80f, 760f, 560f), () => Visible = false);
             _window.OnRaise = () => _surface.BringToFront();
 

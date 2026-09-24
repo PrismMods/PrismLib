@@ -208,11 +208,17 @@ log scrolling. `Ui.TickWheel` now stands down only on frames where one actually 
 `Skin.WatchWheel` registers with `TrickleDown` because a `ScrollView` that handles the wheel stops
 it bubbling — a bubbling handler would never hear about the case it exists to detect.
 
-Two things cost three attempts at "scrolling is broken", neither of them the plumbing: **a trackpad
-reports fractions** (the measured delta was `-0.05`, which at 40px per unit moved the page two
-pixels), and **a page whose content fits has nothing to scroll** — the diagnostic now prints
-`scrollable=<px>` and it read `0`. Log the delta and the scrollable height before touching the hit
-test.
+Three separate causes hid behind one symptom, which is why "scrolling is broken" took so many
+passes. All were found by logging numbers, none by reading code:
+
+- **A trackpad reports fractions.** The measured delta was `-0.05`; at 40px per unit that moved the
+  page two pixels, which looks exactly like nothing.
+- **`RuntimePanelUtils.ScreenToPanel` divides by the panel scale and does NOT flip y.** Measured:
+  screen `(1606,300)` came back as panel `(1141,213)`, exactly `/1.405`. The flip belongs to the
+  caller.
+- **A virtualised `ListView` never grows its content container** — that is what virtualising means —
+  so measuring `contentContainer.height` says a 53-row log has nothing to scroll. Ask the list for
+  its item count instead.
 
 **Nothing in a built-in control is positioned without the theme.** Both a slider's tracker AND its
 dragger are laid out by the default style sheet, so each has to be placed by hand against the drag

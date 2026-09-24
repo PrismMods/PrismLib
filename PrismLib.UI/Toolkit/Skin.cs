@@ -185,14 +185,24 @@ namespace PrismLib.UI.Toolkit
                        + " scrollviews=" + lists.Count
                        + (target == null ? " NONE FOUND"
                           : " target=" + target.worldBound
-                            + " scrollable=" + Mathf.Max(0f, target.contentContainer.layout.height
-                                                           - target.contentViewport.layout.height).ToString("0")
+                            + " content=" + target.contentContainer.layout.height.ToString("0")
+                            + " view=" + target.contentViewport.layout.height.ToString("0")
+                            + " list=" + (target.GetFirstAncestorOfType<ListView>() != null ? "yes" : "no")
                             + (missed ? " (fallback, point missed all)" : ""))
                        + (_sawWheelEvent ? "" : " [host sends no WheelEvent]"));
             }
             if (target == null) return;
 
-            float max = Mathf.Max(0f, target.contentContainer.layout.height - target.contentViewport.layout.height);
+            float view = target.contentViewport.layout.height;
+            float max = Mathf.Max(0f, target.contentContainer.layout.height - view);
+
+            /* A virtualised ListView does not grow its content container — that is the whole point
+               of virtualising — so measuring it says a 53-row log has nothing to scroll. Ask the
+               list how many rows it has instead. */
+            var list = target.GetFirstAncestorOfType<ListView>();
+            if (list != null && list.itemsSource != null && list.fixedItemHeight > 0f)
+                max = Mathf.Max(max, list.itemsSource.Count * list.fixedItemHeight - view);
+
             if (max <= 0f) return;
 
             /* A wheel notch reports ±1; a trackpad reports fractions — the measured value here was
