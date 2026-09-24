@@ -33,24 +33,72 @@ namespace PrismLib.UI.Toolkit
         /// Footer strip along the bottom, above the resize grip. Always on top of Body's content.
         public VisualElement Footer { get; private set; }
 
+        /// Set by the panel that owns this window, to raise its surface. Window has no Surface of
+        /// its own — it is just the element tree inside one.
+        public Action OnRaise;
+
         private readonly string _id;
         private Rect _rect;
         private float _scale = 1f;
         private Vector2 _dragFrom;
         private Rect _rectFrom;
 
-        /* Remembered per window id for the session, so closing and reopening does not send the
-           window back to its default corner.
-           ponytail: in memory only — survives a reopen, not a restart. Persisting means a file
-           PrismLib owns, which is worth doing once more than one window exists. */
+        /* Where each window was last left, by id.
+
+           Kept in memory AND written through Store when a host provides one. PrismLib.UI cannot own
+           a settings file — it must not reference PrismLib.dll, and it has no idea where a given
+           mod keeps its data — so the host supplies two delegates and gets to decide the format.
+           Without them the geometry still survives a reopen, just not a restart. */
         private static readonly Dictionary<string, Rect> _saved = new Dictionary<string, Rect>();
         private static readonly Dictionary<string, float> _savedScale = new Dictionary<string, float>();
+
+        /// Host-provided persistence. Read returns null for an unknown key.
+        public static Func<string, string> Read;
+        public static Action<string, string> Write;
+
+        private static string Load(string key)
+        {
+            try { return Read != null ? Read(key) : null; } catch { return null; }
+        }
+
+        private static void Save(string key, string value)
+        {
+            try { if (Write != null) Write(key, value); } catch { }
+        }
+
+        /* "x,y,w,h,scale" — invariant culture, because a machine with a comma decimal separator
+           would otherwise write a string it cannot read back. */
+        private static bool TryParse(string s, out Rect r, out float scale)
+        {
+            r = default(Rect); scale = 1f;
+            if (string.IsNullOrEmpty(s)) return false;
+            var p = s.Split(',');
+            if (p.Length < 5) return false;
+            float x, y, w, h, sc;
+            var c = System.Globalization.CultureInfo.InvariantCulture;
+            if (!float.TryParse(p[0], System.Globalization.NumberStyles.Float, c, out x)) return false;
+            if (!float.TryParse(p[1], System.Globalization.NumberStyles.Float, c, out y)) return false;
+            if (!float.TryParse(p[2], System.Globalization.NumberStyles.Float, c, out w)) return false;
+            if (!float.TryParse(p[3], System.Globalization.NumberStyles.Float, c, out h)) return false;
+            if (!float.TryParse(p[4], System.Globalization.NumberStyles.Float, c, out sc)) return false;
+            r = new Rect(x, y, w, h); scale = sc;
+            return true;
+        }
 
         public Window(VisualElement parent, string id, string title, Rect initial, Action onClose = null)
         {
             _id = id ?? title ?? "window";
-            _rect = _saved.ContainsKey(_id) ? _saved[_id] : initial;
-            _scale = _savedScale.ContainsKey(_id) ? _savedScale[_id] : 1f;
+            Rect stored; float storedScale;
+            if (_saved.ContainsKey(_id))
+            {
+                _rect = _saved[_id];
+                _scale = _savedScale.ContainsKey(_id) ? _savedScale[_id] : 1f;
+            }
+            else if (TryParse(Load("window." + _id), out stored, out storedScale))
+            {
+                _rect = stored; _scale = storedScale;
+            }
+            else _rect = initial;
 
             Root = Ui.Card(parent);
             Root.pickingMode = PickingMode.Position;
@@ -89,6 +137,9 @@ namespace PrismLib.UI.Toolkit
             Footer.style.paddingTop = 3f;
             Footer.style.paddingBottom = 3f;
 
+            // Click anywhere in the window to raise it above the other one.
+            Root.RegisterCallback<PointerDownEvent>(_ => { if (OnRaise != null) OnRaise(); });
+
             MakeDraggable(bar);
             MakeResizable();
             Apply();
@@ -124,6 +175,11 @@ namespace PrismLib.UI.Toolkit
             Root.style.height = _rect.height / _scale;
             Root.style.scale = new Scale(new Vector2(_scale, _scale));
             _saved[_id] = _rect;
+            _savedScale[_id] = _scale;
+            var c = System.Globalization.CultureInfo.InvariantCulture;
+            Save("window." + _id, _rect.x.ToString(c) + "," + _rect.y.ToString(c) + ","
+                                + _rect.width.ToString(c) + "," + _rect.height.ToString(c) + ","
+                                + _scale.ToString(c));
         }
 
         /* Keep the window reachable. A resolution change or a scale bump can leave it mostly off

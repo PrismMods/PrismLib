@@ -41,6 +41,7 @@ namespace PrismLib.UI.Toolkit
             _settings.match = 0.5f;
             _settings.sortingOrder = sortingOrder;
 
+            Ui.Stack.Add(this);
             _go = new GameObject(name);
             UnityEngine.Object.DontDestroyOnLoad(_go);
             var doc = _go.AddComponent<UIDocument>();
@@ -132,6 +133,7 @@ namespace PrismLib.UI.Toolkit
                 if (_visible == value) return;
                 _visible = value;
                 Ui.OpenWindows += value ? 1 : -1;
+                if (value) BringToFront();
                 if (Root != null) Root.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
@@ -153,8 +155,21 @@ namespace PrismLib.UI.Toolkit
             e.RegisterCallback(cb);
         }
 
+        /* Raise above every other Prism window. sortingOrder is what orders separate UIDocument
+           panels, so raising means taking a number above the highest anyone has used — a counter
+           rather than a swap, because two panels sharing a number order arbitrarily. */
+        public void BringToFront()
+        {
+            Ui.Stack.Remove(this);
+            Ui.Stack.Add(this);
+            if (_settings != null) _settings.sortingOrder = ++_topOrder;
+        }
+
+        private static float _topOrder = 30000f;
+
         public void Dispose()
         {
+            Ui.Stack.Remove(this);
             if (_visible) { _visible = false; Ui.OpenWindows--; }
             if (_go != null) UnityEngine.Object.Destroy(_go);
             if (_settings != null) UnityEngine.Object.Destroy(_settings);

@@ -113,6 +113,7 @@ namespace PrismLib.UI.Toolkit
 
             _window = new Window(root, "PrismDebug", title,
                                  new Rect(60f, 50f, 980f, 560f), () => Visible = false);
+            _window.OnRaise = () => _surface.BringToFront();
             var card = _window.Body;
 
             _tabs2 = new Tabs(card, i => { _active = i; RefreshFooter(); Refresh(); });
@@ -121,6 +122,7 @@ namespace PrismLib.UI.Toolkit
             _filter.style.marginBottom = Tokens.Gap;
             _filter.style.fontSize = Tokens.FontSizeSmall;
             _filter.style.flexShrink = 0f;
+            Skin.When<TextField>(_filter, Skin.Field);
             _filter.RegisterValueChangedCallback(_ => Refresh());
             card.Add(_filter);
 

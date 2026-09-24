@@ -93,11 +93,13 @@ namespace PrismLib.UI.Toolkit
 
             _window = new Window(_surface.Root, "PrismSettings", title,
                                  new Rect(120f, 80f, 760f, 560f), () => Visible = false);
+            _window.OnRaise = () => _surface.BringToFront();
 
             _search = new TextField { value = "" };
             _search.style.marginBottom = Tokens.Gap;
             _search.style.fontSize = Tokens.FontSizeSmall;
             _search.style.flexShrink = 0f;
+            Skin.When<TextField>(_search, Skin.Field);
             _search.RegisterValueChangedCallback(_ => Paint());
             _window.Body.Add(_search);
 
@@ -108,6 +110,7 @@ namespace PrismLib.UI.Toolkit
             // The scrolling column must size to its content; letting it shrink is what makes rows
             // pile up instead of scrolling.
             _body.contentContainer.style.flexShrink = 0f;
+            Skin.When<ScrollView>(_body, Skin.Scroll);
             _window.Body.Add(_body);
 
             _status = Ui.Muted("", _window.Footer);

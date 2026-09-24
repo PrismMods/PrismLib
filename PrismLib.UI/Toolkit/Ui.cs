@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -30,6 +31,24 @@ namespace PrismLib.UI.Toolkit
         public static int OpenWindows;
 
         public static bool AnyWindowOpen => OpenWindows > 0;
+
+        /* Open surfaces, oldest first. Two windows exist now (debug and settings), so "which one
+           is on top" and "which one does Escape close" both need an answer, and neither can come
+           from Unity: separate UIDocument panels are ordered by sortingOrder, not by click. */
+        internal static readonly List<Surface> Stack = new List<Surface>();
+
+        /// Closes the most recently raised window. Returns false when none was open, so a caller
+        /// polling Escape knows whether to let the key through to the game.
+        public static bool CloseTop()
+        {
+            for (int i = Stack.Count - 1; i >= 0; i--)
+            {
+                if (!Stack[i].Visible) continue;
+                Stack[i].Visible = false;
+                return true;
+            }
+            return false;
+        }
         public static VisualElement Box(VisualElement parent = null)
         {
             var e = new VisualElement();

@@ -90,6 +90,7 @@ namespace PrismLib.UI.Toolkit
 
             var s = new Slider(min, max) { value = value };
             s.style.width = 160f;
+            Skin.When<Slider>(s, Skin.Slider);
             s.RegisterValueChangedCallback(e =>
             {
                 readout.text = e.newValue.ToString(format);
@@ -110,6 +111,7 @@ namespace PrismLib.UI.Toolkit
 
             var s = new SliderInt(min, max) { value = value };
             s.style.width = 160f;
+            Skin.When<SliderInt>(s, Skin.Slider);
             s.RegisterValueChangedCallback(e =>
             {
                 readout.text = e.newValue.ToString();
@@ -152,6 +154,7 @@ namespace PrismLib.UI.Toolkit
             var host = Row(parent, label, tooltip);
             var f = new TextField { value = value ?? "" };
             f.style.width = 200f;
+            Skin.When<TextField>(f, Skin.Field);
             f.style.fontSize = Tokens.FontSizeSmall;
             // On commit, not per keystroke: a setter that persists to disk should not run once per
             // character typed.
@@ -252,6 +255,7 @@ namespace PrismLib.UI.Toolkit
             l.style.width = 16f;
             var s = new Slider(0f, 1f) { value = value };
             s.style.flexGrow = 1f;
+            Skin.When<Slider>(s, Skin.Slider);
             var readout = Ui.Muted(Mathf.RoundToInt(value * 255f).ToString(), row);
             readout.style.minWidth = 32f;
             readout.style.unityTextAlign = TextAnchor.MiddleRight;

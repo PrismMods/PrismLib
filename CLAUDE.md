@@ -168,6 +168,24 @@ Drawn by hand rather than using UI Toolkit's own: `Toggle` (its `Toggle` is a ti
 mod does not have, so they would come out unstyled; `Colour` is three channel sliders instead of
 Sapphire's 485-line procedural wheel, because typing an exact value is easier than aiming at one.
 
+**Built-in controls have NO appearance.** UI Toolkit styles `Slider`, `TextField` and `ScrollView`
+from the default theme style sheet, which is an asset a runtime mod cannot have. `Toggle` and the
+dropdown were cheap to draw by hand; these are not — their dragging, focus and scrolling logic is
+worth more than their looks — so `Skin` sets inline styles on their named parts
+(`unity-base-slider__tracker`, `unity-base-slider__dragger`, `unity-base-text-field__input`). Those
+names are Unity's: a rename makes a control invisible again, so every lookup is null-checked, and
+`Skin.When` waits for `AttachToPanelEvent` because the parts do not exist until the control joins a
+panel.
+
+**Window geometry** persists through `Window.Read`/`Window.Write`, host-supplied delegates —
+PrismLib.UI cannot own a file. Each mod writes `PrismWindows.txt` beside its own data, flat
+`key=value`, flushed at most once a second because a drag writes on every frame. Deliberately not
+the mod's XML settings: a mid-write crash must not be able to corrupt real settings.
+
+**Escape** closes the top Prism window and is consumed only when one was open. `Ui.Stack` orders
+open surfaces; clicking a window raises it by taking a `sortingOrder` above the highest used, since
+separate `UIDocument` panels order by that number and nothing else.
+
 **Keybind capture is polled by the MOD, not read from a UI event** — Tab, the arrows and Escape are
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
 `PrismBridge.TickCapture` is the poller.
