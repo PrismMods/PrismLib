@@ -201,12 +201,15 @@ together yet the chord never fired. The chords are **Alt+Shift+D** and **Alt+Shi
 Ctrl+Shift+D and Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the
 editor's Save.
 
-**The wheel is polled, and its scale matters more than its plumbing.** A runtime panel only gets
-`WheelEvent` if the host's input module forwards it, so the mods poll `Input.mouseScrollDelta` into
-`Ui.TickWheel`. The part that actually cost three attempts: **a trackpad reports fractions** — the
-measured value was `-0.05`, and at the 40px-per-unit first applied that moved the page two pixels
-and looked exactly like nothing happening. A notch (±1) and a trackpad stream need different
-scaling. When something "does not scroll", log the delta before touching the hit test.
+**This host DOES deliver `WheelEvent`** — logged the first time one arrives — so `ScrollView`
+handles the wheel itself and `Ui.TickWheel` switches its polling off, or every list would scroll
+twice as far. The polled path stays only for a host that does not send them.
+
+Two things cost three attempts at "scrolling is broken", neither of them the plumbing: **a trackpad
+reports fractions** (the measured delta was `-0.05`, which at 40px per unit moved the page two
+pixels), and **a page whose content fits has nothing to scroll** — the diagnostic now prints
+`scrollable=<px>` and it read `0`. Log the delta and the scrollable height before touching the hit
+test.
 
 **Nothing in a built-in control is positioned without the theme.** Both a slider's tracker AND its
 dragger are laid out by the default style sheet, so each has to be placed by hand against the drag

@@ -101,12 +101,21 @@ namespace PrismLib.UI.Toolkit
 
         public void SetFont(Font font) { if (_surface != null) _surface.SetFont(font); }
 
+        private static string Slug(string s)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in s ?? "") if (char.IsLetterOrDigit(c)) sb.Append(c);
+            return sb.Length > 0 ? sb.ToString() : "Settings";
+        }
+
         private void Build(string title, UnityEngine.TextCore.Text.FontAsset font)
         {
-            _surface = new Surface("PrismSettingsPanel", 30000f, font);
+            // Named from the title, so a mod's own menu and the library's window are distinct
+            // GameObjects with distinct saved geometry rather than two things called the same.
+            _surface = new Surface("Prism" + Slug(title) + "Panel", 30000f, font);
             if (_surface.Root == null) return;
 
-            _window = new Window(_surface.Root, "PrismSettings", title,
+            _window = new Window(_surface.Root, "Prism" + Slug(title), title,
                                  new Rect(120f, 80f, 760f, 560f), () => Visible = false);
             _window.OnRaise = () => _surface.BringToFront();
 

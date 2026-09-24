@@ -125,6 +125,10 @@ namespace PrismLib.UI.Toolkit
            if a future game or Unity version starts delivering it. */
         private static bool _sawWheelEvent, _reported;
 
+        /// True once the host has delivered a real WheelEvent, which means ScrollView is handling
+        /// the wheel itself and the polled path must stand down or every scroll goes twice as far.
+        public static bool HostSendsWheel => _sawWheelEvent;
+
         public static void WatchWheel(VisualElement root)
         {
             if (root == null) return;
@@ -132,7 +136,7 @@ namespace PrismLib.UI.Toolkit
             {
                 if (_sawWheelEvent) return;
                 _sawWheelEvent = true;
-                Ui.Log("Skin: WheelEvent IS delivered by the host — the manual scroll can go");
+                Ui.Log("Skin: host delivers WheelEvent — ScrollView handles the wheel, polling off");
             });
         }
 
