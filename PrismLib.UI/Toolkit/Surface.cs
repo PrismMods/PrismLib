@@ -99,10 +99,41 @@ namespace PrismLib.UI.Toolkit
             return _fallback;
         }
 
+        /* Shown and hidden with display, NOT by deactivating the GameObject.
+
+           UIDocument rebuilds its visual tree in OnEnable, so a SetActive(false)/SetActive(true)
+           cycle hands back a DIFFERENT rootVisualElement and everything built into the old one is
+           orphaned — the panel reappears empty, with no error anywhere. Keeping the document
+           enabled and flipping display costs nothing: a hidden subtree is not laid out or drawn. */
+        private bool _visible = true;
+
         public bool Visible
         {
-            get { return _go != null && _go.activeSelf; }
-            set { if (_go != null) _go.SetActive(value); }
+            // Backed by a field rather than read back from style.display: an unset StyleEnum
+            // compares unequal to None, which would report a brand-new panel as visible.
+            get { return _visible; }
+            set
+            {
+                _visible = value;
+                if (Root != null) Root.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+        }
+
+        /// One-shot geometry report: proves layout actually ran and where the element landed.
+        /// Resolved styles are NaN until the first layout pass, so this waits for the event.
+        public static void LogGeometryOnce(VisualElement e, string label)
+        {
+            if (e == null) return;
+            EventCallback<GeometryChangedEvent> cb = null;
+            cb = _ =>
+            {
+                var r = e.worldBound;
+                Ui.Log(label + ": laid out at " + Mathf.RoundToInt(r.x) + "," + Mathf.RoundToInt(r.y)
+                       + " size " + Mathf.RoundToInt(r.width) + "x" + Mathf.RoundToInt(r.height)
+                       + " (screen " + Screen.width + "x" + Screen.height + ")");
+                e.UnregisterCallback(cb);
+            };
+            e.RegisterCallback(cb);
         }
 
         public void Dispose()

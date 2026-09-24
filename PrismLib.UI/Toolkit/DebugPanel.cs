@@ -61,7 +61,8 @@ namespace PrismLib.UI.Toolkit
         public void Toggle()
         {
             Visible = !Visible;
-            Ui.Log("DebugPanel: " + (Visible ? "shown" : "hidden"));
+            Ui.Log("DebugPanel: " + (Visible ? "shown" : "hidden") + ", " + _rows.Count + " row(s), "
+                   + _current.Count + " tab(s)");
         }
 
         /// Hosts that only have a TMP font can pass the legacy Font it was built from
@@ -82,7 +83,10 @@ namespace PrismLib.UI.Toolkit
 
         private void Build(string title, UnityEngine.TextCore.Text.FontAsset font)
         {
-            _surface = new Surface("PrismDebugPanel", 200f, font);
+            /* Above the game's own canvases. UI Toolkit panels order against uGUI by the same
+               number, and at 200 this sat behind anything the game drew full-screen. Sapphire's
+               update toast is at 32700, so stay under that. */
+            _surface = new Surface("PrismDebugPanel", 30000f, font);
             var root = _surface.Root;
             if (root == null) return;
 
@@ -118,6 +122,7 @@ namespace PrismLib.UI.Toolkit
             }, card);
 
             _status = Ui.Muted("", card);
+            Surface.LogGeometryOnce(card, "DebugPanel card");
             _surface.Visible = false;
         }
 
