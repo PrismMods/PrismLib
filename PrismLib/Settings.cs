@@ -50,6 +50,9 @@ namespace PrismLib
         /// Raised when any mod's schema changes, so an open settings page can rebuild.
         public static event Action Changed;
 
+        /* REPLACES everything this mod described, rather than appending. A mod builds its list
+           and hands it over once; two calls means the second wins, which is what a caller
+           splitting "features" and "keybinds" into two calls discovers the hard way. */
         internal static void Register(ModHandle mod, IEnumerable<SettingEntry> entries)
         {
             if (mod == null || entries == null) return;

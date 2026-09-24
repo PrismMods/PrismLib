@@ -167,11 +167,15 @@ Sapphire's 485-line procedural wheel, because typing an exact value is easier th
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
 `PrismBridge.TickCapture` is the poller.
 
-**macOS Alt:** `Alt+D`/`Alt+S` did not register. `LeftAlt || RightAlt` is what Sapphire's own
-`Keybinds.AltHeld` does, so there was no working pattern to copy — its Alt binds may never have been
-exercised. `AltGr` is now in the list (the right Option key reports as that on some layouts) and
-`Ctrl+Shift+D` / `Ctrl+Shift+P` work as fallbacks. `PrismBridge.AltDiag` logs every key the runtime
-reports while Alt is held, once per press, to settle what macOS actually delivers.
+**Alt was never the problem — Bismuth's key block was.** The diagnostic showed `LeftAlt` and the
+letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
+false for every key but `B` while Bismuth's panel is open, *including for Bismuth's own poll*, so
+the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
+through the block. `Ctrl+Shift+D` / `Ctrl+Shift+P` remain as fallbacks and `PrismBridge.AltDiag`
+still logs `alt+<key>` for anything that comes up later.
+
+**`DescribeSettings` REPLACES** everything a mod described; it does not append. Build the list and
+hand it over once.
 
 **Steps 2, 4, 5 and 6 are blocked behind 3**, and doing them early breaks things rather than
 helping: a page shell has nothing to put on it before the widgets exist, and `DragHandle`,
