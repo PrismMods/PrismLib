@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
 {
-    public enum SettingControl { Bool, Int, Float, Choice, Text, Action }
+    public enum SettingControl { Bool, Int, Float, Choice, Text, Action, Colour, Key }
 
     /* One setting, flattened to what a widget needs.
 
@@ -22,6 +22,10 @@ namespace PrismLib.UI.Toolkit
         public float Min, Max;
         public string[] Options;          // Choice
         public string ActionLabel;        // Action
+        /// Key only. The host starts a capture and calls back with the new binding's display name;
+        /// it owns that, because the keys worth binding are ones this panel would treat as
+        /// navigation.
+        public Action<Action<string>> Capture;
     }
 
     /* Every mod's settings in one window, grouped and searchable.
@@ -44,6 +48,7 @@ namespace PrismLib.UI.Toolkit
         private Label _status;
         private List<SettingRow> _rows = new List<SettingRow>();
         private List<string> _pages = new List<string>();
+        private VisualElement _section;
 
         /// Swapped for PrismLib's ranked matcher when the host has it. Same reason as DebugPanel.
         public Func<SettingRow, string, bool> Matcher =
@@ -126,6 +131,7 @@ namespace PrismLib.UI.Toolkit
         {
             if (_body == null) return;
             _body.Clear();
+            _section = _body;
 
             string q = (_search.value ?? "").Trim();
             string page = _tabs.SelectedName;
@@ -142,7 +148,14 @@ namespace PrismLib.UI.Toolkit
 
                 string g = (q.Length > 0 ? r.Owner + " · " + rp : "") +
                            (string.IsNullOrEmpty(r.Group) ? "" : (q.Length > 0 ? " · " : "") + r.Group);
-                if (g != group) { group = g; if (!string.IsNullOrEmpty(g)) Widgets.Header(_body, g); }
+                if (g != group)
+                {
+                    group = g;
+                    // Searching shows a flat list: folding a section shut would hide a hit.
+                    _section = string.IsNullOrEmpty(g) ? _body
+                             : q.Length > 0 ? Widgets.Header(_body, g).parent
+                             : Widgets.Section(_body, g);
+                }
 
                 Add(r);
                 shown++;
@@ -162,6 +175,10 @@ namespace PrismLib.UI.Toolkit
 
         /* One row per setting. Every Get is somebody else's delegate into a live mod, so a throw
            here must cost that row and not the window. */
+        /// Rows go into the open section when there is one, and straight into the page when a
+        /// search has flattened it.
+        private VisualElement Target => _section ?? _body;
+
         private void Add(SettingRow r)
         {
             try
@@ -169,36 +186,54 @@ namespace PrismLib.UI.Toolkit
                 switch (r.Kind)
                 {
                     case SettingControl.Bool:
-                        Widgets.Toggle(_body, r.Label, Convert.ToBoolean(r.Get()),
+                        Widgets.Toggle(Target, r.Label, Convert.ToBoolean(r.Get()),
                                        v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Int:
-                        Widgets.IntSlider(_body, r.Label, Convert.ToInt32(r.Get()),
+                        Widgets.IntSlider(Target, r.Label, Convert.ToInt32(r.Get()),
                                           (int)r.Min, (int)r.Max, v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Float:
-                        Widgets.Slider(_body, r.Label, Convert.ToSingle(r.Get()),
+                        Widgets.Slider(Target, r.Label, Convert.ToSingle(r.Get()),
                                        r.Min, r.Max, v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Choice:
-                        Widgets.Choice(_body, r.Label, r.Options, Convert.ToInt32(r.Get()),
+                        Widgets.Choice(Target, r.Label, r.Options, Convert.ToInt32(r.Get()),
                                        v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Text:
-                        Widgets.Text(_body, r.Label, Convert.ToString(r.Get()),
+                        Widgets.Text(Target, r.Label, Convert.ToString(r.Get()),
                                      v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Action:
-                        Widgets.Action(_body, r.Label, r.ActionLabel ?? "Run",
+                        Widgets.Action(Target, r.Label, r.ActionLabel ?? "Run",
                                        () => Write(r, null), r.Tooltip);
+                        break;
+                    case SettingControl.Colour:
+                        Widgets.Colour(Target, r.Label, ToColour(r.Get()), v => Write(r, v), r.Tooltip);
+                        break;
+                    case SettingControl.Key:
+                        if (r.Capture == null) { Ui.Muted(r.Label + " — not rebindable here", Target); break; }
+                        Widgets.Key(Target, r.Label, Convert.ToString(r.Get()), r.Capture, r.Tooltip);
                         break;
                 }
             }
             catch (Exception e)
             {
                 Ui.Log("SettingsPanel: '" + r.Label + "' failed to build: " + e.Message);
-                Ui.Muted(r.Label + " — unavailable", _body);
+                Ui.Muted(r.Label + " — unavailable", Target);
             }
+        }
+
+        /* A mod may hand a colour over as a Color or as the "#rrggbb" it serialises. Accept both:
+           this is a schema filled in by three codebases, and refusing one form means a row that
+           silently says "unavailable". */
+        private static Color ToColour(object v)
+        {
+            if (v is Color) return (Color)v;
+            Color c;
+            if (v != null && ColorUtility.TryParseHtmlString(Convert.ToString(v), out c)) return c;
+            return Tokens.Accent;
         }
 
         private void Write(SettingRow r, object v)

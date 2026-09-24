@@ -201,6 +201,134 @@ namespace PrismLib.UI.Toolkit
             return b;
         }
 
+        /* Colour: a swatch that opens an inline HSV-free picker — three sliders and a preview.
+           Deliberately not a colour wheel. Sapphire's ColorWheel is 485 lines of procedural mesh
+           for a surface people mostly use to nudge an accent, and three labelled channels are
+           easier to type an exact value into anyway. */
+        public static VisualElement Colour(VisualElement parent, string label, Color value,
+                                           Action<Color> onChange, string tooltip = null)
+        {
+            var host = Row(parent, label, tooltip);
+            var swatch = new VisualElement();
+            swatch.style.width = 40f;
+            swatch.style.height = 18f;
+            Ui.SetRadius(swatch, 4f);
+            Ui.SetBorderWidth(swatch, 1f);
+            Ui.SetBorderColor(swatch, Tokens.PanelBorder);
+            swatch.style.backgroundColor = value;
+            host.Add(swatch);
+
+            // The editor hangs under the row, so opening it pushes the rest of the page down
+            // rather than covering it — a popup would need a layer and a dismiss rule.
+            var editor = Ui.Box(parent);
+            editor.style.display = DisplayStyle.None;
+            Ui.SetPadding(editor, Tokens.Gap);
+
+            Color current = value;
+            Action<int, float> set = (channel, v) =>
+            {
+                if (channel == 0) current.r = v; else if (channel == 1) current.g = v; else current.b = v;
+                swatch.style.backgroundColor = current;
+                try { if (onChange != null) onChange(current); }
+                catch (Exception e) { Ui.Log("Colour handler threw: " + e.Message); }
+            };
+            Channel(editor, "R", current.r, v => set(0, v));
+            Channel(editor, "G", current.g, v => set(1, v));
+            Channel(editor, "B", current.b, v => set(2, v));
+
+            swatch.pickingMode = PickingMode.Position;
+            swatch.RegisterCallback<ClickEvent>(_ =>
+            {
+                bool open = editor.style.display == DisplayStyle.None;
+                if (open) Anim.SlideIn(editor, -6f, Anim.Fast); else editor.style.display = DisplayStyle.None;
+            });
+            return swatch;
+        }
+
+        private static void Channel(VisualElement parent, string name, float value, Action<float> onChange)
+        {
+            var row = Ui.Row(parent);
+            var l = Ui.Muted(name, row);
+            l.style.width = 16f;
+            var s = new Slider(0f, 1f) { value = value };
+            s.style.flexGrow = 1f;
+            var readout = Ui.Muted(Mathf.RoundToInt(value * 255f).ToString(), row);
+            readout.style.minWidth = 32f;
+            readout.style.unityTextAlign = TextAnchor.MiddleRight;
+            s.RegisterValueChangedCallback(e =>
+            {
+                readout.text = Mathf.RoundToInt(e.newValue * 255f).ToString();
+                onChange(e.newValue);
+            });
+            row.Insert(1, s);
+        }
+
+        /* Keybind capture. Click, then press — the next key wins, Escape cancels, and the row says
+           which it is waiting for. The capture has to be polled by the host rather than read from a
+           UI Toolkit event, because the keys worth binding include ones the panel would otherwise
+           treat as navigation (Tab, arrows, Escape). */
+        public static VisualElement Key(VisualElement parent, string label, string current,
+                                        Action<Action<string>> beginCapture, string tooltip = null)
+        {
+            var host = Row(parent, label, tooltip);
+            Button b = null;
+            b = Ui.Btn(string.IsNullOrEmpty(current) ? "unbound" : current, () =>
+            {
+                b.text = "press a key…";
+                Ui.Highlight(b, true);
+                try
+                {
+                    beginCapture(name =>
+                    {
+                        b.text = string.IsNullOrEmpty(name) ? "unbound" : name;
+                        Ui.Highlight(b, false);
+                        Anim.Pop(b);
+                    });
+                }
+                catch (Exception e)
+                {
+                    Ui.Log("Key capture threw: " + e.Message);
+                    b.text = current; Ui.Highlight(b, false);
+                }
+            }, host);
+            b.style.minWidth = 110f;
+            return b;
+        }
+
+        /* A section that folds away. Long settings pages are mostly headings you are not reading;
+           this is the one piece of UIBuilder's ExpandSection/Collapsible pair worth keeping, and
+           the state is remembered per title so a page does not refold on every rebuild. */
+        private static readonly Dictionary<string, bool> _folded = new Dictionary<string, bool>();
+
+        public static VisualElement Section(VisualElement parent, string title, bool defaultOpen = true)
+        {
+            bool open = _folded.ContainsKey(title) ? _folded[title] : defaultOpen;
+
+            var head = Ui.Row(parent);
+            head.style.marginTop = Tokens.Pad;
+            head.pickingMode = PickingMode.Position;
+            var arrow = Ui.Muted(open ? "▾" : "▸", head);
+            arrow.style.width = 14f;
+            var l = Ui.Text(title, head, Tokens.FontSize);
+            l.style.unityFontStyleAndWeight = FontStyle.Bold;
+            l.style.color = Tokens.TextMuted;
+            l.pickingMode = PickingMode.Ignore;
+
+            var body = Ui.Box(parent);
+            body.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+            body.style.marginBottom = Tokens.Gap;
+
+            head.RegisterCallback<ClickEvent>(_ =>
+            {
+                open = !open;
+                _folded[title] = open;
+                arrow.text = open ? "▾" : "▸";
+                if (open) Anim.SlideIn(body, -6f, Anim.Fast);
+                else body.style.display = DisplayStyle.None;
+            });
+            return body;
+        }
+
         public static Label Header(VisualElement parent, string text)
         {
             var l = Ui.Text(text, parent, Tokens.FontSize);

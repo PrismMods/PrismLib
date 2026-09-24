@@ -154,9 +154,24 @@ own uGUI panels are untouched, so this is additive until each screen moves acros
 `SettingsPanel` takes its own `SettingRow`, not `PrismLib.SettingEntry`, for the same reason
 `DebugPanel` takes `DebugTab`: PrismLib.UI must not reference PrismLib.dll. The bridge converts.
 
-Two widgets are drawn by hand rather than using UI Toolkit's own: `Toggle` (its `Toggle` is a tick
-box) and `Choice` (its `DropdownField` menu). Both are styled by the theme style sheet a runtime mod
-does not have, so they would come out unstyled.
+Widgets so far: `Toggle`, `Slider`, `IntSlider`, `Choice`, `Text`, `Action`, `Danger`, `Colour`,
+`Key`, `Section`, `Header`, `Spacer`. Still to port from `UIBuilder`: `NavRow`/`NavCard`/`CardGrid`
+(navigation shells — they belong with step 2), `Segmented`, `CycleSelector`, `AccentSwatches`.
+
+Drawn by hand rather than using UI Toolkit's own: `Toggle` (its `Toggle` is a tick box), `Choice`
+(its `DropdownField` menu) and `Colour`. The first two are styled by the theme style sheet a runtime
+mod does not have, so they would come out unstyled; `Colour` is three channel sliders instead of
+Sapphire's 485-line procedural wheel, because typing an exact value is easier than aiming at one.
+
+**Keybind capture is polled by the MOD, not read from a UI event** — Tab, the arrows and Escape are
+all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
+`PrismBridge.TickCapture` is the poller.
+
+**macOS Alt:** `Alt+D`/`Alt+S` did not register. `LeftAlt || RightAlt` is what Sapphire's own
+`Keybinds.AltHeld` does, so there was no working pattern to copy — its Alt binds may never have been
+exercised. `AltGr` is now in the list (the right Option key reports as that on some layouts) and
+`Ctrl+Shift+D` / `Ctrl+Shift+P` work as fallbacks. `PrismBridge.AltDiag` logs every key the runtime
+reports while Alt is held, once per press, to settle what macOS actually delivers.
 
 **Steps 2, 4, 5 and 6 are blocked behind 3**, and doing them early breaks things rather than
 helping: a page shell has nothing to put on it before the widgets exist, and `DragHandle`,
