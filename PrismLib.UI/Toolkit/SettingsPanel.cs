@@ -55,10 +55,24 @@ namespace PrismLib.UI.Toolkit
             (r, q) => (r.Label ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
                    || (r.Group ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
 
+        private Func<IEnumerable<NavItem>> _navPages;
+        private Nav _nav;
+
         public SettingsPanel(string title, Func<IEnumerable<SettingRow>> source,
                              UnityEngine.TextCore.Text.FontAsset font = null)
         {
             _source = source ?? (() => new SettingRow[0]);
+            Build(title, font);
+        }
+
+        /* A mod's OWN menu: it hands over nav pages it built with Widgets, and this supplies the
+           window, rail, breadcrumb and scrolling. That is the shape the settings screens are being
+           rebuilt in — the library provides the framework, not a place to dump every setting. */
+        public SettingsPanel(string title, Func<IEnumerable<NavItem>> pages,
+                             UnityEngine.TextCore.Text.FontAsset font = null)
+        {
+            _navPages = pages;
+            _source = () => new SettingRow[0];
             Build(title, font);
         }
 
@@ -71,6 +85,7 @@ namespace PrismLib.UI.Toolkit
                 _surface.Visible = value;
                 if (value)
                 {
+                    if (_window == null) return;
                     _window.Reclamp();
                     Anim.SlideIn(_window.Root, -10f, Anim.Fast);
                     Reload();
@@ -103,6 +118,15 @@ namespace PrismLib.UI.Toolkit
             _search.RegisterValueChangedCallback(_ => Paint());
             _window.Body.Add(_search);
 
+            if (_navPages != null)
+            {
+                _nav = new Nav(_window.Body, _navPages());
+                _status = Ui.Muted("", _window.Footer);
+                _status.style.flexGrow = 1f;
+                _surface.Visible = false;
+                return;
+            }
+
             _tabs = new Tabs(_window.Body, _ => Paint());
 
             _body = new ScrollView(ScrollViewMode.Vertical);
@@ -127,6 +151,7 @@ namespace PrismLib.UI.Toolkit
         /// Re-read the schema. Cheap enough to do on every open; a mod can add settings at any time.
         public void Reload()
         {
+            if (_nav != null) { _nav.Refresh(); return; }
             _rows = new List<SettingRow>(_source());
             _pages.Clear();
             foreach (var r in _rows)

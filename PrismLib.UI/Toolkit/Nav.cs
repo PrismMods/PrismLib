@@ -15,7 +15,16 @@ namespace PrismLib.UI.Toolkit
         public Action<VisualElement> Build;
         public List<NavItem> Children;
 
+        /* A GROUP is a heading whose children are always visible — no chevron, nothing to expand,
+           the heading itself is not a page. It buys the organisation of a tree without the cost of
+           one: nothing hides, so nothing has to be found twice. Prefer it. Reach for a real
+           collapsible branch only when a group is long enough that showing it all is worse. */
+        public bool Group;
+
         public NavItem(string title, Action<VisualElement> build = null) { Title = title; Build = build; }
+
+        public static NavItem Heading(string title, params NavItem[] children)
+            => new NavItem(title) { Group = true, Children = new List<NavItem>(children) };
 
         public NavItem With(params NavItem[] children)
         {
@@ -125,6 +134,18 @@ namespace PrismLib.UI.Toolkit
 
         private void AddRailItem(NavItem item, int depth)
         {
+            if (item.Group)
+            {
+                var heading = Ui.Text(item.Title, _rail, Tokens.FontSizeSmall, Tokens.TextMuted);
+                heading.style.unityFontStyleAndWeight = FontStyle.Bold;
+                heading.style.marginTop = depth == 0 ? Tokens.Pad : Tokens.Gap;
+                heading.style.marginBottom = 2f;
+                heading.style.paddingLeft = 6f + depth * 12f;
+                heading.pickingMode = PickingMode.Ignore;   // a heading is not a destination
+                foreach (var c in item.Children) AddRailItem(c, depth);
+                return;
+            }
+
             bool onPath = _path.Contains(item);
             bool open = item.IsBranch && _expanded.Contains(item.Title);
 
@@ -174,10 +195,11 @@ namespace PrismLib.UI.Toolkit
         private void RebuildCrumbs()
         {
             _crumbs.Clear();
-            for (int i = 0; i < _path.Count; i++)
+            var steps = _path.FindAll(x => !x.Group);
+            for (int i = 0; i < steps.Count; i++)
             {
-                var step = _path[i];
-                bool last = i == _path.Count - 1;
+                var step = steps[i];
+                bool last = i == steps.Count - 1;
                 if (i > 0)
                 {
                     var sep = Ui.Muted("›", _crumbs);
