@@ -137,6 +137,8 @@ namespace PrismLib.UI.Toolkit
                 l.style.color = Tint(_rows[i]);
             }, card);
             _list.style.overflow = Overflow.Hidden;
+            _list.style.minHeight = 0f;
+            Skin.When<ListView>(_list, lv => Skin.Scroll(lv.Q<ScrollView>()));
             // Logs are columnar: timestamps and tags only line up in a fixed pitch.
             var mono = Surface.Mono();
             if (mono != null) _list.style.unityFontDefinition = FontDefinition.FromFont(mono);

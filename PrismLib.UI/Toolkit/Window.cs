@@ -121,6 +121,7 @@ namespace PrismLib.UI.Toolkit
 
             Body = Ui.Box(Root);
             Body.style.flexGrow = 1f;
+            Body.style.minHeight = 0f;   // see SettingsPanel: content must not dictate the height
             Body.style.overflow = Overflow.Hidden;
             Ui.SetPadding(Body, Tokens.Pad);
 
@@ -235,9 +236,26 @@ namespace PrismLib.UI.Toolkit
             grip.style.position = Position.Absolute;
             grip.style.right = 0f; grip.style.bottom = 0f;
             grip.style.width = GripSize; grip.style.height = GripSize;
-            grip.style.backgroundColor = Tokens.RowHover;
+            grip.style.backgroundColor = Color.clear;
             grip.pickingMode = PickingMode.Position;
             Root.Add(grip);
+
+            /* Three diagonal ticks, drawn rather than textured: a mod has no image assets at
+               runtime, and a flat square gave no hint the corner does anything. */
+            for (int i = 0; i < 3; i++)
+            {
+                var tick = new VisualElement();
+                tick.style.position = Position.Absolute;
+                tick.style.right = 1f;
+                tick.style.bottom = 2f + i * 4f;
+                tick.style.width = GripSize - 3f - i * 4f;
+                tick.style.height = 1.5f;
+                tick.style.backgroundColor = Tokens.TextMuted;
+                tick.style.rotate = new Rotate(-45f);
+                tick.style.transformOrigin = new TransformOrigin(Length.Percent(100f), Length.Percent(50f), 0f);
+                tick.pickingMode = PickingMode.Ignore;
+                grip.Add(tick);
+            }
 
             grip.RegisterCallback<PointerDownEvent>(e =>
             {

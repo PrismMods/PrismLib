@@ -119,7 +119,11 @@ Three landmines, all found by the first panel that opened:
   through the next section's heading, keybind labels through each other), so every `Ui.Box` and
   everything built on it now defaults to `flexShrink = 0`. Anything that genuinely should absorb
   slack sets it back to 1 on itself. A `ScrollView`'s `contentContainer` is not a `Box`, so it needs
-  setting by hand. An absolutely positioned element with only `left`/`top` is sized by its
+  setting by hand.
+- **A flex item's minimum size is its CONTENT, which silently disables scrolling.** A list taller
+  than the window makes its container taller than the window too, so the window just clips it: no
+  scrollbar, no wheel, and nothing in any log. Every scroll container AND every ancestor up to the
+  fixed-height window needs `minHeight = 0` — `Window.Body`, the `ScrollView`, the `ListView`. An absolutely positioned element with only `left`/`top` is sized by its
   CONTENT — pin all four offsets.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at

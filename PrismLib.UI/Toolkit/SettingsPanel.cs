@@ -107,6 +107,11 @@ namespace PrismLib.UI.Toolkit
 
             _body = new ScrollView(ScrollViewMode.Vertical);
             _body.style.flexGrow = 1f;
+            /* The flexbox rule that breaks every scroll container: a flex item's minimum size is
+               its CONTENT, so a list taller than the window makes the container taller than the
+               window too, and the window simply clips it — no scrollbar, no wheel. Every ancestor
+               between here and the fixed-height window needs the same zero. */
+            _body.style.minHeight = 0f;
             // The scrolling column must size to its content; letting it shrink is what makes rows
             // pile up instead of scrolling.
             _body.contentContainer.style.flexShrink = 0f;
