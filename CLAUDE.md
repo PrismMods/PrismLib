@@ -215,6 +215,21 @@ Canvas, so porting the toast would make our card invisible to Quartz's scan and 
 overlap again — the exact bug the convention exists to prevent. That is also why PrismLib.UI still
 carries `RoundedRectGraphic`.
 
+## Both loaders
+
+UMM gives each mod a folder (`<game>/UMMMods/<Mod>/<Mod>.dll`); **MelonLoader mods are flat DLLs in
+`<game>/Mods`**. `SharedDir` decides the mods root by NAME (`Mods`, `UMMMods`, `Plugins`) rather
+than by walking up a fixed number of levels, which is what it used to do — that put PrismLib in the
+game root for a MelonLoader mod. Verified by running `Ensure` from a DLL placed in each layout
+(`/tmp/loadercheck`), not by reading the code.
+
+The resolver searches beside the mod, then the shared folder, then `<game>/UserLibs`. A MelonLoader
+build should ship `PrismLib.UI.dll` in **UserLibs**, not `Mods` — MelonLoader scans `Mods/*.dll` for
+a `MelonMod` and warns about anything that has none.
+
+Nothing in PrismLib or PrismLib.UI references UMM. The mod's own entry point calls
+`PrismBridge.Init`, from `OnLoad` under UMM or `OnInitializeMelon` under MelonLoader.
+
 ## Testing
 
 The game cannot be scripted — it is a paid Steam title with no headless mode. Anything visual is

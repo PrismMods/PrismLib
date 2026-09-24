@@ -52,6 +52,7 @@
         <Compile Include="Toolkit\Tex.cs" />
         <Compile Include="Toolkit\Skin.cs" />
         <Compile Include="Toolkit\ColourPicker.cs" />
+        <Compile Include="Toolkit\GradientEditor.cs" />
         <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
         <Compile Include="Toolkit\Nav.cs" />
