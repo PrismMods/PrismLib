@@ -124,20 +124,29 @@ namespace PrismLib.UI.Toolkit
            Reports once whether the event ever arrived on its own, so the workaround can be dropped
            if a future game or Unity version starts delivering it. */
         private static bool _sawWheelEvent, _reported;
+        private static int _lastWheelFrame = -99;
 
-        /// True once the host has delivered a real WheelEvent, which means ScrollView is handling
-        /// the wheel itself and the polled path must stand down or every scroll goes twice as far.
-        public static bool HostSendsWheel => _sawWheelEvent;
+        /* Whether a real WheelEvent arrived THIS frame, rather than whether one has ever arrived.
+
+           A single "the host sends wheel events" flag was wrong: it was set by the settings panel,
+           which does get them, and that switched polling off for the debug list, which does not —
+           so the log stopped scrolling. Per-frame is the honest question, because the answer
+           differs between panels and between the elements inside one. */
+        public static bool WheelHandledThisFrame => Time.frameCount - _lastWheelFrame <= 1;
 
         public static void WatchWheel(VisualElement root)
         {
             if (root == null) return;
+            /* TrickleDown, so this is seen on the way IN — a ScrollView that handles the wheel
+               stops it bubbling, and a bubbling handler would therefore never hear about exactly
+               the case it needs to know about. */
             root.RegisterCallback<WheelEvent>(_ =>
             {
+                _lastWheelFrame = Time.frameCount;
                 if (_sawWheelEvent) return;
                 _sawWheelEvent = true;
-                Ui.Log("Skin: host delivers WheelEvent — ScrollView handles the wheel, polling off");
-            });
+                Ui.Log("Skin: host delivers WheelEvent; polling stands down on frames it arrives");
+            }, TrickleDown.TrickleDown);
         }
 
         /// Scroll whatever is under the pointer. `delta` is Input.mouseScrollDelta.y.

@@ -201,9 +201,12 @@ together yet the chord never fired. The chords are **Alt+Shift+D** and **Alt+Shi
 Ctrl+Shift+D and Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the
 editor's Save.
 
-**This host DOES deliver `WheelEvent`** — logged the first time one arrives — so `ScrollView`
-handles the wheel itself and `Ui.TickWheel` switches its polling off, or every list would scroll
-twice as far. The polled path stays only for a host that does not send them.
+**`WheelEvent` delivery differs BETWEEN panels, so the question is per-frame, not ever.** The
+settings page receives them and the debug list does not. A single "the host sends wheel events"
+flag, set by the first panel to see one, therefore switched polling off for the list and stopped the
+log scrolling. `Ui.TickWheel` now stands down only on frames where one actually arrived.
+`Skin.WatchWheel` registers with `TrickleDown` because a `ScrollView` that handles the wheel stops
+it bubbling — a bubbling handler would never hear about the case it exists to detect.
 
 Two things cost three attempts at "scrolling is broken", neither of them the plumbing: **a trackpad
 reports fractions** (the measured delta was `-0.05`, which at 40px per unit moved the page two

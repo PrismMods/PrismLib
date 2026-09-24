@@ -37,11 +37,10 @@ namespace PrismLib.UI.Toolkit
         public static void TickWheel(Vector2 pointerScreen, float delta)
         {
             if (Mathf.Approximately(delta, 0f)) return;
-            /* The host DOES send WheelEvent here — logged on the first one — so ScrollView already
-               scrolls itself and polling as well would move every list twice as far. The polled
-               path stays for a host that does not, and switches itself off the moment a real event
-               arrives. */
-            if (Skin.HostSendsWheel) return;
+            /* Stand down only on frames where a real WheelEvent actually arrived, not forever
+               after the first one. The panels differ: the settings page gets them and the debug
+               list does not, so a single global flag silently broke the log. */
+            if (Skin.WheelHandledThisFrame) return;
             // Topmost visible window only, so two open windows do not both scroll.
             for (int i = Stack.Count - 1; i >= 0; i--)
             {
