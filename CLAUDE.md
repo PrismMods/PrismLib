@@ -31,8 +31,16 @@ management for logs, player data, save data and fields, so the mods feel like on
 - **No PrismLib type may appear in a FIELD of a mod's bridge class.** Field types are part of the
   class layout and resolve when the type loads — before any method runs, so before `Ensure()` can
   install the library. This shipped and took both mods down with
-  `OnToggle: TypeLoadException`. Hold handles as `object`, cast at use. `tools/check-bridge.sh
-  <Mod.dll> <Namespace.PrismBridge>` catches it by loading a built mod with PrismLib absent.
+  `OnToggle: TypeLoadException`. Hold handles as `object`, cast at use. A **`PrismLib.UI` type in a
+  field is fine** — that assembly ships beside the mod, so it is always there.
+  `tools/check-bridge.sh <Mod.dll> <Namespace.PrismBridge> [ungated methods...]` catches both
+  failure modes: it loads a built mod with `PrismLib.dll` absent but `PrismLib.UI.dll` present (the
+  real shape of a failed install), and JIT-compiles each named method that the mod calls without
+  checking `Available`:
+
+  ```
+  ./tools/check-bridge.sh …/Sapphire.dll Sapphire.PrismBridge Init Shutdown TickDebug ToggleDebug DebugTabs
+  ```
 - **No caller outside the bridge may mention a PrismLib type** — the CLR resolves a method's types
   when that method is JITted.
 - **Each mod's `release.sh` must copy `lib/PrismLib.UI.dll` into the zip.** Leaving it out breaks
@@ -51,6 +59,21 @@ management for logs, player data, save data and fields, so the mods feel like on
   `prismlib.json`. Then upload BOTH DLLs to the `v<ver>` GitHub release and push.
 - **Version steps by 0.0.1** unless the change is genuinely major. The user decides versions.
 - Consuming mods refresh with `lib/update-prismlib.sh`; `deploy.sh` calls it when a DLL is missing.
+
+## The shared debug window
+
+`Ctrl+Shift+D` in every Prism mod — the same chord on purpose, because the window is shared: it
+shows every registered mod's log and fields, not just the one whose key you pressed. Both mods poll
+the chord and `StateKey.DebugPanel` decides which one draws, so two mods never stack identical
+copies. With PrismLib absent a mod falls back to showing its own log alone.
+
+Mods contribute through `ModHandle.AddLog(name, tail, path)` and `AddFields(name, read)`. Everything
+is **pulled**: a source is a delegate the viewer calls on refresh, so a tab costs nothing while
+nobody is looking. The `Prism` tab lists loaded mods, held claims and key conflicts — the answer to
+"autoplay is broken" that used to need three log files and a guess.
+
+`DebugPanel` takes plain strings and delegates, never PrismLib types, so `PrismLib.UI` keeps not
+referencing `PrismLib.dll`.
 
 ## UI
 

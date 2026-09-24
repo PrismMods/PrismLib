@@ -9,8 +9,13 @@
 # the type could not load, so Ensure() never got the chance to install the library it needed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-DLL="${1:?usage: check-bridge.sh <Mod.dll> <Namespace.PrismBridge>}"
-TYPE="${2:?usage: check-bridge.sh <Mod.dll> <Namespace.PrismBridge>}"
+DLL="${1:?usage: check-bridge.sh <Mod.dll> <Namespace.PrismBridge> [Method ...]}"
+TYPE="${2:?usage: check-bridge.sh <Mod.dll> <Namespace.PrismBridge> [Method ...]}"
+shift 2
+# Methods the mod calls WITHOUT checking Available. Each is JIT-compiled here: if one mentions a
+# PrismLib.dll type it fails now instead of taking the mod down on a machine that never installed
+# the library. Methods that legitimately touch PrismLib are guarded and must NOT be listed.
+UNGATED="$*"
 
 GAME="${ADOFAI_ROOT:-$HOME/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice}"
 MANAGED="$GAME/ADanceOfFireAndIce.app/Contents/Resources/Data/Managed"
@@ -37,12 +42,31 @@ static class Probe {
             var p = t.GetProperty("Available", Any);
             object v = p != null ? p.GetValue(null, null) : "<none>";
             foreach (var f in t.GetFields(Any)) f.GetValue(null);   // forces the full layout
+
+            int bad = 0;
+            for (int i = 2; i < a.Length; i++)
+            {
+                var m = t.GetMethod(a[i], Any);
+                if (m == null) { Console.WriteLine("  ?  no such method: " + a[i]); bad++; continue; }
+                try
+                {
+                    System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(m.MethodHandle);
+                    Console.WriteLine("  ok   " + a[i] + " JITs without PrismLib");
+                }
+                catch (Exception me)
+                {
+                    var mi = me.InnerException ?? me;
+                    Console.WriteLine("  FAIL " + a[i] + " needs PrismLib to JIT: " + mi.Message.Split('\n')[0]);
+                    bad++;
+                }
+            }
+            if (bad > 0) return 1;
             Console.WriteLine("OK: " + a[1] + " loads without PrismLib (Available = " + v + ")");
             return 0;
         } catch (Exception e) {
             var i = e.InnerException ?? e;
             Console.WriteLine("FAIL: " + i.GetType().Name + " - " + i.Message.Split('\n')[0]);
-            Console.WriteLine("      A PrismLib type is reachable from the type's own layout — check for a typed field.");
+            Console.WriteLine("      A PrismLib.dll type is reachable from the type's own layout — check for a typed field.");
             return 1;
         }
     }
@@ -50,4 +74,10 @@ static class Probe {
 CS
 mcs -r:System.dll -out:"$WORK/probe.exe" "$WORK/probe.cs"
 cp "$DLL" "$WORK/mod.dll"
-MONO_PATH="$WORK/refs" mono "$WORK/probe.exe" "$WORK/mod.dll" "$TYPE"
+# Model the real mod folder: PrismLib.UI SHIPS beside the mod, PrismLib.dll does not (the
+# bootstrapper installs that one, and may fail to). Copying the UI half keeps this a test of the
+# guard rules rather than a false alarm about a dependency that is always present.
+for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
+    [ -f "$sib" ] && cp "$sib" "$WORK/"
+done
+MONO_PATH="$WORK/refs" mono "$WORK/probe.exe" "$WORK/mod.dll" "$TYPE" $UNGATED
