@@ -85,6 +85,26 @@ static class PrismLibTest
         Check(pairs == 0, "Conflicts() is empty once the overlap is rebound");
         Check(a.BindKey("edit", 117, KeyMods.Ctrl | KeyMods.Alt, "Edit").ToString() == "Sapphire:edit [Ctrl+Alt+K117]", "ToString spells the modifiers via KeyName");
 
+        Console.WriteLine("search");
+        Check(Search.Score("Effective BPM", "Effective BPM") == 0, "an exact hit scores best");
+        Check(Search.Score("Effective BPM", "eff") < Search.Score("Effective BPM", "bpm"),
+              "a prefix beats a hit in the middle");
+        Check(Search.Score("Grid snap", "snap") < Search.Score("Gridsnap", "snap"),
+              "a word start beats mid-word");
+        Check(Search.Score("Effective BPM", "efbpm") > Search.Score("Effective BPM", "bpm"),
+              "a scattered subsequence ranks below a real substring");
+        Check(Search.Matches("Effective BPM", "efbpm"), "subsequence matches out of contiguity");
+        Check(!Search.Matches("Effective BPM", "zq"), "absent characters do not match");
+        Check(Search.Score("anything", "") == 0 && Search.Matches("anything", null),
+              "an empty query matches everything");
+        Check(Search.Score("", "x") == Search.NoMatch, "an empty haystack matches nothing");
+        Check(Search.ScoreAny("bpm", null, "Effective BPM", "x") != Search.NoMatch,
+              "ScoreAny skips nulls and takes the best field");
+        var ranked = Search.Rank(new[] { "Buffer Padding Mode", "Effective BPM", "bpm" }, "bpm", x => new[] { x });
+        Check(ranked.Count == 3 && ranked[0] == "bpm", "Rank puts the exact hit first");
+        Check(Search.Filter(new[] { "keep me", "drop", "me too" }, "me").Count == 2,
+              "Filter keeps input order and drops non-matches");
+
         Console.WriteLine("settings");
         bool stored = false;
         a.DescribeSettings(new[] {

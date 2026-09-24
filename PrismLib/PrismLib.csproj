@@ -35,6 +35,7 @@
         <Compile Include="Prism.cs" />
         <Compile Include="Claims.cs" />
         <Compile Include="Keys.cs" />
+        <Compile Include="Search.cs" />
         <Compile Include="Settings.cs" />
         <Compile Include="Diagnostics.cs" />
     </ItemGroup>

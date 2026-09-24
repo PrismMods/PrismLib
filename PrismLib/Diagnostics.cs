@@ -40,6 +40,19 @@ namespace PrismLib
         /// Raised when a mod adds or drops a source, so an open view can rebuild its tabs.
         public static event Action Changed;
 
+        /* The debug window is owned by whichever mod won StateKey.DebugPanel, but any mod may want
+           to open it — its own hotkey, a "View log" button on its settings page. Without this, the
+           button in the mod that lost the claim would silently do nothing. The owner subscribes;
+           everyone else asks. */
+        public static event Action ToggleRequested;
+
+        public static void RequestToggle()
+        {
+            var t = ToggleRequested;
+            if (t == null) { Prism.Log("PrismLib: debug window requested, but no mod owns one"); return; }
+            try { t(); } catch (Exception e) { Prism.Log("PrismLib: debug toggle failed: " + e.Message); }
+        }
+
         internal static void AddLog(ModHandle mod, string name, Func<IEnumerable<string>> tail, string path)
         {
             if (mod == null || tail == null || string.IsNullOrEmpty(name)) return;

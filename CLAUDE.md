@@ -109,8 +109,30 @@ Three landmines, all found by the first panel that opened:
   four offsets.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at
-once. The uGUI framework (`UICore`/`UIBuilder`/`TabRail`/`PageStack`/`Theme`/`PanelKit`) still lives
-in both Bismuth and Sapphire, in copies that have drifted.
+once.
+
+**Measured 2026-09-24:** ~13,000 lines of uGUI across the two mods, and the drift between their
+copies is small — `UIBuilder` 615 differing lines of 4503, `UICore` 152 of 1312, `PageStack` 42 of
+398, `Theme` 38 of 284, `DragHandle` 10 of 74. It is one framework copied twice, which is what makes
+centralising worth it.
+
+Ported so far: `Surface`, `Window` (drag/resize/scale/clamp), `Ui` primitives, `Tabs`, `Anim`,
+`DebugPanel`, `Toast`. `Search` is in PrismLib.dll, not .UI — it is pure logic, so it is testable
+offline and usable by the settings registry and dashboard too.
+
+Order for the rest, each step leaving both mods building:
+
+1. `Theme` → `Tokens`: mods push their accent in; delete two near-identical Theme files.
+2. `PageStack` + the settings shell → a `Page`/`Nav` API over `Window`.
+3. `UIBuilder` rows (toggle, slider, dropdown, colour, keybind) → `Ui` widgets. The big one; do it
+   widget by widget, with Sapphire's settings page as the first screen to move.
+4. `DragHandle` / `ResizeHandle` / `RoundedRectGraphic` / `PolyGraphic` → delete; `Window` and UI
+   Toolkit's own styling replace them.
+5. `FieldNav` → delete; UI Toolkit has focus navigation.
+6. Mod-specific screens (Sapphire's editor palettes, Bismuth's `GameUiEditor`/`LocationEditor`) stay
+   in their mods, built on the shared widgets.
+
+Done: Bismuth's `LogViewer` (268 lines) deleted — the shared debug window replaced it.
 
 ## Testing
 

@@ -29,7 +29,7 @@ namespace PrismLib.UI.Toolkit
         private readonly Func<IEnumerable<DebugTab>> _tabs;
         private Surface _surface;
         private Window _window;
-        private VisualElement _tabBar;
+        private Tabs _tabs2;
         private ListView _list;
         private TextField _filter;
         private Label _status;
@@ -55,7 +55,12 @@ namespace PrismLib.UI.Toolkit
             {
                 if (_surface == null) return;
                 _surface.Visible = value;
-                if (value) { if (_window != null) _window.Reclamp(); RebuildTabs(); Refresh(); }
+                if (value)
+                {
+                    if (_window != null) { _window.Reclamp(); Anim.SlideIn(_window.Root, -10f, Anim.Fast); }
+                    RebuildTabs();
+                    Refresh();
+                }
             }
         }
 
@@ -95,9 +100,7 @@ namespace PrismLib.UI.Toolkit
                                  new Rect(60f, 50f, 980f, 560f), () => Visible = false);
             var card = _window.Body;
 
-            _tabBar = Ui.Row(card);
-            _tabBar.style.marginBottom = Tokens.Gap;
-            _tabBar.style.flexWrap = Wrap.Wrap;
+            _tabs2 = new Tabs(card, i => { _active = i; Refresh(); });
 
             _filter = new TextField { value = "" };
             _filter.style.marginBottom = Tokens.Gap;
@@ -139,16 +142,12 @@ namespace PrismLib.UI.Toolkit
 
         private void RebuildTabs()
         {
-            if (_tabBar == null) return;
+            if (_tabs2 == null) return;
             _current = new List<DebugTab>(_tabs());
-            _tabBar.Clear();
-            if (_active >= _current.Count) _active = 0;
-            for (int i = 0; i < _current.Count; i++)
-            {
-                int idx = i;
-                var b = Ui.Btn(_current[i].Name, () => { _active = idx; RebuildTabs(); Refresh(); }, _tabBar);
-                Ui.Highlight(b, idx == _active);
-            }
+            var names = new List<string>();
+            foreach (var t in _current) names.Add(t.Name);
+            _tabs2.Rebuild(names);
+            _active = Mathf.Max(0, _tabs2.Selected);
         }
 
         public void Refresh()
@@ -181,7 +180,7 @@ namespace PrismLib.UI.Toolkit
         public void Dispose()
         {
             if (_surface != null) _surface.Dispose();
-            _surface = null; _tabBar = null; _list = null; _filter = null; _status = null;
+            _surface = null; _tabs2 = null; _window = null; _list = null; _filter = null; _status = null;
         }
     }
 }

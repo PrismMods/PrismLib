@@ -84,38 +84,27 @@ namespace PrismLib
             }
         }
 
-        /* Substring match over label, id, group, page and keywords, across every mod. Ranked so
-           a label hit beats a keyword hit — the point is finding one setting among hundreds
-           without knowing which mod owns it. */
+        /* Ranked match over label, id, group, page and keywords, across every mod. The scoring
+           lives in Search so the settings screen, the dashboard and each mod's own filters all
+           agree on what "bpm" finds — three different Contains() implementations was the problem
+           this replaces. Ties keep declaration order, then Order. */
         public static IEnumerable<KeyValuePair<string, SettingEntry>> Search(string query)
         {
-            var hits = new List<KeyValuePair<int, Owned>>();
-            if (string.IsNullOrEmpty(query))
-            {
-                lock (_lock) foreach (var o in _all) hits.Add(new KeyValuePair<int, Owned>(0, o));
-            }
-            else
-            {
-                string q = query.Trim().ToLowerInvariant();
-                lock (_lock)
-                    foreach (var o in _all)
-                    {
-                        var e = o.Entry;
-                        int score = -1;
-                        if (!string.IsNullOrEmpty(e.Label) && e.Label.ToLowerInvariant().Contains(q)) score = 0;
-                        else if (e.Id.ToLowerInvariant().Contains(q)) score = 1;
-                        else if (!string.IsNullOrEmpty(e.Group) && e.Group.ToLowerInvariant().Contains(q)) score = 2;
-                        else if (!string.IsNullOrEmpty(e.Page) && e.Page.ToLowerInvariant().Contains(q)) score = 2;
-                        else if (e.Keywords != null)
-                            foreach (var k in e.Keywords)
-                                if (!string.IsNullOrEmpty(k) && k.ToLowerInvariant().Contains(q)) { score = 3; break; }
-                        if (score >= 0) hits.Add(new KeyValuePair<int, Owned>(score, o));
-                    }
-            }
-            hits.Sort((a, b) => a.Key != b.Key ? a.Key.CompareTo(b.Key) : a.Value.Entry.Order.CompareTo(b.Value.Entry.Order));
-            var res = new List<KeyValuePair<string, SettingEntry>>();
-            foreach (var h in hits) res.Add(new KeyValuePair<string, SettingEntry>(h.Value.Owner, h.Value.Entry));
+            List<Owned> pool;
+            lock (_lock) pool = new List<Owned>(_all);
+            pool.Sort((a, b) => a.Entry.Order.CompareTo(b.Entry.Order));
+
+            var hits = PrismLib.Search.Rank(pool, query, o => Fields(o.Entry));
+            var res = new List<KeyValuePair<string, SettingEntry>>(hits.Count);
+            foreach (var o in hits) res.Add(new KeyValuePair<string, SettingEntry>(o.Owner, o.Entry));
             return res;
+        }
+
+        private static string[] Fields(SettingEntry e)
+        {
+            var f = new List<string> { e.Label, e.Id, e.Group, e.Page };
+            if (e.Keywords != null) f.AddRange(e.Keywords);
+            return f.ToArray();
         }
     }
 }
