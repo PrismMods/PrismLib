@@ -132,7 +132,20 @@ Order for the rest, each step leaving both mods building:
 6. Mod-specific screens (Sapphire's editor palettes, Bismuth's `GameUiEditor`/`LocationEditor`) stay
    in their mods, built on the shared widgets.
 
-Done: Bismuth's `LogViewer` (268 lines) deleted — the shared debug window replaced it.
+Done: step 1 (both Themes push their palette into `Tokens`, so a shared window wears the colours of
+the mod that opened it); Bismuth's `LogViewer` (268 lines) deleted — the shared debug window
+replaced it.
+
+**Steps 2, 4, 5 and 6 are blocked behind 3**, and doing them early breaks things rather than
+helping: a page shell has nothing to put on it before the widgets exist, and `DragHandle`,
+`ResizeHandle`, `RoundedRectGraphic`, `PolyGraphic` and `FieldNav` are still what every uGUI panel
+in both mods is built from. Step 3 first, widget by widget.
+
+**The update toast stays uGUI on purpose.** `ToastStack` is a cross-mod convention keyed on a
+`Canvas` NAMED `<Mod>UpdateToastCanvas`, and Quartz already follows it. A UI Toolkit panel has no
+Canvas, so porting the toast would make our card invisible to Quartz's scan and the two would
+overlap again — the exact bug the convention exists to prevent. That is also why PrismLib.UI still
+carries `RoundedRectGraphic`.
 
 ## Testing
 

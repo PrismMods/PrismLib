@@ -50,6 +50,13 @@ namespace PrismLib.UI.Toolkit
         /// Seconds between automatic refreshes while open. Logs move at human speed.
         public float RefreshInterval = 1f;
 
+        /* How the filter box decides whether a line matches. Defaults to case-insensitive
+           substring; a host with PrismLib.dll loaded swaps in the shared matcher so the debug
+           window ranks the way every other search in the suite does. Injected rather than
+           referenced — PrismLib.UI must keep working when PrismLib.dll never installed. */
+        public Func<string, string, bool> Matcher =
+            (line, query) => line != null && line.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+
         public DebugPanel(string title, Func<IEnumerable<DebugTab>> tabs, UnityEngine.TextCore.Text.FontAsset font = null)
         {
             _tabs = tabs ?? (() => new DebugTab[0]);
@@ -194,7 +201,7 @@ namespace PrismLib.UI.Toolkit
                     {
                         n++; total++;
                         if (!_showDebug && IsDebug(line)) { hidden++; continue; }
-                        if (q.Length > 0 && (line == null || line.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                        if (q.Length > 0 && !Match(line, q)) continue;
                         // Numbered by position in the SOURCE, not in the filtered view — a line
                         // number that shifts when you type in the filter is worse than none.
                         _rows.Add(_lineNumbers ? n.ToString().PadLeft(5) + "  " + line : line);
@@ -207,6 +214,12 @@ namespace PrismLib.UI.Toolkit
             if (_status != null)
                 _status.text = _rows.Count + " of " + total + " line(s)"
                              + (hidden > 0 ? ", " + hidden + " debug hidden" : "");
+        }
+
+        private bool Match(string line, string query)
+        {
+            try { return Matcher != null && Matcher(line, query); }
+            catch { return false; }
         }
 
         private static bool IsDebug(string line)
