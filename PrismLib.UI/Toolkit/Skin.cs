@@ -25,7 +25,11 @@ namespace PrismLib.UI.Toolkit
             if (tracker != null)
             {
                 tracker.style.backgroundColor = Tokens.RowAlt;
+                tracker.style.position = Position.Absolute;
+                tracker.style.left = 0f; tracker.style.right = 0f;
+                tracker.style.top = Length.Percent(50f);
                 tracker.style.height = 4f;
+                tracker.style.marginTop = -2f;
                 Ui.SetRadius(tracker, 2f);
                 Ui.SetBorderWidth(tracker, 0f);
             }
@@ -37,16 +41,16 @@ namespace PrismLib.UI.Toolkit
                 dragger.style.height = 12f;
                 Ui.SetRadius(dragger, 6f);
                 Ui.SetBorderWidth(dragger, 0f);
-                /* Centre it on the track. The dragger is absolutely positioned inside the drag
-                   container and the default theme centres it with align-self — which a runtime mod
-                   does not get, so it sat at the top of the container, floating above the line it
-                   is supposed to be on. */
+                /* Centre it on the track. Both the tracker and the dragger are laid out by the
+                   theme — which a runtime mod does not get — so each is placed here against the
+                   drag container's midline. Positioning only the dragger just moved the mismatch:
+                   the track was not centred either. */
                 dragger.style.top = Length.Percent(50f);
                 dragger.style.marginTop = -6f;
             }
             // The drag container is what gives the row its height; the default theme sizes it.
             var drag = slider.Q(className: "unity-base-slider__drag-container");
-            if (drag != null) drag.style.height = 16f;
+            if (drag != null) drag.style.height = 20f;
             var label = slider.Q<Label>(className: "unity-base-field__label");
             if (label != null) label.style.display = DisplayStyle.None;   // the row already has one
         }
@@ -167,15 +171,25 @@ namespace PrismLib.UI.Toolkit
                        + " panel=" + point.x.ToString("0") + "," + point.y.ToString("0")
                        + " scrollviews=" + lists.Count
                        + (target == null ? " NONE FOUND"
-                          : " target=" + target.worldBound + (missed ? " (fallback, point missed all)" : ""))
+                          : " target=" + target.worldBound
+                            + " scrollable=" + Mathf.Max(0f, target.contentContainer.layout.height
+                                                           - target.contentViewport.layout.height).ToString("0")
+                            + (missed ? " (fallback, point missed all)" : ""))
                        + (_sawWheelEvent ? "" : " [host sends no WheelEvent]"));
             }
             if (target == null) return;
 
             float max = Mathf.Max(0f, target.contentContainer.layout.height - target.contentViewport.layout.height);
             if (max <= 0f) return;
+
+            /* A wheel notch reports ±1; a trackpad reports fractions — the measured value here was
+               -0.05, which at the 40px-per-unit this used to apply moved the page TWO pixels and
+               looked exactly like nothing happening. Scale the two separately: a notch is worth
+               about three rows, and a trackpad's continuous stream is worth enough per event to
+               keep up with the finger. */
+            float px = Mathf.Abs(delta) < 0.6f ? delta * 400f : delta * 60f;
             var o = target.scrollOffset;
-            o.y = Mathf.Clamp(o.y - delta * 40f, 0f, max);
+            o.y = Mathf.Clamp(o.y - px, 0f, max);
             target.scrollOffset = o;
         }
 

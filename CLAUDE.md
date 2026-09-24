@@ -201,12 +201,17 @@ together yet the chord never fired. The chords are **Alt+Shift+D** and **Alt+Shi
 Ctrl+Shift+D and Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the
 editor's Save.
 
-**The wheel is not delivered to UI Toolkit panels here.** Clicks are, so pointer events work, but a
-runtime panel only gets `WheelEvent` if the host's input module forwards it and this game's does
-not — which made every log and settings page unscrollable with no error anywhere. The mods poll
-`Input.mouseScrollDelta` into `Ui.TickWheel`, which drives whichever `ScrollView` is under the
-pointer. `Skin.WatchWheel` logs if a real `WheelEvent` ever arrives, so the workaround can be
-dropped when one does.
+**The wheel is polled, and its scale matters more than its plumbing.** A runtime panel only gets
+`WheelEvent` if the host's input module forwards it, so the mods poll `Input.mouseScrollDelta` into
+`Ui.TickWheel`. The part that actually cost three attempts: **a trackpad reports fractions** — the
+measured value was `-0.05`, and at the 40px-per-unit first applied that moved the page two pixels
+and looked exactly like nothing happening. A notch (±1) and a trackpad stream need different
+scaling. When something "does not scroll", log the delta before touching the hit test.
+
+**Nothing in a built-in control is positioned without the theme.** Both a slider's tracker AND its
+dragger are laid out by the default style sheet, so each has to be placed by hand against the drag
+container's midline. Fixing only the dragger moves the mismatch instead of removing it — the track
+was not centred either.
 
 **Bismuth's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
 letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
