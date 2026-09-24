@@ -81,7 +81,22 @@ namespace PrismLib.UI.Toolkit
             Ui.Log("Surface: font " + f.name + (font == null ? " (OS fallback)" : ""));
         }
 
-        private static Font _fallback;
+        private static Font _fallback, _mono;
+
+        /* A monospace face for anything columnar. A log is the case that matters: timestamps and
+           level tags only line up in a fixed pitch, and the game's own display font — which is what
+           a mod's TMP asset is built from — is the worst possible choice for reading one. */
+        public static Font Mono()
+        {
+            if (_mono != null) return _mono;
+            try
+            {
+                _mono = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Courier New", "monospace" }, 14);
+            }
+            catch (Exception e) { Ui.Log("Surface: mono font unavailable: " + e.Message); }
+            return _mono ?? Fallback();
+        }
 
         /* An OS font, built once. Cheap insurance: every mod has a different font pipeline and any
            of them can hand over null, but a debug window that renders nothing is worse than one in
@@ -114,7 +129,9 @@ namespace PrismLib.UI.Toolkit
             get { return _visible; }
             set
             {
+                if (_visible == value) return;
                 _visible = value;
+                Ui.OpenWindows += value ? 1 : -1;
                 if (Root != null) Root.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
@@ -138,6 +155,7 @@ namespace PrismLib.UI.Toolkit
 
         public void Dispose()
         {
+            if (_visible) { _visible = false; Ui.OpenWindows--; }
             if (_go != null) UnityEngine.Object.Destroy(_go);
             if (_settings != null) UnityEngine.Object.Destroy(_settings);
             _go = null; _settings = null; Root = null;

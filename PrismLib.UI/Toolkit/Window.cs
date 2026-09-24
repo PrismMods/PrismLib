@@ -69,8 +69,6 @@ namespace PrismLib.UI.Toolkit
             label.style.flexGrow = 1f;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             TitleBarRight = Ui.Row(bar);
-            Ui.Btn("−", () => Scale = _scale - 0.1f, TitleBarRight);
-            Ui.Btn("+", () => Scale = _scale + 0.1f, TitleBarRight);
             if (onClose != null) Ui.Btn("Close", onClose, TitleBarRight);
 
             Body = Ui.Box(Root);
@@ -80,6 +78,12 @@ namespace PrismLib.UI.Toolkit
 
             Footer = Ui.Row(Root);
             Footer.style.backgroundColor = Tokens.TitleBar;
+            // Scale lives with the other view controls, not in the title bar: it adjusts how the
+            // contents read, which is the same kind of thing as the line-number toggle beside it.
+            var zoomOut = Ui.Btn("−", () => Scale = _scale - 0.1f, Footer);
+            zoomOut.tooltip = "Smaller";
+            var zoomIn = Ui.Btn("+", () => Scale = _scale + 0.1f, Footer);
+            zoomIn.tooltip = "Larger";
             Footer.style.paddingLeft = Tokens.Pad;
             Footer.style.paddingRight = Tokens.Pad;
             Footer.style.paddingTop = 3f;
@@ -107,12 +111,17 @@ namespace PrismLib.UI.Toolkit
             set { _rect = value; Clamp(); Apply(); }
         }
 
+        /* Scale magnifies the CONTENTS, not the window. The transform would otherwise blow the
+           whole box up and push it off screen, when what scaling is for is reading the text — so
+           the layout size is divided by the scale that multiplies it, leaving the rendered
+           footprint exactly the rect the user dragged out. Scaling up therefore shows less, larger,
+           in the same space. */
         private void Apply()
         {
             Root.style.left = _rect.x;
             Root.style.top = _rect.y;
-            Root.style.width = _rect.width;
-            Root.style.height = _rect.height;
+            Root.style.width = _rect.width / _scale;
+            Root.style.height = _rect.height / _scale;
             Root.style.scale = new Scale(new Vector2(_scale, _scale));
             _saved[_id] = _rect;
         }
@@ -129,11 +138,11 @@ namespace PrismLib.UI.Toolkit
             var size = Root.parent != null ? Root.parent.layout.size : Vector2.zero;
             if (size.x <= 0f || size.y <= 0f) return;
 
-            _rect.width = Mathf.Clamp(_rect.width, MinWidth, Mathf.Max(MinWidth, size.x / _scale));
-            _rect.height = Mathf.Clamp(_rect.height, MinHeight, Mathf.Max(MinHeight, size.y / _scale));
+            _rect.width = Mathf.Clamp(_rect.width, MinWidth, Mathf.Max(MinWidth, size.x));
+            _rect.height = Mathf.Clamp(_rect.height, MinHeight, Mathf.Max(MinHeight, size.y));
             // At least the title bar stays on screen, horizontally by a good grab's worth.
-            float maxX = size.x / _scale - 80f;
-            float maxY = size.y / _scale - TitleHeight;
+            float maxX = size.x - 80f;
+            float maxY = size.y - TitleHeight * _scale;
             _rect.x = Mathf.Clamp(_rect.x, -_rect.width + 80f, Mathf.Max(0f, maxX));
             _rect.y = Mathf.Clamp(_rect.y, 0f, Mathf.Max(0f, maxY));
         }
@@ -151,7 +160,7 @@ namespace PrismLib.UI.Toolkit
             bar.RegisterCallback<PointerMoveEvent>(e =>
             {
                 if (!bar.HasPointerCapture(e.pointerId)) return;
-                var d = ((Vector2)e.position - _dragFrom) / _scale;
+                var d = (Vector2)e.position - _dragFrom;
                 _rect.x = _rectFrom.x + d.x;
                 _rect.y = _rectFrom.y + d.y;
                 Clamp();
@@ -185,7 +194,7 @@ namespace PrismLib.UI.Toolkit
             grip.RegisterCallback<PointerMoveEvent>(e =>
             {
                 if (!grip.HasPointerCapture(e.pointerId)) return;
-                var d = ((Vector2)e.position - _dragFrom) / _scale;
+                var d = (Vector2)e.position - _dragFrom;
                 _rect.width = _rectFrom.width + d.x;
                 _rect.height = _rectFrom.height + d.y;
                 Clamp();

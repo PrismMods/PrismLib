@@ -16,6 +16,20 @@ namespace PrismLib.UI.Toolkit
            capturing", so a throw in here reaches no log at all and a broken panel is
            indistinguishable from a key that did nothing. Each mod points this at its own log. */
         public static Action<string> Log = _ => { };
+
+        /* How many Prism windows are on screen.
+
+           The mods need this for the same reason each of them already guards its own panels: the
+           editor zooms on the scroll wheel and the game reacts to clicks, so scrolling a list or
+           dragging a window inside a Prism panel would also drive the world behind it. A mod checks
+           AnyWindowOpen in its own zoom/click path — it cannot be enforced from here, because the
+           input belongs to the game and the patch belongs to the mod.
+
+           A counter rather than a bool: two windows can be open, and closing one must not tell the
+           editor it is free again. */
+        public static int OpenWindows;
+
+        public static bool AnyWindowOpen => OpenWindows > 0;
         public static VisualElement Box(VisualElement parent = null)
         {
             var e = new VisualElement();

@@ -74,7 +74,7 @@ Cut a release when something is ready to ship, not to try it.
 
 ## The shared debug window
 
-`Ctrl+Shift+D` in every Prism mod — the same chord on purpose, because the window is shared: it
+`Alt+D` in every Prism mod — the same chord on purpose, because the window is shared: it
 shows every registered mod's log and fields, not just the one whose key you pressed. Both mods poll
 the chord and `StateKey.DebugPanel` decides which one draws, so two mods never stack identical
 copies. With PrismLib absent a mod falls back to showing its own log alone.
@@ -86,6 +86,15 @@ nobody is looking. The `Prism` tab lists loaded mods, held claims and key confli
 
 `DebugPanel` takes plain strings and delegates, never PrismLib types, so `PrismLib.UI` keeps not
 referencing `PrismLib.dll`.
+
+**Fonts:** panels use `Surface`'s OS font and the log list a monospace. Do NOT feed them a mod's
+`TMP_FontAsset.sourceFontFile` — that is the GAME's display face, which is unreadable as a wall of
+log text and does not line its columns up.
+
+**`Ui.AnyWindowOpen`** is how a mod knows to stand down: the editor zooms on the scroll wheel, so
+scrolling a Prism list would also zoom the world behind it. Sapphire's `ZoomCamera` prefix checks
+it. It cannot be enforced from the library — the input belongs to the game and the patch belongs to
+the mod.
 
 ## UI
 
@@ -139,7 +148,7 @@ replaced it.
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
 danger, header) and `SettingsPanel`, which renders whatever the mods DESCRIBE through
 `ModHandle.DescribeSettings`. Both mods now declare a real slice of their settings, so the schema
-from stage 1 finally has a renderer and `Search` spans them. **Ctrl+Shift+S** opens it; the mods'
+from stage 1 finally has a renderer and `Search` spans them. **Alt+S** opens it (**Alt+D** for the debug window — not Ctrl+Shift+S, which is the editor's Save); the mods'
 own uGUI panels are untouched, so this is additive until each screen moves across.
 
 `SettingsPanel` takes its own `SettingRow`, not `PrismLib.SettingEntry`, for the same reason
