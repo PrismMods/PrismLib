@@ -125,7 +125,7 @@ namespace PrismLib.UI.Toolkit
            Reports once whether the event ever arrived on its own, so the workaround can be dropped
            if a future game or Unity version starts delivering it. */
         private static readonly Dictionary<ScrollView, float> _offsets = new Dictionary<ScrollView, float>();
-        private static bool _sawWheelEvent, _reported, _movedOnce;
+        private static bool _sawWheelEvent, _reported, _movedOnce, _reportedFit;
         private static int _lastWheelFrame = -99;
 
         /* Whether a real WheelEvent arrived THIS frame, rather than whether one has ever arrived.
@@ -157,7 +157,12 @@ namespace PrismLib.UI.Toolkit
             if (root == null || root.panel == null || Mathf.Approximately(delta, 0f)) return;
 
             var lists = root.Query<ScrollView>().ToList();
-            var point = RuntimePanelUtils.ScreenToPanel(root.panel, pointerScreen);
+            /* ScreenToPanel divides by the panel's scale and does NOT flip y — measured, not
+               assumed: screen (1545,856) came back as panel (1098,608), which is 856/1.405 for
+               this panel's scale. Unity screen coordinates start at the bottom, panel coordinates
+               at the top, so the flip belongs here. */
+            var point = RuntimePanelUtils.ScreenToPanel(
+                root.panel, new Vector2(pointerScreen.x, Screen.height - pointerScreen.y));
 
             ScrollView target = null, biggest = null;
             foreach (var sv in lists)
@@ -205,7 +210,16 @@ namespace PrismLib.UI.Toolkit
             if (list != null && list.itemsSource != null && list.fixedItemHeight > 0f)
                 max = Mathf.Max(max, list.itemsSource.Count * list.fixedItemHeight - view);
 
-            if (max <= 0f) return;
+            if (max <= 0f)
+            {
+                if (!_reportedFit)
+                {
+                    _reportedFit = true;
+                    Ui.Log("Skin wheel: nothing to scroll here — content " + target.contentContainer.layout.height.ToString("0")
+                           + " fits the " + view.ToString("0") + " view");
+                }
+                return;
+            }
 
             /* A wheel notch reports ±1; a trackpad reports fractions — the measured value here was
                -0.05, which at the 40px-per-unit this used to apply moved the page TWO pixels and

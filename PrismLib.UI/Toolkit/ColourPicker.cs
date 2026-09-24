@@ -173,6 +173,11 @@ namespace PrismLib.UI.Toolkit
             Ui.SetBorderWidth(k, 2f);
             Ui.SetBorderColor(k, Color.white);
             k.style.backgroundColor = Color.clear;
+            /* Centre the knob on its own position with a percentage translate, rather than a
+               negative margin computed from resolvedStyle — which is NaN until layout has run, so
+               the margin came out as zero and every knob sat half its own width right and low of
+               where it was pointing. */
+            k.style.translate = new Translate(Length.Percent(-50f), Length.Percent(-50f));
             k.pickingMode = PickingMode.Ignore;
             parent.Add(k);
             return k;
@@ -322,14 +327,13 @@ namespace PrismLib.UI.Toolkit
         }
 
         /* Knobs are positioned in PERCENT, because the square and strips are laid out by flexbox
-           and their pixel size is not known until layout has run. */
+           and their pixel size is not known until layout has run. Centring is the translate set in
+           Knob(), for the same reason. */
         private static void Place(VisualElement knob, VisualElement area, float nx, float ny)
         {
             if (knob == null || area == null) return;
             knob.style.left = Length.Percent(nx * 100f);
             knob.style.top = Length.Percent(ny * 100f);
-            knob.style.marginLeft = -knob.resolvedStyle.width / 2f;
-            knob.style.marginTop = -knob.resolvedStyle.height / 2f;
         }
     }
 }
