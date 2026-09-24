@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -123,7 +124,8 @@ namespace PrismLib.UI.Toolkit
 
            Reports once whether the event ever arrived on its own, so the workaround can be dropped
            if a future game or Unity version starts delivering it. */
-        private static bool _sawWheelEvent, _reported;
+        private static readonly Dictionary<ScrollView, float> _offsets = new Dictionary<ScrollView, float>();
+        private static bool _sawWheelEvent, _reported, _movedOnce;
         private static int _lastWheelFrame = -99;
 
         /* Whether a real WheelEvent arrived THIS frame, rather than whether one has ever arrived.
@@ -212,8 +214,29 @@ namespace PrismLib.UI.Toolkit
                keep up with the finger. */
             float px = Mathf.Abs(delta) < 0.6f ? delta * 400f : delta * 60f;
             var o = target.scrollOffset;
-            o.y = Mathf.Clamp(o.y - px, 0f, max);
+            float before = o.y;
+
+            /* If the native handler already moved this one this frame, leave it alone. That is the
+               precise version of "the host handles the wheel" — asked of the element that matters
+               rather than of the panel as a whole. */
+            float lastSeen;
+            if (WheelHandledThisFrame && _offsets.TryGetValue(target, out lastSeen)
+                && !Mathf.Approximately(lastSeen, before))
+            {
+                _offsets[target] = before;
+                return;
+            }
+
+            o.y = Mathf.Clamp(before - px, 0f, max);
             target.scrollOffset = o;
+            _offsets[target] = o.y;
+
+            if (!_movedOnce)
+            {
+                _movedOnce = true;
+                Ui.Log("Skin wheel: scrolled " + before.ToString("0") + " -> " + o.y.ToString("0")
+                       + " of " + max.ToString("0"));
+            }
         }
 
         /* Styling has to wait for the control to be attached: the parts are created when it joins a

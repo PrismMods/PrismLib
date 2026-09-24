@@ -37,10 +37,14 @@ namespace PrismLib.UI.Toolkit
         public static void TickWheel(Vector2 pointerScreen, float delta)
         {
             if (Mathf.Approximately(delta, 0f)) return;
-            /* Stand down only on frames where a real WheelEvent actually arrived, not forever
-               after the first one. The panels differ: the settings page gets them and the debug
-               list does not, so a single global flag silently broke the log. */
-            if (Skin.WheelHandledThisFrame) return;
+            /* Deliberately NOT standing down when a WheelEvent arrives.
+
+               A WheelEvent reaching the panel says only that: not that any ScrollView acted on it.
+               Standing down on that basis left the debug log unscrollable while reporting nothing
+               at all, because the polled path — the only thing that logs — never ran. Scrolling
+               twice as fast is a visible, tunable problem; scrolling not at all while the logs stay
+               silent is the one that has cost the most time here. Skin.Wheel skips a target that
+               already moved this frame, which is the honest version of the same check. */
             // Topmost visible window only, so two open windows do not both scroll.
             for (int i = Stack.Count - 1; i >= 0; i--)
             {
