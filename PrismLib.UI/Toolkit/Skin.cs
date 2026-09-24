@@ -133,18 +133,32 @@ namespace PrismLib.UI.Toolkit
                 _reported = true;
                 if (!_sawWheelEvent) Ui.Log("Skin: scrolling by polled wheel (host sends no WheelEvent)");
             }
-            // Screen y is bottom-up, panel y is top-down.
-            var point = new Vector2(pointerScreen.x, Screen.height - pointerScreen.y);
-            var hit = root.panel.Pick(RuntimePanelUtils.ScreenToPanel(root.panel, point));
-            for (var e = hit; e != null; e = e.parent)
+
+            /* ScreenToPanel takes Unity screen coordinates as they come — origin bottom-left — and
+               returns panel space, origin top-left. Flipping y first, as this did, flips it twice
+               and lands the point on the wrong half of the window.
+
+               And the target is found by testing worldBound rather than by panel.Pick: picking
+               honours pickingMode, and half the elements in these panels set it to Ignore so that
+               clicks fall through to the row beneath. A scroll wheel does not care about any of
+               that — it belongs to whatever box the pointer is inside. */
+            var point = RuntimePanelUtils.ScreenToPanel(root.panel, pointerScreen);
+
+            ScrollView target = null;
+            foreach (var sv in root.Query<ScrollView>().ToList())
             {
-                var sv = e as ScrollView;
-                if (sv == null) continue;
-                var o = sv.scrollOffset;
-                o.y = Mathf.Clamp(o.y - delta * 40f, 0f, Mathf.Max(0f, sv.contentContainer.layout.height - sv.contentViewport.layout.height));
-                sv.scrollOffset = o;
-                return;
+                if (!sv.worldBound.Contains(point)) continue;
+                // Innermost wins: a nested list inside a scrolling page should take the wheel.
+                if (target == null || sv.worldBound.width * sv.worldBound.height
+                                    < target.worldBound.width * target.worldBound.height) target = sv;
             }
+            if (target == null) return;
+
+            float max = Mathf.Max(0f, target.contentContainer.layout.height - target.contentViewport.layout.height);
+            if (max <= 0f) return;
+            var o = target.scrollOffset;
+            o.y = Mathf.Clamp(o.y - delta * 40f, 0f, max);
+            target.scrollOffset = o;
         }
 
         /* Styling has to wait for the control to be attached: the parts are created when it joins a

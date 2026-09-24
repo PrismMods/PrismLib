@@ -37,6 +37,7 @@ namespace PrismLib.UI.Toolkit
         public static void TickWheel(Vector2 pointerScreen, float delta)
         {
             if (Mathf.Approximately(delta, 0f)) return;
+            // Topmost visible window only, so two open windows do not both scroll.
             for (int i = Stack.Count - 1; i >= 0; i--)
             {
                 if (!Stack[i].Visible) continue;
