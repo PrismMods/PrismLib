@@ -101,6 +101,20 @@ static class PrismLibTest
         a.DescribeSettings(new SettingEntry[0]);
         Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 1, "re-describing replaces only that mod's entries");
 
+        Console.WriteLine("diagnostics");
+        int reads = 0;
+        a.AddLog("SapphireLog", () => { reads++; return new[] { "one", "two" }; }, "/tmp/s.txt");
+        b.AddLog("BismuthLog", () => new[] { "x" }, null);
+        a.AddFields("Level", () => new[] { new KeyValuePair<string, string>("bpm", "120") });
+        Check(Count(Diagnostics.Logs) == 2 && Count(Diagnostics.Fields) == 1, "sources register per mod");
+        Check(reads == 0, "a source is pulled, not pushed — nothing read until someone looks");
+        foreach (var l in Diagnostics.Logs) if (l.Owner == "Sapphire") Count(l.Tail());
+        Check(reads == 1, "reading a source calls its delegate");
+        a.AddLog("SapphireLog", () => new[] { "replaced" }, null);
+        Check(Count(Diagnostics.Logs) == 2, "re-registering one name replaces rather than duplicates");
+        Diagnostics.Unregister("Sapphire");
+        Check(Count(Diagnostics.Logs) == 1 && Count(Diagnostics.Fields) == 0, "a mod going away takes its sources");
+
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
     }

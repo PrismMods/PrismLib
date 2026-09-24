@@ -34,6 +34,9 @@
         <Reference Include="UnityEngine.UIModule"><HintPath>$(AdofaiManaged)/UnityEngine.UIModule.dll</HintPath><Private>False</Private></Reference>
         <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(AdofaiManaged)/UnityEngine.TextRenderingModule.dll</HintPath><Private>False</Private></Reference>
         <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(AdofaiManaged)/UnityEngine.IMGUIModule.dll</HintPath><Private>False</Private></Reference>
+        <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(AdofaiManaged)/UnityEngine.UIElementsModule.dll</HintPath><Private>False</Private></Reference>
+        <Reference Include="UnityEngine.TextCoreTextEngineModule"><HintPath>$(AdofaiManaged)/UnityEngine.TextCoreTextEngineModule.dll</HintPath><Private>False</Private></Reference>
+        <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(AdofaiManaged)/UnityEngine.TextCoreFontEngineModule.dll</HintPath><Private>False</Private></Reference>
         <Reference Include="Unity.TextMeshPro"><HintPath>$(AdofaiManaged)/Unity.TextMeshPro.dll</HintPath><Private>False</Private></Reference>
     </ItemGroup>
     <ItemGroup>
@@ -41,6 +44,10 @@
         <Compile Include="RoundedRectGraphic.cs" />
         <Compile Include="ToastStack.cs" />
         <Compile Include="Toast.cs" />
+        <Compile Include="Toolkit\Surface.cs" />
+        <Compile Include="Toolkit\Tokens.cs" />
+        <Compile Include="Toolkit\Ui.cs" />
+        <Compile Include="Toolkit\DebugPanel.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

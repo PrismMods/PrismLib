@@ -20,7 +20,7 @@ namespace PrismLib
         /* Bump the MINOR for additive API, the MAJOR for a break. The bootstrapper in each mod
            compares this against what it requires and loads the newest copy it can find, so three
            mods shipping three different builds converge on one assembly at runtime. */
-        public static readonly Version Version = new Version(0, 3, 0);
+        public static readonly Version Version = new Version(0, 3, 1);
 
         private static readonly Dictionary<string, ModHandle> _mods = new Dictionary<string, ModHandle>(StringComparer.OrdinalIgnoreCase);
         private static readonly object _lock = new object();
@@ -74,6 +74,14 @@ namespace PrismLib
         public bool OwnsState(StateKey key) => Claims.OwnerOf(key) == Id;
         public KeyBinding BindKey(string id, int keyCode, KeyMods mods, string label) => Keys.Register(this, id, keyCode, mods, label);
         public void DescribeSettings(IEnumerable<SettingEntry> entries) => Settings.Register(this, entries);
+
+        /// Offer this mod's log to the shared debug view. tail returns the most recent lines.
+        public void AddLog(string name, Func<IEnumerable<string>> tail, string path = null)
+            => Diagnostics.AddLog(this, name, tail, path);
+
+        /// Offer named values — level, player, save state — to the shared debug view.
+        public void AddFields(string name, Func<IEnumerable<KeyValuePair<string, string>>> read)
+            => Diagnostics.AddFields(this, name, read);
 
         public override string ToString() => Id + " " + Version;
     }
