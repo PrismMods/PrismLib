@@ -32,6 +32,19 @@ namespace PrismLib.UI.Toolkit
 
         public static bool AnyWindowOpen => OpenWindows > 0;
 
+        /// Drive the wheel for every open window. The host calls this each frame with
+        /// Input.mousePosition and Input.mouseScrollDelta.y — see Skin.Wheel for why.
+        public static void TickWheel(Vector2 pointerScreen, float delta)
+        {
+            if (Mathf.Approximately(delta, 0f)) return;
+            for (int i = Stack.Count - 1; i >= 0; i--)
+            {
+                if (!Stack[i].Visible) continue;
+                Skin.Wheel(Stack[i].Root, pointerScreen, delta);
+                return;
+            }
+        }
+
         /* Open surfaces, oldest first. Two windows exist now (debug and settings), so "which one
            is on top" and "which one does Escape close" both need an answer, and neither can come
            from Unity: separate UIDocument panels are ordered by sortingOrder, not by click. */

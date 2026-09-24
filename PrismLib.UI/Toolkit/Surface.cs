@@ -60,6 +60,7 @@ namespace PrismLib.UI.Toolkit
                 // UI Toolkit draws through TextCore, not TMP: FontDefinition wants a
                 // TextCore FontAsset, and TMP_FontAsset is NOT one. A mod that only has the TMP
                 // asset should pass the plain Font it was built from instead — see SetFont.
+                Skin.WatchWheel(Root);
                 if (font != null)
                 {
                     Root.style.unityFontDefinition = FontDefinition.FromSDFFont(font);

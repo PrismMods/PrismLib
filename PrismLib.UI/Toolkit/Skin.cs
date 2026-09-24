@@ -102,6 +102,51 @@ namespace PrismLib.UI.Toolkit
             if (s.highButton != null) s.highButton.style.display = DisplayStyle.None;
         }
 
+        /* A wheel path that does not rely on the host forwarding scroll.
+
+           Clicks reach these panels, so pointer events are delivered — but a runtime UI Toolkit
+           panel only receives WheelEvent if the game's input module forwards it, and this game's
+           does not appear to. Rather than leave a log you cannot scroll, the window polls the wheel
+           itself and drives whichever ScrollView is under the pointer.
+
+           Reports once whether the event ever arrived on its own, so the workaround can be dropped
+           if a future game or Unity version starts delivering it. */
+        private static bool _sawWheelEvent, _reported;
+
+        public static void WatchWheel(VisualElement root)
+        {
+            if (root == null) return;
+            root.RegisterCallback<WheelEvent>(_ =>
+            {
+                if (_sawWheelEvent) return;
+                _sawWheelEvent = true;
+                Ui.Log("Skin: WheelEvent IS delivered by the host — the manual scroll can go");
+            });
+        }
+
+        /// Scroll whatever is under the pointer. `delta` is Input.mouseScrollDelta.y.
+        public static void Wheel(VisualElement root, Vector2 pointerScreen, float delta)
+        {
+            if (root == null || root.panel == null || Mathf.Approximately(delta, 0f)) return;
+            if (!_reported)
+            {
+                _reported = true;
+                if (!_sawWheelEvent) Ui.Log("Skin: scrolling by polled wheel (host sends no WheelEvent)");
+            }
+            // Screen y is bottom-up, panel y is top-down.
+            var point = new Vector2(pointerScreen.x, Screen.height - pointerScreen.y);
+            var hit = root.panel.Pick(RuntimePanelUtils.ScreenToPanel(root.panel, point));
+            for (var e = hit; e != null; e = e.parent)
+            {
+                var sv = e as ScrollView;
+                if (sv == null) continue;
+                var o = sv.scrollOffset;
+                o.y = Mathf.Clamp(o.y - delta * 40f, 0f, Mathf.Max(0f, sv.contentContainer.layout.height - sv.contentViewport.layout.height));
+                sv.scrollOffset = o;
+                return;
+            }
+        }
+
         /* Styling has to wait for the control to be attached: the parts are created when it joins a
            panel, so a Q() before that finds nothing. */
         public static void When<T>(VisualElement e, System.Action<T> apply) where T : VisualElement

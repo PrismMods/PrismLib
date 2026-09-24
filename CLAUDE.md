@@ -194,7 +194,21 @@ separate `UIDocument` panels order by that number and nothing else.
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
 `PrismBridge.TickCapture` is the poller.
 
-**Alt was never the problem — Bismuth's key block was.** The diagnostic showed `LeftAlt` and the
+**Alt+letter does not arrive on macOS; Alt+SHIFT+letter does.** Option+D and Option+S compose a
+character (∂, ß) and Unity never reports the letter's keycode — verified in-game, where Alt+Shift+S
+worked and Alt+S did not, which is also why the first diagnostic saw `LeftAlt` and the letter
+together yet the chord never fired. The chords are **Alt+Shift+D** and **Alt+Shift+S**, with
+Ctrl+Shift+D and Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the
+editor's Save.
+
+**The wheel is not delivered to UI Toolkit panels here.** Clicks are, so pointer events work, but a
+runtime panel only gets `WheelEvent` if the host's input module forwards it and this game's does
+not — which made every log and settings page unscrollable with no error anywhere. The mods poll
+`Input.mouseScrollDelta` into `Ui.TickWheel`, which drives whichever `ScrollView` is under the
+pointer. `Skin.WatchWheel` logs if a real `WheelEvent` ever arrives, so the workaround can be
+dropped when one does.
+
+**Bismuth's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
 letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
 false for every key but `B` while Bismuth's panel is open, *including for Bismuth's own poll*, so
 the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
