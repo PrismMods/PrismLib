@@ -56,6 +56,16 @@ static class PrismLibTest
             Check(Claims.OwnerOf(StateKey.InputCapture) == "Bismuth" && !a.OwnsState(StateKey.InputCapture),
                   "a keyboard grab is visible to the mod that must stand down");
 
+        /* The debug window aggregates EVERY mod's sources, so a second copy would show the same
+           text twice. Both mods poll the same hotkey; the claim decides which one draws. */
+        var dbg = a.ClaimState(StateKey.DebugPanel, "hotkey");
+        Check(dbg != null && b.ClaimState(StateKey.DebugPanel, "hotkey") == null,
+              "only one mod can own the shared debug window");
+        dbg.Release();
+        Check(b.ClaimState(StateKey.DebugPanel, "hotkey") != null,
+              "the other mod can take it once the owner is gone");
+        Claims.ReleaseAll("Bismuth");
+
         Console.WriteLine("keys");
         Keys.KeyName = i => "K" + i;
         KeyBinding clashA = null, clashB = null;

@@ -15,6 +15,7 @@ namespace PrismLib
         GamePanels,      // the game's own event + settings panels (hidden by a native replacement)
         GameHud,         // the gameplay HUD: no-fail badge, progress, attempt counter
         InputCapture,    // the keyboard itself — held while a mod swallows keys game-wide
+        DebugPanel,      // the shared debug window; one owner, or every mod stacks an identical copy
     }
 
     /* Who owns a piece of game state right now.

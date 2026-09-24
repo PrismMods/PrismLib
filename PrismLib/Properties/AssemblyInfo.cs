@@ -8,5 +8,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("QuartzTeam")]
 [assembly: AssemblyProduct("PrismLib")]
 [assembly: ComVisible(false)]
-[assembly: AssemblyVersion("0.3.1.0")]
-[assembly: AssemblyFileVersion("0.3.1.0")]
+[assembly: AssemblyVersion("0.3.2.0")]
+[assembly: AssemblyFileVersion("0.3.2.0")]
