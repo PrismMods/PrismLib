@@ -58,7 +58,18 @@ namespace PrismLib.UI.Toolkit
             }
         }
 
-        public void Toggle() => Visible = !Visible;
+        public void Toggle()
+        {
+            Visible = !Visible;
+            Ui.Log("DebugPanel: " + (Visible ? "shown" : "hidden"));
+        }
+
+        /// Hosts that only have a TMP font can pass the legacy Font it was built from
+        /// (TMP_FontAsset.sourceFontFile) — UI Toolkit draws through TextCore, not TMP.
+        public void SetFont(UnityEngine.Font font)
+        {
+            if (_surface != null) _surface.SetFont(font);
+        }
 
         /// Call every frame while the mod is alive; it does nothing while hidden.
         public void Tick()

@@ -12,6 +12,10 @@ namespace PrismLib.UI.Toolkit
        factories do not cover is just UI Toolkit and needs no escape hatch. */
     public static class Ui
     {
+        /* Where this half reports what it did. The game prints "Mods detected! Disabling exception
+           capturing", so a throw in here reaches no log at all and a broken panel is
+           indistinguishable from a key that did nothing. Each mod points this at its own log. */
+        public static Action<string> Log = _ => { };
         public static VisualElement Box(VisualElement parent = null)
         {
             var e = new VisualElement();

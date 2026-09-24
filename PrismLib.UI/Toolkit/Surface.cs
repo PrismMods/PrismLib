@@ -29,6 +29,7 @@ namespace PrismLib.UI.Toolkit
         /// name is used for the GameObject, so it shows up in a hierarchy dump as "<Mod>Prism…".
         public Surface(string name, float sortingOrder = 100f, UnityEngine.TextCore.Text.FontAsset font = null)
         {
+            Ui.Log("Surface '" + name + "': creating UI Toolkit panel");
             _settings = ScriptableObject.CreateInstance<PanelSettings>();
             _settings.name = name + "PanelSettings";
             // Empty rather than null: the panel works either way, but a null theme logs a warning
@@ -45,6 +46,10 @@ namespace PrismLib.UI.Toolkit
             var doc = _go.AddComponent<UIDocument>();
             doc.panelSettings = _settings;
             Root = doc.rootVisualElement;
+            /* Null here is the failure that looks like nothing happening: the panel exists, the
+               hotkey "works", and not one element is ever drawn. Worth its own line. */
+            Ui.Log("Surface '" + name + "': root " + (Root == null ? "NULL — nothing will render" : "ok")
+                   + ", font " + (font == null ? "none (text may be invisible)" : font.name));
             if (Root != null)
             {
                 Root.style.flexGrow = 1f;
@@ -62,7 +67,9 @@ namespace PrismLib.UI.Toolkit
         /// builds the TMP asset). Lower quality than an SDF font, but it renders.
         public void SetFont(Font font)
         {
-            if (Root != null && font != null) Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            if (Root == null || font == null) { Ui.Log("Surface: SetFont ignored (root or font null)"); return; }
+            Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            Ui.Log("Surface: font set to " + font.name);
         }
 
         public bool Visible
