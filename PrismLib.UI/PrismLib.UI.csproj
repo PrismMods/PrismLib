@@ -47,6 +47,7 @@
         <Compile Include="Toolkit\Surface.cs" />
         <Compile Include="Toolkit\Tokens.cs" />
         <Compile Include="Toolkit\Ui.cs" />
+        <Compile Include="Toolkit\Window.cs" />
         <Compile Include="Toolkit\DebugPanel.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

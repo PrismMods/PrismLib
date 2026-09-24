@@ -28,6 +28,7 @@ namespace PrismLib.UI.Toolkit
     {
         private readonly Func<IEnumerable<DebugTab>> _tabs;
         private Surface _surface;
+        private Window _window;
         private VisualElement _tabBar;
         private ListView _list;
         private TextField _filter;
@@ -54,7 +55,7 @@ namespace PrismLib.UI.Toolkit
             {
                 if (_surface == null) return;
                 _surface.Visible = value;
-                if (value) { RebuildTabs(); Refresh(); }
+                if (value) { if (_window != null) _window.Reclamp(); RebuildTabs(); Refresh(); }
             }
         }
 
@@ -90,22 +91,9 @@ namespace PrismLib.UI.Toolkit
             var root = _surface.Root;
             if (root == null) return;
 
-            var card = Ui.Card(root);
-            card.pickingMode = PickingMode.Position;   // the panel catches input; the surface does not
-            /* Inset from all four edges rather than a fixed width and height. An absolutely
-               positioned element with only left/top is sized by its content, and a log line is as
-               wide as it likes — the first build spread the card across the whole screen. Four
-               offsets pin it, and a debug window wants the room anyway. */
-            card.style.position = Position.Absolute;
-            card.style.left = 40f; card.style.top = 40f;
-            card.style.right = 40f; card.style.bottom = 40f;
-
-            var header = Ui.Row(card);
-            header.style.marginBottom = Tokens.Gap;
-            var t = Ui.Text(title, header, Tokens.FontSize + 1f);
-            t.style.flexGrow = 1f;
-            Ui.Btn("Refresh", Refresh, header);
-            Ui.Btn("Close", () => Visible = false, header);
+            _window = new Window(root, "PrismDebug", title,
+                                 new Rect(60f, 50f, 980f, 560f), () => Visible = false);
+            var card = _window.Body;
 
             _tabBar = Ui.Row(card);
             _tabBar.style.marginBottom = Tokens.Gap;
@@ -118,6 +106,9 @@ namespace PrismLib.UI.Toolkit
             _filter.RegisterValueChangedCallback(_ => Refresh());
             card.Add(_filter);
 
+            // Before the window's own −/+/Close, which the constructor already added.
+            _window.TitleBarRight.Insert(0, Ui.Btn("Refresh", Refresh));
+
             _list = Ui.List(() => _rows, (e, i) =>
             {
                 var l = e as Label;
@@ -125,10 +116,11 @@ namespace PrismLib.UI.Toolkit
                 l.text = _rows[i];
                 l.style.color = Tint(_rows[i]);
             }, card);
+            _list.style.overflow = Overflow.Hidden;
 
-            _status = Ui.Muted("", card);
+            _status = Ui.Muted("", _window.Footer);
             _status.style.flexShrink = 0f;
-            Surface.LogGeometryOnce(card, "DebugPanel card");
+            Surface.LogGeometryOnce(_window.Root, "DebugPanel window");
             _surface.Visible = false;
         }
 
@@ -155,11 +147,7 @@ namespace PrismLib.UI.Toolkit
             {
                 int idx = i;
                 var b = Ui.Btn(_current[i].Name, () => { _active = idx; RebuildTabs(); Refresh(); }, _tabBar);
-                if (idx == _active)
-                {
-                    b.style.backgroundColor = Tokens.Accent;
-                    b.style.color = new Color(0.06f, 0.06f, 0.08f, 1f);
-                }
+                Ui.Highlight(b, idx == _active);
             }
         }
 

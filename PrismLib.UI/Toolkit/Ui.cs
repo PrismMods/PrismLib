@@ -64,22 +64,46 @@ namespace PrismLib.UI.Toolkit
         public static Label Muted(string text, VisualElement parent = null)
             => Text(text, parent, Tokens.FontSizeSmall, Tokens.TextMuted);
 
+        /* A button's resting and hover colours live in a holder on the element, not in the hover
+           callbacks. Setting backgroundColor from outside used to work until the pointer left the
+           button, at which point MouseLeave put the resting colour back — which is why a selected
+           tab looked selected only until the mouse moved. Highlight() changes the resting colour
+           instead, so the callbacks agree with it. */
+        private sealed class BtnColors { public Color Rest, Hover, Text; }
+
         public static Button Btn(string text, Action onClick, VisualElement parent = null)
         {
             var b = new Button(onClick != null ? () => onClick() : (Action)null) { text = text ?? "" };
+            var c = new BtnColors { Rest = Tokens.RowAlt, Hover = Tokens.RowHover, Text = Tokens.Text };
+            b.userData = c;
             b.style.fontSize = Tokens.FontSizeSmall;
-            b.style.color = Tokens.Text;
-            b.style.backgroundColor = Tokens.RowAlt;
+            b.style.color = c.Text;
+            b.style.backgroundColor = c.Rest;
             SetBorderWidth(b, 0f);
             SetRadius(b, 4f);
             SetPadding(b, 5f);
             b.style.marginLeft = 0f; b.style.marginRight = Tokens.Gap;
             b.style.marginTop = 0f; b.style.marginBottom = 0f;
-            b.RegisterCallback<MouseEnterEvent>(_ => b.style.backgroundColor = Tokens.RowHover);
-            b.RegisterCallback<MouseLeaveEvent>(_ => b.style.backgroundColor = Tokens.RowAlt);
+            b.RegisterCallback<MouseEnterEvent>(_ => b.style.backgroundColor = c.Hover);
+            b.RegisterCallback<MouseLeaveEvent>(_ => b.style.backgroundColor = c.Rest);
             parent?.Add(b);
             return b;
         }
+
+        /// Mark a button as the selected one. Survives the pointer leaving it.
+        public static void Highlight(Button b, bool on)
+        {
+            var c = b?.userData as BtnColors;
+            if (c == null) return;
+            c.Rest = on ? Tokens.Accent : Tokens.RowAlt;
+            c.Hover = on ? Lighten(Tokens.Accent, 0.12f) : Tokens.RowHover;
+            c.Text = on ? new Color(0.06f, 0.06f, 0.08f, 1f) : Tokens.Text;
+            b.style.backgroundColor = c.Rest;
+            b.style.color = c.Text;
+        }
+
+        public static Color Lighten(Color c, float amount)
+            => new Color(Mathf.Min(1f, c.r + amount), Mathf.Min(1f, c.g + amount), Mathf.Min(1f, c.b + amount), c.a);
 
         /* A virtualized list. This is the reason for moving to UI Toolkit at all: ListView recycles
            rows, so a 50k-line log costs the same as a 50-line one. The uGUI framework had to be
