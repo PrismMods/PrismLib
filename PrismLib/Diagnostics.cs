@@ -10,6 +10,7 @@ namespace PrismLib
         public string Name;               // "SapphireLog", "BismuthLog"
         public string Path;               // on disk, for an "open folder" button; may be null
         public Func<IEnumerable<string>> Tail;   // most recent lines, newest last
+        public Action Clear;              // optional: wipes the file, for a "Clear" button
     }
 
     /// Named values a mod is willing to expose — player state, save data, whatever it already knows.
@@ -53,13 +54,13 @@ namespace PrismLib
             try { t(); } catch (Exception e) { Prism.Log("PrismLib: debug toggle failed: " + e.Message); }
         }
 
-        internal static void AddLog(ModHandle mod, string name, Func<IEnumerable<string>> tail, string path)
+        internal static void AddLog(ModHandle mod, string name, Func<IEnumerable<string>> tail, string path, Action clear)
         {
             if (mod == null || tail == null || string.IsNullOrEmpty(name)) return;
             lock (_lock)
             {
                 _logs.RemoveAll(l => l.Owner == mod.Id && l.Name == name);
-                _logs.Add(new LogSource { Owner = mod.Id, Name = name, Tail = tail, Path = path });
+                _logs.Add(new LogSource { Owner = mod.Id, Name = name, Tail = tail, Path = path, Clear = clear });
             }
             Prism.Log("PrismLib: " + mod.Id + " registered log '" + name + "'");
             Fire();

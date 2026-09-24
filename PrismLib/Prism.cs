@@ -76,8 +76,8 @@ namespace PrismLib
         public void DescribeSettings(IEnumerable<SettingEntry> entries) => Settings.Register(this, entries);
 
         /// Offer this mod's log to the shared debug view. tail returns the most recent lines.
-        public void AddLog(string name, Func<IEnumerable<string>> tail, string path = null)
-            => Diagnostics.AddLog(this, name, tail, path);
+        public void AddLog(string name, Func<IEnumerable<string>> tail, string path = null, Action clear = null)
+            => Diagnostics.AddLog(this, name, tail, path, clear);
 
         /// Offer named values — level, player, save state — to the shared debug view.
         public void AddFields(string name, Func<IEnumerable<KeyValuePair<string, string>>> read)

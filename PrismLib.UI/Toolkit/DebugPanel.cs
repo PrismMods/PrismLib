@@ -11,6 +11,10 @@ namespace PrismLib.UI.Toolkit
     {
         public string Name;
         public Func<IEnumerable<string>> Lines;
+        /// Optional. On disk — enables an "Open folder" button for this tab.
+        public string Path;
+        /// Optional. Enables a "Clear" button for this tab.
+        public Action Clear;
     }
 
     /* The in-game debug view: every mod's log and state in one window, like Bismuth's log viewer
@@ -35,6 +39,10 @@ namespace PrismLib.UI.Toolkit
         private Label _status;
 
         private readonly List<string> _rows = new List<string>();
+        private VisualElement _tabActions;
+        private Button _numbersBtn, _debugBtn;
+        private bool _lineNumbers = true;
+        private bool _showDebug = true;
         private List<DebugTab> _current = new List<DebugTab>();
         private int _active;
         private float _nextRefresh;
@@ -100,7 +108,7 @@ namespace PrismLib.UI.Toolkit
                                  new Rect(60f, 50f, 980f, 560f), () => Visible = false);
             var card = _window.Body;
 
-            _tabs2 = new Tabs(card, i => { _active = i; Refresh(); });
+            _tabs2 = new Tabs(card, i => { _active = i; RefreshFooter(); Refresh(); });
 
             _filter = new TextField { value = "" };
             _filter.style.marginBottom = Tokens.Gap;
@@ -123,6 +131,18 @@ namespace PrismLib.UI.Toolkit
 
             _status = Ui.Muted("", _window.Footer);
             _status.style.flexShrink = 0f;
+            _status.style.flexGrow = 1f;
+
+            /* Footer controls: view options first, then whatever the active source offers. Both
+               toggles default on — a debug view that hides things by default sends people looking
+               for a bug in the log instead of in the mod. */
+            var numbers = Ui.Btn("#", () => { _lineNumbers = !_lineNumbers; RefreshFooter(); Refresh(); }, _window.Footer);
+            numbers.tooltip = "Line numbers";
+            var dbg = Ui.Btn("dbg", () => { _showDebug = !_showDebug; RefreshFooter(); Refresh(); }, _window.Footer);
+            dbg.tooltip = "Show [dbg] and [perf] lines";
+            _numbersBtn = numbers; _debugBtn = dbg;
+            _tabActions = Ui.Row(_window.Footer);
+            RefreshFooter();
             Surface.LogGeometryOnce(_window.Root, "DebugPanel window");
             _surface.Visible = false;
         }
@@ -148,6 +168,7 @@ namespace PrismLib.UI.Toolkit
             foreach (var t in _current) names.Add(t.Name);
             _tabs2.Rebuild(names);
             _active = Mathf.Max(0, _tabs2.Selected);
+            RefreshFooter();
         }
 
         public void Refresh()
@@ -157,6 +178,7 @@ namespace PrismLib.UI.Toolkit
 
             _rows.Clear();
             string q = _filter != null ? (_filter.value ?? "").Trim() : "";
+            int total = 0, hidden = 0;
             if (_active >= 0 && _active < _current.Count)
             {
                 var tab = _current[_active];
@@ -166,15 +188,58 @@ namespace PrismLib.UI.Toolkit
                 try { lines = tab.Lines != null ? tab.Lines() : null; }
                 catch (Exception e) { _rows.Add("<source threw: " + e.Message + ">"); }
                 if (lines != null)
+                {
+                    int n = 0;
                     foreach (var line in lines)
-                        if (q.Length == 0 || (line != null && line.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0))
-                            _rows.Add(line);
+                    {
+                        n++; total++;
+                        if (!_showDebug && IsDebug(line)) { hidden++; continue; }
+                        if (q.Length > 0 && (line == null || line.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                        // Numbered by position in the SOURCE, not in the filtered view — a line
+                        // number that shifts when you type in the filter is worse than none.
+                        _rows.Add(_lineNumbers ? n.ToString().PadLeft(5) + "  " + line : line);
+                    }
+                }
             }
 
             _list.itemsSource = _rows;
             _list.Rebuild();
             if (_status != null)
-                _status.text = _rows.Count + (q.Length > 0 ? " matching line(s)" : " line(s)");
+                _status.text = _rows.Count + " of " + total + " line(s)"
+                             + (hidden > 0 ? ", " + hidden + " debug hidden" : "");
+        }
+
+        private static bool IsDebug(string line)
+            => line != null && (line.IndexOf("[dbg]", StringComparison.Ordinal) >= 0
+                             || line.IndexOf("[perf]", StringComparison.Ordinal) >= 0);
+
+        /// Footer buttons: the two view toggles keep their state, and the per-source actions are
+        /// rebuilt because they belong to whichever tab is open.
+        private void RefreshFooter()
+        {
+            Ui.Highlight(_numbersBtn, _lineNumbers);
+            Ui.Highlight(_debugBtn, _showDebug);
+            if (_tabActions == null) return;
+            _tabActions.Clear();
+            if (_active < 0 || _active >= _current.Count) return;
+            var tab = _current[_active];
+            if (tab.Clear != null)
+                Ui.Btn("Clear", () => { try { tab.Clear(); } catch { } Refresh(); }, _tabActions);
+            if (!string.IsNullOrEmpty(tab.Path))
+                Ui.Btn("Open folder", () => Reveal(tab.Path), _tabActions);
+        }
+
+        /* Application.OpenURL on the containing directory. Deliberately not a per-mod delegate:
+           every mod would implement the same Process.Start and get the quoting wrong differently,
+           and this needs no shell at all. */
+        private static void Reveal(string path)
+        {
+            try
+            {
+                var dir = System.IO.Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir)) Application.OpenURL("file://" + dir);
+            }
+            catch (Exception e) { Ui.Log("DebugPanel: could not open folder: " + e.Message); }
         }
 
         public void Dispose()
