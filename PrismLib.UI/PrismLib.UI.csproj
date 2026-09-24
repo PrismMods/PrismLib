@@ -49,9 +49,12 @@
         <Compile Include="Toolkit\Ui.cs" />
         <Compile Include="Toolkit\Anim.cs" />
         <Compile Include="Toolkit\Tabs.cs" />
+        <Compile Include="Toolkit\Tex.cs" />
         <Compile Include="Toolkit\Skin.cs" />
+        <Compile Include="Toolkit\ColourPicker.cs" />
         <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
+        <Compile Include="Toolkit\Nav.cs" />
         <Compile Include="Toolkit\SettingsPanel.cs" />
         <Compile Include="Toolkit\DebugPanel.cs" />
     </ItemGroup>

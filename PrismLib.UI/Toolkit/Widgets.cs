@@ -204,67 +204,15 @@ namespace PrismLib.UI.Toolkit
             return b;
         }
 
-        /* Colour: a swatch that opens an inline HSV-free picker — three sliders and a preview.
-           Deliberately not a colour wheel. Sapphire's ColorWheel is 485 lines of procedural mesh
-           for a surface people mostly use to nudge an accent, and three labelled channels are
-           easier to type an exact value into anyway. */
+        /* Colour. The picker itself is ColourPicker — Bismuth's model, the best of the three the
+           mods had — and this is just the row that hosts it. */
         public static VisualElement Colour(VisualElement parent, string label, Color value,
-                                           Action<Color> onChange, string tooltip = null)
+                                           Action<Color> onChange, string tooltip = null,
+                                           bool hasAlpha = false)
         {
-            var host = Row(parent, label, tooltip);
-            var swatch = new VisualElement();
-            swatch.style.width = 40f;
-            swatch.style.height = 18f;
-            Ui.SetRadius(swatch, 4f);
-            Ui.SetBorderWidth(swatch, 1f);
-            Ui.SetBorderColor(swatch, Tokens.PanelBorder);
-            swatch.style.backgroundColor = value;
-            host.Add(swatch);
-
-            // The editor hangs under the row, so opening it pushes the rest of the page down
-            // rather than covering it — a popup would need a layer and a dismiss rule.
-            var editor = Ui.Box(parent);
-            editor.style.display = DisplayStyle.None;
-            Ui.SetPadding(editor, Tokens.Gap);
-
-            Color current = value;
-            Action<int, float> set = (channel, v) =>
-            {
-                if (channel == 0) current.r = v; else if (channel == 1) current.g = v; else current.b = v;
-                swatch.style.backgroundColor = current;
-                try { if (onChange != null) onChange(current); }
-                catch (Exception e) { Ui.Log("Colour handler threw: " + e.Message); }
-            };
-            Channel(editor, "R", current.r, v => set(0, v));
-            Channel(editor, "G", current.g, v => set(1, v));
-            Channel(editor, "B", current.b, v => set(2, v));
-
-            swatch.pickingMode = PickingMode.Position;
-            swatch.RegisterCallback<ClickEvent>(_ =>
-            {
-                bool open = editor.style.display == DisplayStyle.None;
-                if (open) Anim.SlideIn(editor, -6f, Anim.Fast); else editor.style.display = DisplayStyle.None;
-            });
-            return swatch;
-        }
-
-        private static void Channel(VisualElement parent, string name, float value, Action<float> onChange)
-        {
-            var row = Ui.Row(parent);
-            var l = Ui.Muted(name, row);
-            l.style.width = 16f;
-            var s = new Slider(0f, 1f) { value = value };
-            s.style.flexGrow = 1f;
-            Skin.When<Slider>(s, Skin.Slider);
-            var readout = Ui.Muted(Mathf.RoundToInt(value * 255f).ToString(), row);
-            readout.style.minWidth = 32f;
-            readout.style.unityTextAlign = TextAnchor.MiddleRight;
-            s.RegisterValueChangedCallback(e =>
-            {
-                readout.text = Mathf.RoundToInt(e.newValue * 255f).ToString();
-                onChange(e.newValue);
-            });
-            row.Insert(1, s);
+            var p = new ColourPicker(parent, label, value, hasAlpha, onChange);
+            if (!string.IsNullOrEmpty(tooltip)) p.Root.tooltip = tooltip;
+            return p.Root;
         }
 
         /* Keybind capture. Click, then press — the next key wins, Escape cancels, and the row says
