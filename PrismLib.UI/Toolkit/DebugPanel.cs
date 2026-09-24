@@ -92,9 +92,13 @@ namespace PrismLib.UI.Toolkit
 
             var card = Ui.Card(root);
             card.pickingMode = PickingMode.Position;   // the panel catches input; the surface does not
+            /* Inset from all four edges rather than a fixed width and height. An absolutely
+               positioned element with only left/top is sized by its content, and a log line is as
+               wide as it likes — the first build spread the card across the whole screen. Four
+               offsets pin it, and a debug window wants the room anyway. */
             card.style.position = Position.Absolute;
-            card.style.left = 80f; card.style.top = 60f;
-            card.style.width = 900f; card.style.height = 520f;
+            card.style.left = 40f; card.style.top = 40f;
+            card.style.right = 40f; card.style.bottom = 40f;
 
             var header = Ui.Row(card);
             header.style.marginBottom = Tokens.Gap;
@@ -110,6 +114,7 @@ namespace PrismLib.UI.Toolkit
             _filter = new TextField { value = "" };
             _filter.style.marginBottom = Tokens.Gap;
             _filter.style.fontSize = Tokens.FontSizeSmall;
+            _filter.style.flexShrink = 0f;
             _filter.RegisterValueChangedCallback(_ => Refresh());
             card.Add(_filter);
 
@@ -122,6 +127,7 @@ namespace PrismLib.UI.Toolkit
             }, card);
 
             _status = Ui.Muted("", card);
+            _status.style.flexShrink = 0f;
             Surface.LogGeometryOnce(card, "DebugPanel card");
             _surface.Visible = false;
         }

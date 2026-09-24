@@ -29,6 +29,11 @@ namespace PrismLib.UI.Toolkit
             var e = Box(parent);
             e.style.flexDirection = FlexDirection.Row;
             e.style.alignItems = Align.Center;
+            /* Flex items shrink by default. In a fixed-height column next to something with
+               flexGrow (a list), a row gets squeezed toward zero height and its labels spill out
+               and overlap whatever is above — which is exactly how the debug panel first drew, with
+               the tab bar sitting on top of the title. A row is chrome: it keeps its size. */
+            e.style.flexShrink = 0f;
             return e;
         }
 

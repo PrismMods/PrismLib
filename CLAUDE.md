@@ -50,6 +50,18 @@ management for logs, player data, save data and fields, so the mods feel like on
 - `raw.githubusercontent` caches `prismlib.json` for a few minutes, so a just-published release is
   not visible to clients or to `lib/update-prismlib.sh` straight away.
 
+## Dev loop
+
+`./dev.sh` — build both assemblies, run the offline test, and install straight into the game:
+`PrismLib.dll` where the bootstrapper would have put it, `PrismLib.UI.dll` into every mod folder
+that already has a copy, and both into `../Sapphire/lib` and `../Bismuth/lib`. Then reload in-game
+(Ctrl+F10).
+
+**No release for a test.** The release path exists so end users get the library; it has no business
+in the edit-test loop. Leave the version alone while iterating — the bootstrapper only replaces its
+copy when the feed's version is strictly newer, so an unbumped dev build survives the next launch.
+Cut a release when something is ready to ship, not to try it.
+
 ## Build & release
 
 - `./release.sh` — builds both projects, runs `tools/PrismLibTest.cs` (offline, asserts the
@@ -77,10 +89,24 @@ referencing `PrismLib.dll`.
 
 ## UI
 
-Unity **6000.3.211**, and the game ships `UnityEngine.UIElementsModule.dll` — `PanelSettings`,
-`UIDocument`, `ThemeStyleSheet`, `PanelTextSettings` all present. UI Toolkit is the chosen backend
-for the new framework. The real constraint: **USS and UXML cannot be authored at runtime** (that
+Unity **6000.3.211**, and the game ships `UnityEngine.UIElementsModule.dll`. Runtime UI Toolkit is
+**verified working in-game** (2026-09-24): `ScriptableObject.CreateInstance<PanelSettings>()` + an
+empty `ThemeStyleSheet` + `UIDocument` gives a live `rootVisualElement`, and the debug panel renders
+with a working `ListView`. The real constraint: **USS and UXML cannot be authored at runtime** (that
 importer is editor-only), so styling is inline C# and theme values are code tokens.
+
+Three landmines, all found by the first panel that opened:
+
+- **Never show/hide a panel with `SetActive`.** `UIDocument` rebuilds its visual tree in `OnEnable`,
+  so the second show hands back a different `rootVisualElement` and everything built into the old
+  one is orphaned — the panel comes back empty with no error. Use `display`.
+- **A panel with no font draws no text.** `TMP_FontAsset.sourceFontFile` is an editor-time reference
+  and is null in a player build, so mods generally cannot supply a `Font`; `Surface` falls back to
+  `Font.CreateDynamicFontFromOSFont` (on demand — not safe at `Time.frameCount == 0`).
+- **Flex items shrink by default.** Chrome next to something with `flexGrow` gets squeezed toward
+  zero and its labels spill out and overlap. Rows set `flexShrink = 0`; so must any other fixed
+  element. An absolutely positioned element with only `left`/`top` is sized by its CONTENT — pin all
+  four offsets.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at
 once. The uGUI framework (`UICore`/`UIBuilder`/`TabRail`/`PageStack`/`Theme`/`PanelKit`) still lives
