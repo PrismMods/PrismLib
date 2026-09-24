@@ -136,6 +136,19 @@ Done: step 1 (both Themes push their palette into `Tokens`, so a shared window w
 the mod that opened it); Bismuth's `LogViewer` (268 lines) deleted — the shared debug window
 replaced it.
 
+Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
+danger, header) and `SettingsPanel`, which renders whatever the mods DESCRIBE through
+`ModHandle.DescribeSettings`. Both mods now declare a real slice of their settings, so the schema
+from stage 1 finally has a renderer and `Search` spans them. **Ctrl+Shift+S** opens it; the mods'
+own uGUI panels are untouched, so this is additive until each screen moves across.
+
+`SettingsPanel` takes its own `SettingRow`, not `PrismLib.SettingEntry`, for the same reason
+`DebugPanel` takes `DebugTab`: PrismLib.UI must not reference PrismLib.dll. The bridge converts.
+
+Two widgets are drawn by hand rather than using UI Toolkit's own: `Toggle` (its `Toggle` is a tick
+box) and `Choice` (its `DropdownField` menu). Both are styled by the theme style sheet a runtime mod
+does not have, so they would come out unstyled.
+
 **Steps 2, 4, 5 and 6 are blocked behind 3**, and doing them early breaks things rather than
 helping: a page shell has nothing to put on it before the widgets exist, and `DragHandle`,
 `ResizeHandle`, `RoundedRectGraphic`, `PolyGraphic` and `FieldNav` are still what every uGUI panel

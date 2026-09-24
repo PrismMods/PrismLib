@@ -56,6 +56,15 @@ namespace PrismLib.UI.Toolkit
             });
         }
 
+        /// Animate an absolute `left` — the knob of a switch, a sliding indicator.
+        public static void Move(VisualElement e, float toLeft, int ms = Fast)
+        {
+            if (e == null) return;
+            float from = e.resolvedStyle.left;
+            if (float.IsNaN(from)) from = toLeft;
+            Run(e, from, toLeft, ms, (el, v) => el.style.left = v);
+        }
+
         /// A small scale bump — acknowledgement for a click that has no other visible result.
         public static void Pop(VisualElement e, float from = 0.96f, int ms = Fast)
         {

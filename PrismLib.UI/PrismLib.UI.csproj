@@ -49,7 +49,9 @@
         <Compile Include="Toolkit\Ui.cs" />
         <Compile Include="Toolkit\Anim.cs" />
         <Compile Include="Toolkit\Tabs.cs" />
+        <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
+        <Compile Include="Toolkit\SettingsPanel.cs" />
         <Compile Include="Toolkit\DebugPanel.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
