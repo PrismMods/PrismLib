@@ -58,6 +58,7 @@ namespace PrismLib.UI.Toolkit
 
             var split = Ui.Row(parent);
             split.style.flexGrow = 1f;
+            split.style.flexShrink = 1f;   // absorbs slack, like Window.Body — see its comment
             split.style.minHeight = 0f;
             split.style.alignItems = Align.Stretch;
 
@@ -72,6 +73,7 @@ namespace PrismLib.UI.Toolkit
 
             var right = Ui.Box(split);
             right.style.flexGrow = 1f;
+            right.style.flexShrink = 1f;
             right.style.minHeight = 0f;
             right.style.paddingLeft = Tokens.Pad;
 

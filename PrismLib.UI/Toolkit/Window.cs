@@ -121,7 +121,13 @@ namespace PrismLib.UI.Toolkit
 
             Body = Ui.Box(Root);
             Body.style.flexGrow = 1f;
-            Body.style.minHeight = 0f;   // see SettingsPanel: content must not dictate the height
+            /* The one element that MUST absorb slack. Ui.Box defaults to flexShrink 0 so rows keep
+               their height, but the window body is the opposite case: it has to shrink to whatever
+               the window is, or it grows to its content and the window merely clips it. That is
+               what made the debug log unscrollable — the list's viewport came out 2700px tall
+               inside a 580px window, so the list reported that everything fitted. */
+            Body.style.flexShrink = 1f;
+            Body.style.minHeight = 0f;
             Body.style.overflow = Overflow.Hidden;
             Ui.SetPadding(Body, Tokens.Pad);
 

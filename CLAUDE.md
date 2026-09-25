@@ -112,6 +112,12 @@ Three landmines, all found by the first panel that opened:
 - **A panel with no font draws no text.** `TMP_FontAsset.sourceFontFile` is an editor-time reference
   and is null in a player build, so mods generally cannot supply a `Font`; `Surface` falls back to
   `Font.CreateDynamicFontFromOSFont` (on demand — not safe at `Time.frameCount == 0`).
+- **A scrolling container's ANCESTORS must be allowed to shrink.** `Window.Body` and `Nav`'s panes
+  set `flexShrink = 1` back on themselves, against the `Ui.Box` default, because they have to become
+  whatever the window is rather than whatever their content is. Left at 0, the body grew to its
+  content and the window merely clipped it: the debug log's viewport came out **2700px tall inside a
+  580px window**, so the list reported that everything fitted and nothing scrolled. `minHeight = 0`
+  alone is not enough — both are needed.
 - **Flex items shrink by default, and `Ui.Box` turns that off.** The CSS default of `flexShrink: 1`
   assumes a layout that would rather squash than overflow; a settings page wants the opposite —
   something too tall should SCROLL, not compress until its text prints through the row below. Three
