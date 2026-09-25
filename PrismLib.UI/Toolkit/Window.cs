@@ -49,10 +49,18 @@ namespace PrismLib.UI.Toolkit
         public void ShowSearch(string placeholder, Action<string> onChange)
         {
             if (Search == null) return;
-            Search.style.display = DisplayStyle.Flex;
+            _searchBox.style.display = DisplayStyle.Flex;
             Search.textEdition.placeholder = placeholder;
-            Search.RegisterValueChangedCallback(e => { if (onChange != null) onChange(e.newValue); });
+            Search.RegisterValueChangedCallback(e =>
+            {
+                _searchClear.style.display = string.IsNullOrEmpty(e.newValue)
+                    ? DisplayStyle.None : DisplayStyle.Flex;
+                if (onChange != null) onChange(e.newValue);
+            });
         }
+
+        private VisualElement _searchBox;
+        private Button _searchClear;
 
         /// Footer strip along the bottom, above the resize grip. Always on top of Body's content.
         public VisualElement Footer { get; private set; }
@@ -167,14 +175,30 @@ namespace PrismLib.UI.Toolkit
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             /* A search box in the header, where the mods already put theirs. Empty and hidden
                until a panel fills it — a window with nothing to search should not show one. */
+            /* Search, with a clear button that appears once there is something to clear — a ✕
+               sitting there permanently is one more thing to read in a header that is mostly
+               chrome. */
+            var searchBox = Ui.Row(bar);
+            searchBox.style.flexGrow = 1f;
+            searchBox.style.maxWidth = 420f;
+            searchBox.style.marginRight = Tokens.Gap;
+            searchBox.style.display = DisplayStyle.None;
+            _searchBox = searchBox;
+
             Search = new TextField { value = "" };
             Search.style.flexGrow = 1f;
-            Search.style.maxWidth = 420f;
-            Search.style.display = DisplayStyle.None;
-            Search.style.marginRight = Tokens.Gap;
             Skin.When<TextField>(Search, Skin.Field);
             Cursors.Set(Search, Cursors.Kind.Text);
-            bar.Add(Search);
+            searchBox.Add(Search);
+
+            _searchClear = Ui.Btn("\u2715", () => Search.value = "", searchBox);
+            _searchClear.style.width = 24f;
+            _searchClear.style.marginLeft = -28f;   // sits inside the field's right edge
+            _searchClear.style.marginRight = 4f;
+            Ui.SetPadding(_searchClear, 0f);
+            _searchClear.style.unityTextAlign = TextAnchor.MiddleCenter;
+            Ui.Flat(_searchClear);
+            _searchClear.style.display = DisplayStyle.None;
 
             var spacer = Ui.Box(bar);
             spacer.style.flexGrow = 1f;   // pins the controls right whatever the search box does

@@ -20,6 +20,8 @@ namespace PrismLib.UI.Toolkit
     public static class Widgets
     {
         public const float RowHeight = 32f;
+        private const float ArrowSlot = 22f;
+        private const float ArrowSize = 20f;   // the chevron was a speck at body size
 
         /* Wraps a setter so every change is undoable. The previous value is snapshotted INSIDE the
            returned action, not captured from the enclosing variable, or the undo closure would read
@@ -60,6 +62,16 @@ namespace PrismLib.UI.Toolkit
             var right = Ui.Row(row);
             right.style.flexShrink = 0f;
             right.name = "control";
+
+            /* Every row reserves the arrow's width, filled or not. Without it the switches on rows
+               that have a page behind them sit one arrow to the left of the ones that do not, and a
+               column of toggles reads as ragged. */
+            var arrow = Ui.Text("", row, ArrowSize, Tokens.TextMuted);
+            arrow.name = "arrow";
+            arrow.style.width = ArrowSlot;
+            arrow.style.unityTextAlign = TextAnchor.MiddleRight;
+            arrow.style.flexShrink = 0f;
+            arrow.pickingMode = PickingMode.Ignore;
             return right;
         }
 
@@ -449,16 +461,18 @@ namespace PrismLib.UI.Toolkit
                                             Action<VisualElement> build, string tooltip = null)
         {
             var host = Row(parent, label, tooltip);
-            var arrow = Ui.Text("\u203A", host, Tokens.FontSize, Tokens.TextMuted);
-            arrow.pickingMode = PickingMode.Ignore;
-
             var row = host.parent;
+            Arrow(row);
+
+            /* Captured HERE, not read inside the handler: Nav.Active is only set while a page is
+               being built, so by the time anyone clicks it is null and nothing happened. That is
+               why the subpages could not be opened. */
+            var nav = Nav.Active;
             row.pickingMode = PickingMode.Position;
             row.RegisterCallback<ClickEvent>(_ =>
             {
-                var nav = Nav.Active;
                 if (nav != null) nav.Push(label, build);
-                else Ui.Log("SubPage '" + label + "': no Nav is building, nothing to push onto");
+                else Ui.Log("SubPage '" + label + "': no Nav was building this page");
             });
             return host;
         }
@@ -478,19 +492,23 @@ namespace PrismLib.UI.Toolkit
 
             var track = BuildSwitch(host, label, value, onChange);
             track.pickingMode = PickingMode.Position;
+            Arrow(row);
 
-            var arrow = Ui.Text("\u203A", host, Tokens.FontSize, Tokens.TextMuted);
-            arrow.style.marginLeft = Tokens.Gap;
-            arrow.pickingMode = PickingMode.Ignore;
-
+            var nav = Nav.Active;   // see SubPage: Active is null by the time a click arrives
             row.pickingMode = PickingMode.Position;
-            row.RegisterCallback<ClickEvent>(e =>
+            row.RegisterCallback<ClickEvent>(_ =>
             {
-                // The switch handles its own clicks and stops them here; anything else opens.
-                var nav = Nav.Active;
+                // The switch stops its own clicks; anything else on the row opens the page.
                 if (nav != null && build != null) nav.Push(label, build);
             });
             return row;
+        }
+
+        /// Fill the arrow slot Row() reserved.
+        private static void Arrow(VisualElement row)
+        {
+            var arrow = row.Q<Label>("arrow");
+            if (arrow != null) arrow.text = "\u203A";
         }
 
         public static Label Header(VisualElement parent, string text)

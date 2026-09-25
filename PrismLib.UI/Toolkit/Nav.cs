@@ -68,7 +68,13 @@ namespace PrismLib.UI.Toolkit
         public void Filter(string query)
         {
             _filter = (query ?? "").Trim();
-            if (_filter.Length == 0) { RebuildContent(); return; }
+            if (_filter.Length == 0)
+            {
+                // Back to the page, and drop the results heading with it.
+                RebuildCrumbs();
+                RebuildContent();
+                return;
+            }
             ShowResults();
         }
 
