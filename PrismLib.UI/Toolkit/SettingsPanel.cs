@@ -132,6 +132,7 @@ namespace PrismLib.UI.Toolkit
             {
                 _nav = new Nav(_window.Body, _navPages());
                 _window.ShowSearch("Search settings…", q => _nav.Filter(q));
+                _nav.OnInsetChanged = inset => _window.SetContentInset(inset);
                 // Undo writes straight into the mod's settings; the page has to be re-read or it
                 // keeps showing what the control was set to before.
                 History.AfterApply = () => { if (_nav != null) _nav.Refresh(); };

@@ -161,6 +161,7 @@ namespace PrismLib.UI.Toolkit
                     _railOpen = false;
                     rail.style.display = DisplayStyle.None;
                     PaintHandle();
+                    ReportInset();
                     return;
                 }
                 _railOpen = true;
@@ -168,6 +169,7 @@ namespace PrismLib.UI.Toolkit
                 _railWidth = Mathf.Clamp(w, MinRail, MaxRail);
                 rail.style.width = _railWidth;
                 PaintHandle();
+                ReportInset();
             });
             handle.RegisterCallback<PointerUpEvent>(e =>
             {
@@ -205,6 +207,16 @@ namespace PrismLib.UI.Toolkit
         private VisualElement _railLine, _railKnob;
 
         /// Hairline while the rail is open, knob-with-arrow once it is collapsed.
+        /// Where the content pane starts. The header lines its search box up with this, so the two
+        /// stay aligned as the rail is resized or collapsed.
+        public Action<float> OnInsetChanged;
+
+        private void ReportInset()
+        {
+            var f = OnInsetChanged;
+            if (f != null) f((_railOpen ? _railWidth : 0f) + 7f);
+        }
+
         private void PaintHandle()
         {
             if (_railLine != null) _railLine.style.display = _railOpen ? DisplayStyle.Flex : DisplayStyle.None;
@@ -247,7 +259,12 @@ namespace PrismLib.UI.Toolkit
             handle.style.alignItems = Align.Center;
             handle.style.justifyContent = Justify.Center;
             handle.pickingMode = PickingMode.Position;
-            Cursors.Set(handle, Cursors.Kind.ResizeHorizontal);
+            /* Resize cursor only while there is something to resize. Collapsed, the knob is a
+               click-to-open affordance and a double arrow would promise the wrong gesture. */
+            handle.RegisterCallback<MouseEnterEvent>(_ =>
+                Cursors.Apply(_railOpen ? Cursors.Kind.ResizeHorizontal : Cursors.Kind.Default));
+            handle.RegisterCallback<MouseLeaveEvent>(_ => Cursors.Apply(Cursors.Kind.Default));
+            handle.RegisterCallback<DetachFromPanelEvent>(_ => Cursors.Apply(Cursors.Kind.Default));
 
             var line = Ui.Box(handle);
             line.style.position = Position.Absolute;
@@ -311,6 +328,7 @@ namespace PrismLib.UI.Toolkit
             _crumbs.BringToFront();
 
             PaintHandle();
+            ReportInset();
             IndexPages();
 
             // Open the first leaf, so the pane is never blank on arrival.
@@ -356,6 +374,7 @@ namespace PrismLib.UI.Toolkit
         /// Open a page, expanding whatever contains it.
         public void Go(NavItem target)
         {
+            _stack.Clear();
             _path.Clear();
             if (!FindPath(_roots, target, _path)) return;
             foreach (var step in _path) if (step.IsBranch) _expanded.Add(step.Title);
@@ -510,15 +529,73 @@ namespace PrismLib.UI.Toolkit
         private void RebuildContent()
         {
             _content.Clear();
-            if (_path.Count == 0) return;
-            var page = _path[_path.Count - 1];
-            if (page.Build == null) return;
-            try { page.Build(_content); }
+
+            Action<VisualElement> build;
+            string what;
+            if (_stack.Count > 0)
+            {
+                var top = _stack[_stack.Count - 1];
+                what = top.Key;
+                build = top.Value;
+
+                // Back row, naming where it goes: "Back" alone leaves you guessing after two pushes.
+                string home = _stack.Count > 1 ? _stack[_stack.Count - 2].Key
+                            : _path.Count > 0 ? _path[_path.Count - 1].Title : "back";
+                var back = Ui.Row(_content);
+                back.style.minHeight = 30f;
+                back.pickingMode = PickingMode.Position;
+                var arrow = Ui.Text("\u2039  " + home, back, Tokens.FontSize, Tokens.Accent);
+                arrow.pickingMode = PickingMode.Ignore;
+                back.RegisterCallback<ClickEvent>(_ => Pop());
+
+                var heading = Ui.Text(what, _content, Tokens.FontSizeTitle);
+                heading.style.unityFontStyleAndWeight = FontStyle.Bold;
+                heading.style.marginBottom = Tokens.Gap;
+            }
+            else
+            {
+                if (_path.Count == 0) return;
+                var page = _path[_path.Count - 1];
+                what = page.Title;
+                build = page.Build;
+            }
+            if (build == null) return;
+
+            var was = Active;
+            Active = this;
+            try { build(_content); }
             catch (Exception e)
             {
-                Ui.Log("Nav: page '" + page.Title + "' failed to build: " + e.Message);
+                Ui.Log("Nav: page '" + what + "' failed to build: " + e.Message);
                 Ui.Muted("This page failed to build — see the log.", _content);
             }
+            finally { Active = was; }
+        }
+
+        /* Drill-down pages.
+
+           The mods' menus push a subpage for anything with its own settings — a stat's colours, a
+           key's row — rather than nesting it in the rail, and that is the right shape: a subpage
+           belongs to the row that opened it, not to the top-level navigation. The rail keeps
+           showing the page you came from, and a back row leads home. */
+        private readonly List<KeyValuePair<string, Action<VisualElement>>> _stack =
+            new List<KeyValuePair<string, Action<VisualElement>>>();
+
+        /// The Nav currently building a page, so Widgets.SubPage can reach it without plumbing.
+        public static Nav Active { get; private set; }
+
+        public void Push(string title, Action<VisualElement> build)
+        {
+            if (build == null) return;
+            _stack.Add(new KeyValuePair<string, Action<VisualElement>>(title, build));
+            RebuildContent();
+        }
+
+        public void Pop()
+        {
+            if (_stack.Count == 0) return;
+            _stack.RemoveAt(_stack.Count - 1);
+            RebuildContent();
         }
 
         /// Rebuild the open page in place, for a host whose values changed underneath it.

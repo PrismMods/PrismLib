@@ -431,6 +431,27 @@ namespace PrismLib.UI.Toolkit
             return b;
         }
 
+        /* A row that opens a page of its own. This is what the mods' menus use for anything with
+           more than one setting behind it — a stat's colours, a key's layout — and it belongs to
+           the row rather than to the rail, which is why it pushes instead of nesting. */
+        public static VisualElement SubPage(VisualElement parent, string label,
+                                            Action<VisualElement> build, string tooltip = null)
+        {
+            var host = Row(parent, label, tooltip);
+            var arrow = Ui.Text("\u203A", host, Tokens.FontSize, Tokens.TextMuted);
+            arrow.pickingMode = PickingMode.Ignore;
+
+            var row = host.parent;
+            row.pickingMode = PickingMode.Position;
+            row.RegisterCallback<ClickEvent>(_ =>
+            {
+                var nav = Nav.Active;
+                if (nav != null) nav.Push(label, build);
+                else Ui.Log("SubPage '" + label + "': no Nav is building, nothing to push onto");
+            });
+            return host;
+        }
+
         public static Label Header(VisualElement parent, string text)
         {
             var l = Ui.Text(text, parent, Tokens.FontSize);

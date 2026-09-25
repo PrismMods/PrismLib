@@ -36,6 +36,14 @@ namespace PrismLib.UI.Toolkit
         /// Where the content pane starts, so the header can line up with it.
         public const float RailAlign = 200f;
 
+        private VisualElement _headerGap;
+
+        /// Keep the search box lined up with a content pane whose left edge moves.
+        public void SetContentInset(float inset)
+        {
+            if (_headerGap != null) _headerGap.style.maxWidth = Mathf.Max(0f, inset);
+        }
+
         public void ShowSearch(string placeholder, Action<string> onChange)
         {
             if (Search == null) return;
@@ -147,9 +155,9 @@ namespace PrismLib.UI.Toolkit
 
             /* Pads out to where the content pane begins, so the search box lines up with it
                without the title having to be that wide. */
-            var gap = Ui.Box(bar);
-            gap.style.flexGrow = 1f;
-            gap.style.maxWidth = RailAlign;
+            _headerGap = Ui.Box(bar);
+            _headerGap.style.flexGrow = 1f;
+            _headerGap.style.maxWidth = RailAlign;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             /* A search box in the header, where the mods already put theirs. Empty and hidden
                until a panel fills it — a window with nothing to search should not show one. */
