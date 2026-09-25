@@ -52,10 +52,11 @@ namespace PrismLib.UI.Toolkit
 
         /* Hint on the left, version on the right — the shape both mods' panels already use, so it
            belongs to the window rather than to each panel that wants one. */
-        public void SetFooter(string hint, string right)
+        /// version on the left, hint on the right next to the resize grip.
+        public void SetFooter(string hint, string version)
         {
             if (_footerHint != null) _footerHint.text = hint ?? "";
-            if (_footerRight != null) _footerRight.text = right ?? "";
+            if (_footerRight != null) _footerRight.text = version ?? "";
         }
 
         private Label _footerHint, _footerRight;
@@ -148,7 +149,7 @@ namespace PrismLib.UI.Toolkit
             RailToggle.style.height = 28f;
             RailToggle.style.fontSize = Tokens.FontSize + 7f;   // it is an icon, not a letter
             Ui.SetPadding(RailToggle, 0f);
-            RailToggle.style.backgroundColor = Color.clear;
+            Ui.Flat(RailToggle);
             /* Lined up with the rail's labels beneath it, not centred in its own button: the
                window body pads by Tokens.Pad and a rail row by 10 more, so the glyph starts where
                "Interface" and "Hide UI" do. */
@@ -156,14 +157,18 @@ namespace PrismLib.UI.Toolkit
             RailToggle.style.unityTextAlign = TextAnchor.MiddleLeft;
             // No resting background: it is a chrome affordance, not a button competing with the
             // title beside it. It still lights on hover, which is what says it is clickable.
-            var railColours = RailToggle.userData;
-            RailToggle.RegisterCallback<MouseLeaveEvent>(_ => RailToggle.style.backgroundColor = Color.clear);
             RailToggle.tooltip = "Show or hide the sidebar";
 
             var label = Ui.Text(title, bar, Tokens.FontSize);
             label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            label.style.width = RailAlign - 28f;
+            label.style.marginLeft = 2f;      // sits with the ≡, not spaced away from it
             label.style.flexShrink = 0f;
+
+            /* Pads out to where the content pane begins, so the search box lines up with it
+               without the title having to be that wide. */
+            var gap = Ui.Box(bar);
+            gap.style.flexGrow = 1f;
+            gap.style.maxWidth = RailAlign;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             /* A search box in the header, where the mods already put theirs. Empty and hidden
                until a panel fills it — a window with nothing to search should not show one. */
@@ -234,9 +239,12 @@ namespace PrismLib.UI.Toolkit
             Footer.style.paddingRight = Tokens.Pad;
             Footer.style.paddingTop = 4f;
             Footer.style.paddingBottom = 4f;
-            _footerHint = Ui.Muted("", Footer);
-            _footerHint.style.flexGrow = 1f;
+            /* Version on the left, hint on the right beside the grip — the grip is a corner
+               affordance and the hint explains the window, so they belong together. */
             _footerRight = Ui.Muted("", Footer);
+            _footerRight.style.flexGrow = 1f;
+            _footerHint = Ui.Muted("", Footer);
+            _footerHint.style.marginRight = 14f;   // clear of the resize grip
 
             // Click anywhere in the window to raise it above the other one.
             Root.RegisterCallback<PointerDownEvent>(_ => { if (OnRaise != null) OnRaise(); });

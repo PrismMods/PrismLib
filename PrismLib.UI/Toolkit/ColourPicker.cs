@@ -52,7 +52,8 @@ namespace PrismLib.UI.Toolkit
             head.pickingMode = PickingMode.Position;
 
             var chevron = Ui.Muted("▸", head);
-            chevron.style.width = 16f;
+            chevron.style.width = 18f;
+            chevron.style.fontSize = Tokens.FontSize + 3f;
 
             var title = Ui.Text(label, head);
             title.style.flexGrow = 1f;

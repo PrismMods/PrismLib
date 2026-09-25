@@ -150,6 +150,17 @@ namespace PrismLib.UI.Toolkit
             return b;
         }
 
+        /// Strip a button's background entirely, hover included — for chrome affordances that
+        /// should read as part of the frame rather than as buttons sitting on it.
+        public static void Flat(Button b)
+        {
+            var c = b?.userData as BtnColors;
+            if (c == null) return;
+            c.Rest = Color.clear;
+            c.Hover = Color.clear;
+            b.style.backgroundColor = Color.clear;
+        }
+
         /// Mark a button as the selected one. Survives the pointer leaving it.
         public static void Highlight(Button b, bool on)
         {

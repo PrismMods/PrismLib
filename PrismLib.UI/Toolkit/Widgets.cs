@@ -344,7 +344,8 @@ namespace PrismLib.UI.Toolkit
             head.style.marginTop = Tokens.Pad;
             head.pickingMode = PickingMode.Position;
             var arrow = Ui.Muted(open ? "▾" : "▸", head);
-            arrow.style.width = 14f;
+            arrow.style.width = 18f;
+            arrow.style.fontSize = Tokens.FontSize + 3f;   // it was a speck at body size
             var l = Ui.Text(title, head, Tokens.FontSize);
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
             l.style.color = Tokens.TextMuted;
@@ -402,6 +403,31 @@ namespace PrismLib.UI.Toolkit
             var tag = Ui.Text(label, null, Tokens.FontSizeSmall, Tokens.Accent);
             tag.style.marginRight = Tokens.Gap;
             actions.Insert(0, tag);
+        }
+
+        /* A destructive button that is its own label. "All positions [Reset]" reads as a setting
+           called "All positions"; "[Reset all positions]" reads as the action it is. */
+        public static Button DangerButton(VisualElement parent, string text, Action onConfirm,
+                                          string tooltip = null)
+        {
+            var row = Ui.Row(parent);
+            row.style.minHeight = RowHeight;
+            row.style.marginBottom = 2f;
+            if (!string.IsNullOrEmpty(tooltip)) row.tooltip = tooltip;
+            SearchIndex.Note(text);
+
+            Button b = null;
+            bool armed = false;
+            b = Ui.Btn(text, () =>
+            {
+                if (!armed) { armed = true; b.text = "Sure?"; b.style.backgroundColor = Tokens.Danger; Anim.Pop(b); return; }
+                armed = false;
+                b.text = text;
+                b.style.backgroundColor = Tokens.RowAlt;
+                try { if (onConfirm != null) onConfirm(); } catch (Exception e) { Ui.Log("Danger handler threw: " + e.Message); }
+            }, row);
+            b.style.color = Tokens.Danger;
+            return b;
         }
 
         public static Label Header(VisualElement parent, string text)
