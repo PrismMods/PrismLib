@@ -19,7 +19,7 @@ namespace PrismLib.UI.Toolkit
        Refresh on the page, exactly as the uGUI version did. */
     public static class Widgets
     {
-        public const float RowHeight = 28f;
+        public const float RowHeight = 32f;
 
         /// Label on the left, whatever the caller adds on the right.
         public static VisualElement Row(VisualElement parent, string label, string tooltip = null)
@@ -36,6 +36,9 @@ namespace PrismLib.UI.Toolkit
             l.style.flexGrow = 1f;
             l.style.flexShrink = 1f;
             l.pickingMode = PickingMode.Ignore;
+
+            row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Tokens.Row);
+            row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
 
             var right = Ui.Row(row);
             right.style.flexShrink = 0f;
@@ -84,41 +87,70 @@ namespace PrismLib.UI.Toolkit
                                     Action<float> onChange, string tooltip = null, string format = "0.##")
         {
             var host = Row(parent, label, tooltip);
-            var readout = Ui.Muted(value.ToString(format), host);
-            readout.style.minWidth = 44f;
-            readout.style.unityTextAlign = TextAnchor.MiddleRight;
-            readout.style.marginRight = Tokens.Gap;
-
             var s = new Slider(min, max) { value = value };
-            s.style.width = 160f;
+            s.style.width = 180f;
             Skin.When<Slider>(s, Skin.Slider);
+
+            // Typed, not just dragged: a slider cannot hit an exact value and some of these want one.
+            var field = Number(host, value.ToString(format), typed =>
+            {
+                float v;
+                if (!float.TryParse(typed, out v)) return false;
+                s.value = Mathf.Clamp(v, min, max);
+                return true;
+            });
+            host.Insert(0, s);
+
             s.RegisterValueChangedCallback(e =>
             {
-                readout.text = e.newValue.ToString(format);
+                field.SetValueWithoutNotify(e.newValue.ToString(format));
                 try { if (onChange != null) onChange(e.newValue); } catch (Exception ex) { Ui.Log("Slider handler threw: " + ex.Message); }
             });
-            host.Add(s);
             return s;
+        }
+
+        /* The number beside a slider, editable. Commits on Enter or focus loss and puts the old
+           text back when what was typed is not a number — silently keeping a bad value is worse
+           than refusing it. */
+        private static TextField Number(VisualElement parent, string initial, Func<string, bool> commit)
+        {
+            var f = new TextField { value = initial };
+            f.style.width = 62f;
+            f.style.marginLeft = Tokens.Gap;
+            f.style.fontSize = Tokens.FontSizeSmall;
+            Skin.When<TextField>(f, Skin.Field);
+            Action apply = () => { if (!commit(f.value)) f.SetValueWithoutNotify(initial); };
+            f.RegisterCallback<BlurEvent>(_ => apply());
+            f.RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) apply();
+            });
+            parent.Add(f);
+            return f;
         }
 
         public static SliderInt IntSlider(VisualElement parent, string label, int value, int min, int max,
                                           Action<int> onChange, string tooltip = null)
         {
             var host = Row(parent, label, tooltip);
-            var readout = Ui.Muted(value.ToString(), host);
-            readout.style.minWidth = 44f;
-            readout.style.unityTextAlign = TextAnchor.MiddleRight;
-            readout.style.marginRight = Tokens.Gap;
-
             var s = new SliderInt(min, max) { value = value };
-            s.style.width = 160f;
+            s.style.width = 180f;
             Skin.When<SliderInt>(s, Skin.Slider);
+
+            var field = Number(host, value.ToString(), typed =>
+            {
+                int v;
+                if (!int.TryParse(typed, out v)) return false;
+                s.value = Mathf.Clamp(v, min, max);
+                return true;
+            });
+            host.Insert(0, s);
+
             s.RegisterValueChangedCallback(e =>
             {
-                readout.text = e.newValue.ToString();
+                field.SetValueWithoutNotify(e.newValue.ToString());
                 try { if (onChange != null) onChange(e.newValue); } catch (Exception ex) { Ui.Log("IntSlider handler threw: " + ex.Message); }
             });
-            host.Add(s);
             return s;
         }
 

@@ -130,6 +130,7 @@ namespace PrismLib.UI.Toolkit
             if (_navPages != null)
             {
                 _nav = new Nav(_window.Body, _navPages());
+                _window.ShowSearch("Search settings…", q => _nav.Filter(q));
                 _status = Ui.Muted("", _window.Footer);
                 _status.style.flexGrow = 1f;
                 _surface.Visible = false;

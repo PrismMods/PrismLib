@@ -52,7 +52,24 @@ namespace PrismLib.UI.Toolkit
         private readonly List<NavItem> _path = new List<NavItem>();
         private readonly HashSet<string> _expanded = new HashSet<string>();
 
-        public Nav(VisualElement parent, IEnumerable<NavItem> items, float railWidth = 180f)
+        private string _filter = "";
+
+        /// Show only pages matching a query. An empty query restores the whole rail.
+        public void Filter(string query)
+        {
+            _filter = (query ?? "").Trim();
+            RebuildRail();
+        }
+
+        private bool Matches(NavItem item)
+        {
+            if (_filter.Length == 0) return true;
+            if (item.Title != null && item.Title.IndexOf(_filter, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (item.Children != null) foreach (var c in item.Children) if (Matches(c)) return true;
+            return false;
+        }
+
+        public Nav(VisualElement parent, IEnumerable<NavItem> items, float railWidth = 200f)
         {
             _roots = new List<NavItem>(items ?? new NavItem[0]);
 
@@ -136,13 +153,21 @@ namespace PrismLib.UI.Toolkit
 
         private void AddRailItem(NavItem item, int depth)
         {
+            // A heading with no surviving children would otherwise sit over an empty gap.
+            if (!Matches(item)) return;
+
             if (item.Group)
             {
-                var heading = Ui.Text(item.Title, _rail, Tokens.FontSizeSmall, Tokens.TextMuted);
+                /* A heading has to be obviously NOT clickable, or it reads as a page that does
+                   nothing. Upper case, smaller than the items under it, and muted — the opposite
+                   of the treatment a selected item gets. */
+                var heading = Ui.Text(item.Title.ToUpperInvariant(), _rail,
+                                      Tokens.FontSizeSmall - 2f, Tokens.TextMuted);
                 heading.style.unityFontStyleAndWeight = FontStyle.Bold;
-                heading.style.marginTop = depth == 0 ? Tokens.Pad : Tokens.Gap;
-                heading.style.marginBottom = 2f;
-                heading.style.paddingLeft = 6f + depth * 12f;
+                heading.style.letterSpacing = 1.5f;
+                heading.style.marginTop = depth == 0 ? Tokens.Pad + 4f : Tokens.Gap;
+                heading.style.marginBottom = 4f;
+                heading.style.paddingLeft = 8f + depth * 12f;
                 heading.pickingMode = PickingMode.Ignore;   // a heading is not a destination
                 foreach (var c in item.Children) AddRailItem(c, depth);
                 return;
@@ -152,8 +177,8 @@ namespace PrismLib.UI.Toolkit
             bool open = item.IsBranch && _expanded.Contains(item.Title);
 
             var row = Ui.Row(_rail);
-            row.style.minHeight = 26f;
-            row.style.paddingLeft = 6f + depth * 12f;
+            row.style.minHeight = 30f;
+            row.style.paddingLeft = 10f + depth * 12f;
             row.pickingMode = PickingMode.Position;
             // The selected LEAF is the highlighted one. A branch on the path is merely open, and
             // colouring it as selected too makes it unclear which page is actually showing.
@@ -174,10 +199,25 @@ namespace PrismLib.UI.Toolkit
                 pad.style.width = depth > 0 ? 14f : 0f;
             }
 
-            var label = Ui.Text(item.Title, row, Tokens.FontSizeSmall,
+            var label = Ui.Text(item.Title, row, Tokens.FontSize,
                                 selected ? Tokens.Text : Tokens.TextMuted);
             label.style.flexGrow = 1f;
             label.pickingMode = PickingMode.Ignore;
+
+            // Hover feedback: without it nothing in the rail looks clickable until you click it.
+            if (!selected)
+            {
+                row.RegisterCallback<MouseEnterEvent>(_ =>
+                {
+                    row.style.backgroundColor = Tokens.Row;
+                    label.style.color = Tokens.Text;
+                });
+                row.RegisterCallback<MouseLeaveEvent>(_ =>
+                {
+                    row.style.backgroundColor = Color.clear;
+                    label.style.color = Tokens.TextMuted;
+                });
+            }
 
             row.RegisterCallback<ClickEvent>(_ =>
             {
@@ -194,6 +234,17 @@ namespace PrismLib.UI.Toolkit
             if (open) foreach (var c in item.Children) AddRailItem(c, depth + 1);
         }
 
+        /// Title Case for headings. Page names come from a mod and arrive in whatever case its
+        /// author used; a rail of mixed cases reads as a bug.
+        private static string Title(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            var words = s.Split(' ');
+            for (int i = 0; i < words.Length; i++)
+                if (words[i].Length > 0) words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+            return string.Join(" ", words);
+        }
+
         private void RebuildCrumbs()
         {
             _crumbs.Clear();
@@ -208,8 +259,10 @@ namespace PrismLib.UI.Toolkit
                     sep.style.marginLeft = 4f;
                     sep.style.marginRight = 4f;
                 }
-                var crumb = Ui.Text(step.Title, _crumbs, Tokens.FontSizeSmall,
+                var crumb = Ui.Text(Title(step.Title), _crumbs,
+                                    last ? Tokens.FontSizeTitle : Tokens.FontSizeSmall,
                                     last ? Tokens.Text : Tokens.TextMuted);
+                if (last) crumb.style.unityFontStyleAndWeight = FontStyle.Bold;
                 if (last) continue;
                 // An ancestor crumb expands its branch in the rail; there is no page of its own to
                 // show, which is exactly what a branch means here.

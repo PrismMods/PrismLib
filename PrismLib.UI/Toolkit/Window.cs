@@ -30,6 +30,17 @@ namespace PrismLib.UI.Toolkit
         /// Right-hand side of the title bar. Put toolbar buttons here.
         public VisualElement TitleBarRight { get; private set; }
 
+        /// Search box in the header. Hidden until a panel calls ShowSearch.
+        public TextField Search { get; private set; }
+
+        public void ShowSearch(string placeholder, Action<string> onChange)
+        {
+            if (Search == null) return;
+            Search.style.display = DisplayStyle.Flex;
+            Search.textEdition.placeholder = placeholder;
+            Search.RegisterValueChangedCallback(e => { if (onChange != null) onChange(e.newValue); });
+        }
+
         /// Footer strip along the bottom, above the resize grip. Always on top of Body's content.
         public VisualElement Footer { get; private set; }
 
@@ -116,8 +127,29 @@ namespace PrismLib.UI.Toolkit
             var label = Ui.Text(title, bar);
             label.style.flexGrow = 1f;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
+            /* A search box in the header, where the mods already put theirs. Empty and hidden
+               until a panel fills it — a window with nothing to search should not show one. */
+            Search = new TextField { value = "" };
+            Search.style.width = 240f;
+            Search.style.display = DisplayStyle.None;
+            Search.style.marginRight = Tokens.Gap;
+            Skin.When<TextField>(Search, Skin.Field);
+            bar.Add(Search);
+
             TitleBarRight = Ui.Row(bar);
-            if (onClose != null) Ui.Btn("Close", onClose, TitleBarRight);
+
+            /* × rather than a "Close" button, matching the mods' own panels. Sized as a square so
+               it reads as a window control instead of as another toolbar button. */
+            if (onClose != null)
+            {
+                var close = Ui.Btn("✕", onClose, TitleBarRight);
+                close.style.width = 26f;
+                close.style.height = 22f;
+                close.style.backgroundColor = Color.clear;
+                close.style.marginRight = 0f;
+                close.RegisterCallback<MouseEnterEvent>(_ => close.style.backgroundColor = Tokens.Danger);
+                close.RegisterCallback<MouseLeaveEvent>(_ => close.style.backgroundColor = Color.clear);
+            }
 
             Body = Ui.Box(Root);
             Body.style.flexGrow = 1f;
@@ -133,12 +165,8 @@ namespace PrismLib.UI.Toolkit
 
             Footer = Ui.Row(Root);
             Footer.style.backgroundColor = Tokens.TitleBar;
-            // Scale lives with the other view controls, not in the title bar: it adjusts how the
-            // contents read, which is the same kind of thing as the line-number toggle beside it.
-            var zoomOut = Ui.Btn("−", () => Scale = _scale - 0.1f, Footer);
-            zoomOut.tooltip = "Smaller";
-            var zoomIn = Ui.Btn("+", () => Scale = _scale + 0.1f, Footer);
-            zoomIn.tooltip = "Larger";
+            // No scale buttons on the chrome: panel size is a setting, and a control that lives on
+            // every window competes with the content for a job done once.
             Footer.style.paddingLeft = Tokens.Pad;
             Footer.style.paddingRight = Tokens.Pad;
             Footer.style.paddingTop = 3f;
@@ -246,21 +274,20 @@ namespace PrismLib.UI.Toolkit
             grip.pickingMode = PickingMode.Position;
             Root.Add(grip);
 
-            /* Three diagonal ticks, drawn rather than textured: a mod has no image assets at
-               runtime, and a flat square gave no hint the corner does anything. */
+            /* Three dots on the diagonal. The rotated bars this replaces never lined up — a
+               rotation about a percentage origin moves the box as well as turning it — and a grip
+               only has to say "drag here", which dots do without any transform at all. */
             for (int i = 0; i < 3; i++)
             {
-                var tick = new VisualElement();
-                tick.style.position = Position.Absolute;
-                tick.style.right = 1f;
-                tick.style.bottom = 2f + i * 4f;
-                tick.style.width = GripSize - 3f - i * 4f;
-                tick.style.height = 1.5f;
-                tick.style.backgroundColor = Tokens.TextMuted;
-                tick.style.rotate = new Rotate(-45f);
-                tick.style.transformOrigin = new TransformOrigin(Length.Percent(100f), Length.Percent(50f), 0f);
-                tick.pickingMode = PickingMode.Ignore;
-                grip.Add(tick);
+                var dot = new VisualElement();
+                dot.style.position = Position.Absolute;
+                dot.style.right = 3f + i * 4f;
+                dot.style.bottom = 3f;
+                dot.style.width = 2f;
+                dot.style.height = 2f + i * 4f;
+                dot.style.backgroundColor = Tokens.TextMuted;
+                dot.pickingMode = PickingMode.Ignore;
+                grip.Add(dot);
             }
 
             grip.RegisterCallback<PointerDownEvent>(e =>
