@@ -42,6 +42,8 @@ namespace PrismLib.UI.Toolkit
             var row = Ui.Row(parent);
             row.style.minHeight = RowHeight;
             row.style.marginBottom = 2f;
+            row.userData = label;          // how a search result finds this row again
+            SearchIndex.Note(label);
             row.style.justifyContent = Justify.SpaceBetween;
             row.style.paddingLeft = 4f;
             row.style.paddingRight = 4f;
@@ -314,6 +316,7 @@ namespace PrismLib.UI.Toolkit
 
         public static VisualElement Section(VisualElement parent, string title, bool defaultOpen = true)
         {
+            SearchIndex.CurrentGroup = title;
             bool open = _folded.ContainsKey(title) ? _folded[title] : defaultOpen;
 
             var head = Ui.Row(parent);

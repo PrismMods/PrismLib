@@ -18,7 +18,7 @@ namespace PrismLib.UI.Toolkit
     {
         public const float MinWidth = 320f, MinHeight = 200f;
         private const float GripSize = 16f;
-        private const float TitleHeight = 28f;
+        private const float TitleHeight = 40f;
 
         /// The outer element. Style it as little as possible from outside; use Body.
         public VisualElement Root { get; private set; }
@@ -32,6 +32,12 @@ namespace PrismLib.UI.Toolkit
 
         /// Search box in the header. Hidden until a panel calls ShowSearch.
         public TextField Search { get; private set; }
+
+        /// The ≡ button. A panel with a rail wires it; others leave it hidden.
+        public Button RailToggle { get; private set; }
+
+        /// Where the content pane starts, so the header can line up with it.
+        public const float RailAlign = 200f;
 
         public void ShowSearch(string placeholder, Action<string> onChange)
         {
@@ -124,13 +130,24 @@ namespace PrismLib.UI.Toolkit
             bar.style.backgroundColor = Tokens.TitleBar;
             bar.style.paddingLeft = Tokens.Pad;
             bar.style.paddingRight = Tokens.Gap;
-            var label = Ui.Text(title, bar);
-            label.style.flexGrow = 1f;
+            /* A rail toggle sits where the rail is, and the title takes the rail's width, so the
+               search box that follows starts exactly where the content pane does instead of
+               floating in the middle of the header. */
+            RailToggle = Ui.Btn("\u2261", null, bar);
+            RailToggle.style.width = 28f;
+            RailToggle.style.backgroundColor = Color.clear;
+            RailToggle.tooltip = "Show or hide the sidebar";
+
+            var label = Ui.Text(title, bar, Tokens.FontSize);
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.width = RailAlign - 28f;
+            label.style.flexShrink = 0f;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             /* A search box in the header, where the mods already put theirs. Empty and hidden
                until a panel fills it — a window with nothing to search should not show one. */
             Search = new TextField { value = "" };
-            Search.style.width = 240f;
+            Search.style.flexGrow = 1f;
+            Search.style.maxWidth = 420f;
             Search.style.display = DisplayStyle.None;
             Search.style.marginRight = Tokens.Gap;
             Skin.When<TextField>(Search, Skin.Field);
@@ -141,8 +158,10 @@ namespace PrismLib.UI.Toolkit
             /* Undo and redo in the header, where they apply to whatever the window is showing.
                Text rather than ↶ ↷: the panel draws in an OS font chosen at runtime and there is
                no guarantee it carries those glyphs, whereas a missing glyph is a blank button. */
-            var undo = Ui.Btn("Undo", () => History.Undo(), TitleBarRight);
-            var redo = Ui.Btn("Redo", () => History.Redo(), TitleBarRight);
+            var undo = Glyph("\u21B6", "Undo", () => History.Undo());
+            var redo = Glyph("\u21B7", "Redo", () => History.Redo());
+            TitleBarRight.Add(undo);
+            TitleBarRight.Add(redo);
             Action refreshHistory = () =>
             {
                 Enable(undo, History.CanUndo, "Undo " + (History.NextUndo ?? ""));
@@ -155,11 +174,17 @@ namespace PrismLib.UI.Toolkit
                it reads as a window control instead of as another toolbar button. */
             if (onClose != null)
             {
-                var close = Ui.Btn("✕", onClose, TitleBarRight);
-                close.style.width = 26f;
-                close.style.height = 22f;
+                var close = Ui.Btn("\u2715", onClose, TitleBarRight);
+                close.style.width = 30f;
+                close.style.height = 26f;
                 close.style.backgroundColor = Color.clear;
                 close.style.marginRight = 0f;
+                /* Centre the glyph by hand. A Button's text is laid out by the theme, so without
+                   one it sits wherever the default padding leaves it — which is what made the ✕
+                   look off-centre. */
+                Ui.SetPadding(close, 0f);
+                close.style.unityTextAlign = TextAnchor.MiddleCenter;
+                close.style.fontSize = Tokens.FontSize;
                 close.RegisterCallback<MouseEnterEvent>(_ => close.style.backgroundColor = Tokens.Danger);
                 close.RegisterCallback<MouseLeaveEvent>(_ => close.style.backgroundColor = Color.clear);
             }
@@ -191,6 +216,20 @@ namespace PrismLib.UI.Toolkit
             MakeDraggable(bar);
             MakeResizable();
             Apply();
+        }
+
+        /* ↶ and ↷. These live in Arrows, which every OS UI font carries — unlike the pictographic
+           blocks, where a miss is a blank button rather than a wrong-looking one. */
+        private static Button Glyph(string glyph, string tip, Action onClick)
+        {
+            var b = Ui.Btn(glyph, onClick);
+            b.style.width = 30f;
+            b.style.height = 26f;
+            b.style.fontSize = Tokens.FontSize + 2f;
+            Ui.SetPadding(b, 0f);
+            b.style.unityTextAlign = TextAnchor.MiddleCenter;
+            b.tooltip = tip;
+            return b;
         }
 
         /* Disabled buttons fade rather than vanish, so the header does not reflow every time the

@@ -53,21 +53,88 @@ namespace PrismLib.UI.Toolkit
         private readonly HashSet<string> _expanded = new HashSet<string>();
 
         private string _filter = "";
+        private VisualElement _railScroll;
+        private bool _railOpen = true;
 
-        /// Show only pages matching a query. An empty query restores the whole rail.
+        /* Search shows RESULTS, not a filtered rail. Filtering the rail answers "which page might
+           hold this", which is the question the user already could not answer; a result list
+           answers "here is the setting, and here is where it lives". Ported from Bismuth. */
         public void Filter(string query)
         {
             _filter = (query ?? "").Trim();
-            RebuildRail();
+            if (_filter.Length == 0) { RebuildContent(); return; }
+            ShowResults();
         }
 
-        private bool Matches(NavItem item)
+        private void ShowResults()
         {
-            if (_filter.Length == 0) return true;
-            if (item.Title != null && item.Title.IndexOf(_filter, StringComparison.OrdinalIgnoreCase) >= 0) return true;
-            if (item.Children != null) foreach (var c in item.Children) if (Matches(c)) return true;
-            return false;
+            _crumbs.Clear();
+            var title = Ui.Text("Results for \u201c" + _filter + "\u201d", _crumbs, Tokens.FontSizeTitle);
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            _content.Clear();
+            var hits = SearchIndex.Find(_filter);
+            if (hits.Count == 0) { Ui.Muted("Nothing matches.", _content); return; }
+
+            foreach (var hit in hits)
+            {
+                var h = hit;
+                var row = Ui.Row(_content);
+                row.style.minHeight = 34f;
+                row.style.paddingLeft = 8f;
+                row.pickingMode = PickingMode.Position;
+                Ui.SetRadius(row, Tokens.Radius);
+
+                var label = Ui.Text(h.Label, row, Tokens.FontSize);
+                label.style.flexGrow = 1f;
+                label.pickingMode = PickingMode.Ignore;
+
+                // Where it lives, so the result teaches the menu rather than bypassing it.
+                var where = Ui.Muted(string.IsNullOrEmpty(h.Group) ? h.Page : h.Page + " · " + h.Group, row);
+                where.pickingMode = PickingMode.Ignore;
+
+                row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Tokens.Row);
+                row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
+                row.RegisterCallback<ClickEvent>(_ => GoTo(h));
+            }
         }
+
+        /// Open the page a hit lives on and flash its row, so the eye lands on the right one.
+        private void GoTo(SearchIndex.Hit hit)
+        {
+            var page = hit.PageRef as NavItem;
+            if (page == null) return;
+            _filter = "";
+            Go(page);
+            Flash(hit.Label);
+        }
+
+        private void Flash(string label)
+        {
+            foreach (var e in _content.Query<VisualElement>().ToList())
+            {
+                if (!(e.userData is string) || (string)e.userData != label) continue;
+                /* Fade a highlight out rather than in: the row is already on screen by the time
+                   this runs, so starting lit and settling is what draws the eye to it. */
+                e.style.backgroundColor = Tokens.Accent;
+                e.experimental.animation.Start(1f, 0f, 900, (el, t) =>
+                {
+                    var c = Tokens.Accent;
+                    c.a = t * 0.5f;
+                    el.style.backgroundColor = c;
+                });
+                return;
+            }
+        }
+
+        /// Collapse the rail to give the content the whole window.
+        public void ToggleRail()
+        {
+            _railOpen = !_railOpen;
+            if (_railScroll != null) _railScroll.style.display = _railOpen ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        public bool RailOpen => _railOpen;
 
         public Nav(VisualElement parent, IEnumerable<NavItem> items, float railWidth = 200f)
         {
@@ -86,6 +153,7 @@ namespace PrismLib.UI.Toolkit
             railScroll.contentContainer.style.flexShrink = 0f;
             Skin.When<ScrollView>(railScroll, Skin.Scroll);
             split.Add(railScroll);
+            _railScroll = railScroll;
             _rail = railScroll.contentContainer;
 
             var right = Ui.Box(split);
@@ -105,10 +173,35 @@ namespace PrismLib.UI.Toolkit
             right.Add(contentScroll);
             _content = contentScroll.contentContainer;
 
+            IndexPages();
+
             // Open the first leaf, so the pane is never blank on arrival.
             var first = FirstLeaf(_roots);
             if (first != null) Go(first);
             else RebuildRail();
+        }
+
+        /* Pages are built on demand, so nothing would know what a page contains until it is
+           opened — and a search that only finds pages you have already visited is not a search.
+           Each is built once into a container that is never added to the panel. */
+        private void IndexPages()
+        {
+            SearchIndex.Clear();
+            IndexInto(_roots);
+            SearchIndex.EndPage();
+        }
+
+        private void IndexInto(List<NavItem> items)
+        {
+            foreach (var item in items)
+            {
+                if (item.IsBranch) { IndexInto(item.Children); continue; }
+                if (item.Build == null) continue;
+                SearchIndex.BeginPage(item, item.Title);
+                try { item.Build(new VisualElement()); }
+                catch (Exception e) { Ui.Log("Nav: indexing '" + item.Title + "' threw: " + e.Message); }
+                SearchIndex.EndPage();
+            }
         }
 
         private NavItem FirstLeaf(List<NavItem> items)
@@ -153,9 +246,6 @@ namespace PrismLib.UI.Toolkit
 
         private void AddRailItem(NavItem item, int depth)
         {
-            // A heading with no surviving children would otherwise sit over an empty gap.
-            if (!Matches(item)) return;
-
             if (item.Group)
             {
                 /* A heading has to be obviously NOT clickable, or it reads as a page that does

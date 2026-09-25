@@ -119,18 +119,11 @@ namespace PrismLib.UI.Toolkit
                                  new Rect(120f, 80f, 760f, 560f), () => Visible = false);
             _window.OnRaise = () => _surface.BringToFront();
 
-            _search = new TextField { value = "" };
-            _search.style.marginBottom = Tokens.Gap;
-            _search.style.fontSize = Tokens.FontSizeSmall;
-            _search.style.flexShrink = 0f;
-            Skin.When<TextField>(_search, Skin.Field);
-            _search.RegisterValueChangedCallback(_ => Paint());
-            _window.Body.Add(_search);
-
             if (_navPages != null)
             {
                 _nav = new Nav(_window.Body, _navPages());
                 _window.ShowSearch("Search settings…", q => _nav.Filter(q));
+                _window.RailToggle.clicked += () => _nav.ToggleRail();
                 // Undo writes straight into the mod's settings; the page has to be re-read or it
                 // keeps showing what the control was set to before.
                 History.AfterApply = () => { if (_nav != null) _nav.Refresh(); };
@@ -139,6 +132,16 @@ namespace PrismLib.UI.Toolkit
                 _surface.Visible = false;
                 return;
             }
+
+            // Schema mode keeps its own search box: it has tabs rather than a rail, so the header
+            // toggle and its alignment do not apply.
+            _search = new TextField { value = "" };
+            _search.style.marginBottom = Tokens.Gap;
+            _search.style.fontSize = Tokens.FontSizeSmall;
+            _search.style.flexShrink = 0f;
+            Skin.When<TextField>(_search, Skin.Field);
+            _search.RegisterValueChangedCallback(_ => Paint());
+            _window.Body.Add(_search);
 
             _tabs = new Tabs(_window.Body, _ => Paint());
 
