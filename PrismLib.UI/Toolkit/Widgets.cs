@@ -21,6 +21,21 @@ namespace PrismLib.UI.Toolkit
     {
         public const float RowHeight = 32f;
 
+        /* Wraps a setter so every change is undoable. The previous value is snapshotted INSIDE the
+           returned action, not captured from the enclosing variable, or the undo closure would read
+           whatever the value had become by the time it ran. */
+        private static Action<T> Track<T>(string label, T initial, Action<T> apply)
+        {
+            T last = initial;
+            return v =>
+            {
+                T prev = last;
+                History.Record(label, label, () => apply(prev), () => apply(v));
+                apply(v);
+                last = v;
+            };
+        }
+
         /// Label on the left, whatever the caller adds on the right.
         public static VisualElement Row(VisualElement parent, string label, string tooltip = null)
         {
@@ -72,13 +87,14 @@ namespace PrismLib.UI.Toolkit
             track.Add(knob);
 
             bool state = value;
-            track.RegisterCallback<ClickEvent>(_ =>
+            var set = Track(label, value, v =>
             {
-                state = !state;
-                track.style.backgroundColor = state ? Tokens.Accent : Tokens.RowAlt;
-                Anim.Move(knob, state ? 20f : 2f, Anim.Fast);
-                try { if (onChange != null) onChange(state); } catch (Exception e) { Ui.Log("Toggle handler threw: " + e.Message); }
+                state = v;
+                track.style.backgroundColor = v ? Tokens.Accent : Tokens.RowAlt;
+                Anim.Move(knob, v ? 20f : 2f, Anim.Fast);
+                try { if (onChange != null) onChange(v); } catch (Exception e) { Ui.Log("Toggle handler threw: " + e.Message); }
             });
+            track.RegisterCallback<ClickEvent>(_ => set(!state));
             host.Add(track);
             return track;
         }
@@ -101,11 +117,13 @@ namespace PrismLib.UI.Toolkit
             });
             host.Insert(0, s);
 
-            s.RegisterValueChangedCallback(e =>
+            var set = Track(label, value, v =>
             {
-                field.SetValueWithoutNotify(e.newValue.ToString(format));
-                try { if (onChange != null) onChange(e.newValue); } catch (Exception ex) { Ui.Log("Slider handler threw: " + ex.Message); }
+                field.SetValueWithoutNotify(v.ToString(format));
+                s.SetValueWithoutNotify(v);
+                try { if (onChange != null) onChange(v); } catch (Exception ex) { Ui.Log("Slider handler threw: " + ex.Message); }
             });
+            s.RegisterValueChangedCallback(e => set(e.newValue));
             return s;
         }
 
@@ -146,11 +164,13 @@ namespace PrismLib.UI.Toolkit
             });
             host.Insert(0, s);
 
-            s.RegisterValueChangedCallback(e =>
+            var set = Track(label, value, v =>
             {
-                field.SetValueWithoutNotify(e.newValue.ToString());
-                try { if (onChange != null) onChange(e.newValue); } catch (Exception ex) { Ui.Log("IntSlider handler threw: " + ex.Message); }
+                field.SetValueWithoutNotify(v.ToString());
+                s.SetValueWithoutNotify(v);
+                try { if (onChange != null) onChange(v); } catch (Exception ex) { Ui.Log("IntSlider handler threw: " + ex.Message); }
             });
+            s.RegisterValueChangedCallback(e => set(e.newValue));
             return s;
         }
 
@@ -164,18 +184,17 @@ namespace PrismLib.UI.Toolkit
             var buttons = new List<Button>();
             int current = index;
 
+            var set = Track(label, index, v =>
+            {
+                current = v;
+                for (int j = 0; j < buttons.Count; j++) Ui.Highlight(buttons[j], j == current);
+                if (v >= 0 && v < buttons.Count) Anim.Pop(buttons[v]);
+                try { if (onChange != null) onChange(v); } catch (Exception e) { Ui.Log("Choice handler threw: " + e.Message); }
+            });
             for (int i = 0; i < (options != null ? options.Count : 0); i++)
             {
                 int idx = i;
-                var b = Ui.Btn(options[i], () =>
-                {
-                    if (idx == current) return;
-                    current = idx;
-                    for (int j = 0; j < buttons.Count; j++) Ui.Highlight(buttons[j], j == current);
-                    Anim.Pop(buttons[idx]);
-                    try { if (onChange != null) onChange(idx); } catch (Exception e) { Ui.Log("Choice handler threw: " + e.Message); }
-                }, host);
-                buttons.Add(b);
+                buttons.Add(Ui.Btn(options[i], () => { if (idx != current) set(idx); }, host));
             }
             for (int j = 0; j < buttons.Count; j++) Ui.Highlight(buttons[j], j == current);
             return host;
@@ -191,8 +210,13 @@ namespace PrismLib.UI.Toolkit
             f.style.fontSize = Tokens.FontSizeSmall;
             // On commit, not per keystroke: a setter that persists to disk should not run once per
             // character typed.
-            f.RegisterCallback<BlurEvent>(_ => Commit(f, onChange));
-            f.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) Commit(f, onChange); });
+            var set = Track(label, value ?? "", v =>
+            {
+                f.SetValueWithoutNotify(v);
+                try { if (onChange != null) onChange(v); } catch (Exception e) { Ui.Log("Text handler threw: " + e.Message); }
+            });
+            f.RegisterCallback<BlurEvent>(_ => set(f.value));
+            f.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) set(f.value); });
             host.Add(f);
             return f;
         }
@@ -243,7 +267,10 @@ namespace PrismLib.UI.Toolkit
                                            Action<Color> onChange, string tooltip = null,
                                            bool hasAlpha = false)
         {
-            var p = new ColourPicker(parent, label, value, hasAlpha, onChange);
+            var p = new ColourPicker(parent, label, value, hasAlpha, Track(label, value, c =>
+            {
+                try { if (onChange != null) onChange(c); } catch (Exception e) { Ui.Log("Colour handler threw: " + e.Message); }
+            }));
             if (!string.IsNullOrEmpty(tooltip)) p.Root.tooltip = tooltip;
             return p.Root;
         }

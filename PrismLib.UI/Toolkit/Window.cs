@@ -138,6 +138,19 @@ namespace PrismLib.UI.Toolkit
 
             TitleBarRight = Ui.Row(bar);
 
+            /* Undo and redo in the header, where they apply to whatever the window is showing.
+               Text rather than ↶ ↷: the panel draws in an OS font chosen at runtime and there is
+               no guarantee it carries those glyphs, whereas a missing glyph is a blank button. */
+            var undo = Ui.Btn("Undo", () => History.Undo(), TitleBarRight);
+            var redo = Ui.Btn("Redo", () => History.Redo(), TitleBarRight);
+            Action refreshHistory = () =>
+            {
+                Enable(undo, History.CanUndo, "Undo " + (History.NextUndo ?? ""));
+                Enable(redo, History.CanRedo, "Redo " + (History.NextRedo ?? ""));
+            };
+            History.Changed += refreshHistory;
+            refreshHistory();
+
             /* × rather than a "Close" button, matching the mods' own panels. Sized as a square so
                it reads as a window control instead of as another toolbar button. */
             if (onClose != null)
@@ -178,6 +191,16 @@ namespace PrismLib.UI.Toolkit
             MakeDraggable(bar);
             MakeResizable();
             Apply();
+        }
+
+        /* Disabled buttons fade rather than vanish, so the header does not reflow every time the
+           first change of a session is made. SetEnabled alone leaves them looking active — the
+           theme that would grey them out is the one a runtime mod does not have. */
+        private static void Enable(Button b, bool on, string tip)
+        {
+            b.SetEnabled(on);
+            b.style.opacity = on ? 1f : 0.35f;
+            b.tooltip = on ? tip : null;
         }
 
         public float Scale

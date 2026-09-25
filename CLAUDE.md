@@ -196,6 +196,15 @@ the mod's XML settings: a mid-write crash must not be able to corrupt real setti
 open surfaces; clicking a window raises it by taking a `sortingOrder` above the highest used, since
 separate `UIDocument` panels order by that number and nothing else.
 
+**Undo/redo (`History`) is session-wide and by VALUE.** Every widget records how to put its change
+back and how to do it again; nothing snapshots a mod's settings object, which may be large and
+diffing it per keystroke is both slower and less exact than remembering the one number. Two rules
+keep it honest: `History.Applying` must suppress recording while an undo runs, or the widget's own
+change handler pushes a fresh entry and undo becomes inescapable; and consecutive changes to the
+same key within `CoalesceSeconds` merge, keeping the FIRST undo and the LAST redo, so a slider drag
+is one step instead of sixty. `History.AfterApply` is how a panel re-reads what it shows —
+without it the window keeps displaying the value the control had before.
+
 **Keybind capture is polled by the MOD, not read from a UI event** — Tab, the arrows and Escape are
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
 `PrismBridge.TickCapture` is the poller.
