@@ -56,6 +56,37 @@ namespace PrismLib
             }
         }
 
+        /* Whether any mod's own UI is under the pointer.
+
+           A mod cannot see another mod's panels, and the editor's scroll-zoom has to stand down for
+           all of them, not just for the ones drawn by PrismLib. Each mod reports for itself; the
+           editor asks once. Pull, not push, so a mod that is mid-teardown answers false rather
+           than leaving a stale flag set. */
+        private static readonly Dictionary<string, Func<bool>> _pointerOverUi =
+            new Dictionary<string, Func<bool>>(StringComparer.OrdinalIgnoreCase);
+
+        internal static void SetPointerOverUi(string modId, Func<bool> probe)
+        {
+            lock (_lock)
+            {
+                if (probe == null) _pointerOverUi.Remove(modId);
+                else _pointerOverUi[modId] = probe;
+            }
+        }
+
+        /// True when ANY registered mod says the pointer is over its own interface.
+        public static bool PointerOverModUi()
+        {
+            List<Func<bool>> probes;
+            lock (_lock) probes = new List<Func<bool>>(_pointerOverUi.Values);
+            foreach (var p in probes)
+            {
+                try { if (p()) return true; }
+                catch { }
+            }
+            return false;
+        }
+
         public static IEnumerable<string> LoadedMods
         {
             get { lock (_lock) return new List<string>(_mods.Keys); }
@@ -74,6 +105,9 @@ namespace PrismLib
         public bool OwnsState(StateKey key) => Claims.OwnerOf(key) == Id;
         public KeyBinding BindKey(string id, int keyCode, KeyMods mods, string label) => Keys.Register(this, id, keyCode, mods, label);
         public void DescribeSettings(IEnumerable<SettingEntry> entries) => Settings.Register(this, entries);
+
+        /// Report whether the pointer is over this mod's own UI, so others can stand down.
+        public void ReportPointerOverUi(Func<bool> probe) => Prism.SetPointerOverUi(Id, probe);
 
         /// Offer this mod's log to the shared debug view. tail returns the most recent lines.
         public void AddLog(string name, Func<IEnumerable<string>> tail, string path = null, Action clear = null)

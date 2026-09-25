@@ -32,6 +32,26 @@ namespace PrismLib.UI.Toolkit
 
         public static bool AnyWindowOpen => OpenWindows > 0;
 
+        /* Is the pointer actually over one of our windows?
+
+           AnyWindowOpen was too blunt for the editor's scroll-zoom: with a panel open anywhere on
+           screen, the wheel stopped zooming even with the pointer out in the world. What the editor
+           needs to know is whether this scroll belongs to a menu, which is a question about
+           position, not about whether anything is open. */
+        public static bool PointerOverWindow(Vector2 pointerScreen)
+        {
+            for (int i = Stack.Count - 1; i >= 0; i--)
+            {
+                var surface = Stack[i];
+                if (!surface.Visible || surface.Root == null || surface.Root.panel == null) continue;
+                var point = RuntimePanelUtils.ScreenToPanel(
+                    surface.Root.panel, new Vector2(pointerScreen.x, Screen.height - pointerScreen.y));
+                foreach (var e in surface.Root.Children())
+                    if (e.worldBound.Contains(point)) return true;
+            }
+            return false;
+        }
+
         /// Drive the wheel for every open window. The host calls this each frame with
         /// Input.mousePosition and Input.mouseScrollDelta.y — see Skin.Wheel for why.
         public static void TickWheel(Vector2 pointerScreen, float delta)
