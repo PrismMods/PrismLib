@@ -41,7 +41,9 @@ namespace PrismLib.UI.Toolkit
         /// Keep the search box lined up with a content pane whose left edge moves.
         public void SetContentInset(float inset)
         {
-            if (_headerGap != null) _headerGap.style.maxWidth = Mathf.Max(0f, inset);
+            // Never narrower than a mod name: with the rail collapsed the block would otherwise
+            // shrink to nothing and the title would sit against the search box.
+            if (_headerGap != null) _headerGap.style.width = Mathf.Max(inset, 110f);
         }
 
         public void ShowSearch(string placeholder, Action<string> onChange)
@@ -148,16 +150,20 @@ namespace PrismLib.UI.Toolkit
             bar.style.paddingRight = Tokens.Gap;
             // No rail toggle: the rail has a drag handle of its own, which resizes as well as
             // collapses. The title takes the space that button used to.
-            var label = Ui.Text(title, bar, Tokens.FontSize);
+            /* The title sits in a block as wide as the rail, so the search box that follows starts
+               exactly where the content pane does. A gap that merely GREW to that width could not
+               do it: the title's own width pushed the box further right by however long the mod's
+               name happened to be. */
+            _headerGap = Ui.Row(bar);
+            _headerGap.style.width = RailAlign;
+            _headerGap.style.flexShrink = 0f;
+
+            var label = Ui.Text(title, _headerGap, Tokens.FontSize);
             label.style.unityFontStyleAndWeight = FontStyle.Bold;
             label.style.marginLeft = 2f;
+            // Keeps the name off the search box when the rail is collapsed and the block is narrow.
+            label.style.marginRight = Tokens.Pad;
             label.style.flexShrink = 0f;
-
-            /* Pads out to where the content pane begins, so the search box lines up with it
-               without the title having to be that wide. */
-            _headerGap = Ui.Box(bar);
-            _headerGap.style.flexGrow = 1f;
-            _headerGap.style.maxWidth = RailAlign;
             label.pickingMode = PickingMode.Ignore;     // clicks on the text still drag the bar
             /* A search box in the header, where the mods already put theirs. Empty and hidden
                until a panel fills it — a window with nothing to search should not show one. */

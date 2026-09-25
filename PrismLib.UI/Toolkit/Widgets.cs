@@ -70,6 +70,12 @@ namespace PrismLib.UI.Toolkit
                                            Action<bool> onChange, string tooltip = null)
         {
             var host = Row(parent, label, tooltip);
+            return BuildSwitch(host, label, value, onChange);
+        }
+
+        private static VisualElement BuildSwitch(VisualElement host, string label, bool value,
+                                                 Action<bool> onChange)
+        {
             var track = new VisualElement();
             track.style.width = 36f;
             track.style.height = 18f;
@@ -96,7 +102,12 @@ namespace PrismLib.UI.Toolkit
                 Anim.Move(knob, v ? 20f : 2f, Anim.Fast);
                 try { if (onChange != null) onChange(v); } catch (Exception e) { Ui.Log("Toggle handler threw: " + e.Message); }
             });
-            track.RegisterCallback<ClickEvent>(_ => set(!state));
+            track.RegisterCallback<ClickEvent>(e =>
+            {
+                set(!state);
+                // Or the row underneath would also take the click and navigate.
+                e.StopPropagation();
+            });
             host.Add(track);
             return track;
         }
@@ -450,6 +461,36 @@ namespace PrismLib.UI.Toolkit
                 else Ui.Log("SubPage '" + label + "': no Nav is building, nothing to push onto");
             });
             return host;
+        }
+
+        /* A switch AND a page behind it, on one row.
+
+           The alternative — a toggle row followed by an "X options" row — says the thing's name
+           twice and doubles the length of every list it appears in. The arrow marks the row as
+           having more behind it; the switch still switches, because a click that lands on it must
+           not navigate away. */
+        public static VisualElement ToggleSubPage(VisualElement parent, string label, bool value,
+                                                  Action<bool> onChange, Action<VisualElement> build,
+                                                  string tooltip = null)
+        {
+            var host = Row(parent, label, tooltip);
+            var row = host.parent;
+
+            var track = BuildSwitch(host, label, value, onChange);
+            track.pickingMode = PickingMode.Position;
+
+            var arrow = Ui.Text("\u203A", host, Tokens.FontSize, Tokens.TextMuted);
+            arrow.style.marginLeft = Tokens.Gap;
+            arrow.pickingMode = PickingMode.Ignore;
+
+            row.pickingMode = PickingMode.Position;
+            row.RegisterCallback<ClickEvent>(e =>
+            {
+                // The switch handles its own clicks and stops them here; anything else opens.
+                var nav = Nav.Active;
+                if (nav != null && build != null) nav.Push(label, build);
+            });
+            return row;
         }
 
         public static Label Header(VisualElement parent, string text)
