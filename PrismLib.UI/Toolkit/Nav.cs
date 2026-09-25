@@ -15,6 +15,12 @@ namespace PrismLib.UI.Toolkit
         public Action<VisualElement> Build;
         public List<NavItem> Children;
 
+        /* For a page whose content arrives after it is built — a fetched list, a folder scan. The
+           panel polls this while the page is open and rebuilds when the value changes, which is
+           why the font list used to need a tab switch to appear: Refresh() returns long before the
+           fetch does, and nothing asked again. */
+        public Func<int> Revision;
+
         /* A GROUP is a heading whose children are always visible — no chevron, nothing to expand,
            the heading itself is not a page. It buys the organisation of a tree without the cost of
            one: nothing hides, so nothing has to be found twice. Prefer it. Reach for a real
@@ -69,6 +75,8 @@ namespace PrismLib.UI.Toolkit
         private void ShowResults()
         {
             _crumbs.Clear();
+            _crumbs.style.paddingTop = Tokens.Gap;
+            _crumbs.style.paddingBottom = Tokens.Gap;
             var title = Ui.Text("Results for \u201c" + _filter + "\u201d", _crumbs, Tokens.FontSizeTitle);
             title.style.unityFontStyleAndWeight = FontStyle.Bold;
 
@@ -127,6 +135,44 @@ namespace PrismLib.UI.Toolkit
             }
         }
 
+        /* Below CollapseAt the rail is worth less than the space it costs, so it snaps shut — and
+           dragging back out from nothing reopens it at a usable width rather than at one pixel. */
+        public const float MinRail = 120f, MaxRail = 380f, CollapseAt = 80f;
+
+        private void MakeRailHandle(VisualElement handle, VisualElement rail)
+        {
+            float startWidth = 0f;
+            float startX = 0f;
+
+            handle.RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0) return;
+                startX = e.position.x;
+                startWidth = _railOpen ? rail.resolvedStyle.width : 0f;
+                handle.CapturePointer(e.pointerId);
+                e.StopPropagation();
+            });
+            handle.RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (!handle.HasPointerCapture(e.pointerId)) return;
+                float w = startWidth + (e.position.x - startX);
+                if (w < CollapseAt)
+                {
+                    _railOpen = false;
+                    rail.style.display = DisplayStyle.None;
+                    return;
+                }
+                _railOpen = true;
+                rail.style.display = DisplayStyle.Flex;
+                _railWidth = Mathf.Clamp(w, MinRail, MaxRail);
+                rail.style.width = _railWidth;
+            });
+            handle.RegisterCallback<PointerUpEvent>(e =>
+            {
+                if (handle.HasPointerCapture(e.pointerId)) handle.ReleasePointer(e.pointerId);
+            });
+        }
+
         /// Collapse the rail to give the content the whole window.
         public void ToggleRail()
         {
@@ -169,18 +215,30 @@ namespace PrismLib.UI.Toolkit
             _railScroll = railScroll;
             _rail = railScroll.contentContainer;
 
+            /* A drag handle instead of a toggle button: the same gesture Sapphire's timeline uses,
+               where dragging narrows the pane and collapses it once it is too small to be useful.
+               One gesture does what a button plus a width setting were doing, and the width it
+               lands on is remembered. */
+            var handle = Ui.Box(split);
+            handle.style.width = 5f;
+            handle.style.flexShrink = 0f;
+            handle.style.backgroundColor = Tokens.PanelBorder;
+            handle.pickingMode = PickingMode.Position;
+            handle.RegisterCallback<MouseEnterEvent>(_ => handle.style.backgroundColor = Tokens.Accent);
+            handle.RegisterCallback<MouseLeaveEvent>(_ => handle.style.backgroundColor = Tokens.PanelBorder);
+            MakeRailHandle(handle, railScroll);
+
             var right = Ui.Box(split);
             right.style.flexGrow = 1f;
             right.style.flexShrink = 1f;
             right.style.minHeight = 0f;
             right.style.paddingLeft = Tokens.Pad;
 
-            /* Opaque, because it sits above a scrolling pane: without a background the rows slide
-               under the title and both are readable at once. */
+            /* No page title. The rail already shows which page is open, and repeating it cost a
+               line of height at the top of every page to say something the eye had just read.
+               The element stays for search, which has nothing else to announce itself with. */
             _crumbs = Ui.Row(right);
             _crumbs.style.backgroundColor = Tokens.Panel;
-            _crumbs.style.paddingTop = Tokens.Gap;
-            _crumbs.style.paddingBottom = Tokens.Gap;
             _crumbs.style.flexShrink = 0f;
 
             var contentScroll = new ScrollView(ScrollViewMode.Vertical);
@@ -362,6 +420,9 @@ namespace PrismLib.UI.Toolkit
         private void RebuildCrumbs()
         {
             _crumbs.Clear();
+            _crumbs.style.paddingTop = 0f;
+            _crumbs.style.paddingBottom = 0f;
+            if (true) return;   // titles live in the rail; see the comment where _crumbs is built
             var steps = _path.FindAll(x => !x.Group);
             for (int i = 0; i < steps.Count; i++)
             {
@@ -406,5 +467,20 @@ namespace PrismLib.UI.Toolkit
 
         /// Rebuild the open page in place, for a host whose values changed underneath it.
         public void Refresh() => RebuildContent();
+
+        private int _lastRevision;
+
+        /// Called each frame by the panel. Rebuilds the open page when its data has changed.
+        public void Tick()
+        {
+            if (_path.Count == 0) return;
+            var page = _path[_path.Count - 1];
+            if (page.Revision == null) return;
+            int r;
+            try { r = page.Revision(); } catch { return; }
+            if (r == _lastRevision) return;
+            _lastRevision = r;
+            RebuildContent();
+        }
     }
 }

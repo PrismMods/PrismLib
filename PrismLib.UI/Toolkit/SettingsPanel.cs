@@ -103,7 +103,10 @@ namespace PrismLib.UI.Toolkit
 
         /// Called every frame by the host. Nothing to do yet — settings change when the user
         /// changes them — but the call site exists so adding a live refresh later is one method.
-        public void Tick() { }
+        public void Tick()
+        {
+            if (Visible && _nav != null) _nav.Tick();
+        }
 
         public void SetFont(Font font) { if (_surface != null) _surface.SetFont(font); }
 
@@ -129,7 +132,6 @@ namespace PrismLib.UI.Toolkit
             {
                 _nav = new Nav(_window.Body, _navPages());
                 _window.ShowSearch("Search settings…", q => _nav.Filter(q));
-                _window.RailToggle.clicked += () => _nav.ToggleRail();
                 // Undo writes straight into the mod's settings; the page has to be re-read or it
                 // keeps showing what the control was set to before.
                 History.AfterApply = () => { if (_nav != null) _nav.Refresh(); };

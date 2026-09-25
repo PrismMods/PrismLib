@@ -33,9 +33,6 @@ namespace PrismLib.UI.Toolkit
         /// Search box in the header. Hidden until a panel calls ShowSearch.
         public TextField Search { get; private set; }
 
-        /// The ≡ button. A panel with a rail wires it; others leave it hidden.
-        public Button RailToggle { get; private set; }
-
         /// Where the content pane starts, so the header can line up with it.
         public const float RailAlign = 200f;
 
@@ -141,27 +138,11 @@ namespace PrismLib.UI.Toolkit
             bar.style.backgroundColor = Tokens.TitleBar;
             bar.style.paddingLeft = Tokens.Pad;
             bar.style.paddingRight = Tokens.Gap;
-            /* A rail toggle sits where the rail is, and the title takes the rail's width, so the
-               search box that follows starts exactly where the content pane does instead of
-               floating in the middle of the header. */
-            RailToggle = Ui.Btn("\u2261", null, bar);
-            RailToggle.style.width = 34f;
-            RailToggle.style.height = 28f;
-            RailToggle.style.fontSize = Tokens.FontSize + 7f;   // it is an icon, not a letter
-            Ui.SetPadding(RailToggle, 0f);
-            Ui.Flat(RailToggle);
-            /* Lined up with the rail's labels beneath it, not centred in its own button: the
-               window body pads by Tokens.Pad and a rail row by 10 more, so the glyph starts where
-               "Interface" and "Hide UI" do. */
-            RailToggle.style.marginLeft = 10f;
-            RailToggle.style.unityTextAlign = TextAnchor.MiddleLeft;
-            // No resting background: it is a chrome affordance, not a button competing with the
-            // title beside it. It still lights on hover, which is what says it is clickable.
-            RailToggle.tooltip = "Show or hide the sidebar";
-
+            // No rail toggle: the rail has a drag handle of its own, which resizes as well as
+            // collapses. The title takes the space that button used to.
             var label = Ui.Text(title, bar, Tokens.FontSize);
             label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            label.style.marginLeft = 2f;      // sits with the ≡, not spaced away from it
+            label.style.marginLeft = 2f;
             label.style.flexShrink = 0f;
 
             /* Pads out to where the content pane begins, so the search box lines up with it
