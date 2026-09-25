@@ -191,6 +191,12 @@ namespace PrismLib.UI.Toolkit
             right.Add(contentScroll);
             _content = contentScroll.contentContainer;
 
+            /* Siblings draw in the order they were added, so the scrolling pane was painting over
+               the title that is supposed to sit above it — the rows slid under it and both stayed
+               readable. Raising it is what makes the header opaque in practice as well as in
+               theory. */
+            _crumbs.BringToFront();
+
             IndexPages();
 
             // Open the first leaf, so the pane is never blank on arrival.

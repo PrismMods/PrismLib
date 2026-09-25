@@ -365,6 +365,45 @@ namespace PrismLib.UI.Toolkit
             return body;
         }
 
+        /* A list entry: a name, an optional note under it, and buttons on the right.
+
+           Profiles, font packs and the key viewer's rows are all this shape, and each of them had
+           grown its own layout. Not a settings ROW — those are label-plus-one-control — this is one
+           THING with actions, which is why it gets a taller line and a second text style. */
+        public static VisualElement Item(VisualElement parent, string title, string note = null)
+        {
+            var row = Ui.Row(parent);
+            row.style.minHeight = 38f;
+            row.style.paddingLeft = 8f;
+            row.style.paddingRight = 4f;
+            row.style.marginBottom = 2f;
+            Ui.SetRadius(row, Tokens.Radius);
+            row.style.backgroundColor = Tokens.Row;
+
+            var text = Ui.Box(row);
+            text.style.flexGrow = 1f;
+            var t = Ui.Text(title, text);
+            t.pickingMode = PickingMode.Ignore;
+            if (!string.IsNullOrEmpty(note))
+            {
+                var n = Ui.Muted(note, text);
+                n.pickingMode = PickingMode.Ignore;
+            }
+
+            var actions = Ui.Row(row);
+            actions.style.flexShrink = 0f;
+            actions.name = "actions";
+            return actions;
+        }
+
+        /// Marks a list entry as the active one, the way a profile list shows which is loaded.
+        public static void MarkActive(VisualElement actions, string label = "Active")
+        {
+            var tag = Ui.Text(label, null, Tokens.FontSizeSmall, Tokens.Accent);
+            tag.style.marginRight = Tokens.Gap;
+            actions.Insert(0, tag);
+        }
+
         public static Label Header(VisualElement parent, string text)
         {
             var l = Ui.Text(text, parent, Tokens.FontSize);

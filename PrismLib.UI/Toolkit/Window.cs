@@ -148,9 +148,12 @@ namespace PrismLib.UI.Toolkit
             RailToggle.style.height = 28f;
             RailToggle.style.fontSize = Tokens.FontSize + 7f;   // it is an icon, not a letter
             Ui.SetPadding(RailToggle, 0f);
-            RailToggle.style.unityTextAlign = TextAnchor.MiddleCenter;
             RailToggle.style.backgroundColor = Color.clear;
-            RailToggle.style.marginLeft = 4f;
+            /* Lined up with the rail's labels beneath it, not centred in its own button: the
+               window body pads by Tokens.Pad and a rail row by 10 more, so the glyph starts where
+               "Interface" and "Hide UI" do. */
+            RailToggle.style.marginLeft = 10f;
+            RailToggle.style.unityTextAlign = TextAnchor.MiddleLeft;
             // No resting background: it is a chrome affordance, not a button competing with the
             // title beside it. It still lights on hover, which is what says it is clickable.
             var railColours = RailToggle.userData;
