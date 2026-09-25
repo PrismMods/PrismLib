@@ -50,6 +50,7 @@
         <Compile Include="Toolkit\Anim.cs" />
         <Compile Include="Toolkit\Tabs.cs" />
         <Compile Include="Toolkit\Tex.cs" />
+        <Compile Include="Toolkit\Cursors.cs" />
         <Compile Include="Toolkit\Skin.cs" />
         <Compile Include="Toolkit\ColourPicker.cs" />
         <Compile Include="Toolkit\GradientEditor.cs" />

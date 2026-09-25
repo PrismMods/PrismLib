@@ -159,6 +159,7 @@ namespace PrismLib.UI.Toolkit
             Search.style.display = DisplayStyle.None;
             Search.style.marginRight = Tokens.Gap;
             Skin.When<TextField>(Search, Skin.Field);
+            Cursors.Set(Search, Cursors.Kind.Text);
             bar.Add(Search);
 
             var spacer = Ui.Box(bar);
@@ -351,6 +352,7 @@ namespace PrismLib.UI.Toolkit
             grip.style.width = GripSize; grip.style.height = GripSize;
             grip.style.backgroundColor = Color.clear;
             grip.pickingMode = PickingMode.Position;
+            Cursors.Set(grip, Cursors.Kind.ResizeCorner);
             Root.Add(grip);
 
             /* A 3x3 dot grid with the top-left corner dropped, which is the grip Bismuth's panels

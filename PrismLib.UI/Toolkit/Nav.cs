@@ -160,16 +160,27 @@ namespace PrismLib.UI.Toolkit
                 {
                     _railOpen = false;
                     rail.style.display = DisplayStyle.None;
+                    PaintHandle();
                     return;
                 }
                 _railOpen = true;
                 rail.style.display = DisplayStyle.Flex;
                 _railWidth = Mathf.Clamp(w, MinRail, MaxRail);
                 rail.style.width = _railWidth;
+                PaintHandle();
             });
             handle.RegisterCallback<PointerUpEvent>(e =>
             {
                 if (handle.HasPointerCapture(e.pointerId)) handle.ReleasePointer(e.pointerId);
+                // A click with no drag reopens a collapsed rail: dragging out from zero width is
+                // fiddly, and the knob looks like something you click.
+                if (!_railOpen && Mathf.Abs(e.position.x - startX) < 3f)
+                {
+                    _railOpen = true;
+                    rail.style.display = DisplayStyle.Flex;
+                    rail.style.width = _railWidth;
+                    PaintHandle();
+                }
             });
         }
 
@@ -191,6 +202,14 @@ namespace PrismLib.UI.Toolkit
         }
 
         private float _railWidth = 200f;
+        private VisualElement _railLine, _railKnob;
+
+        /// Hairline while the rail is open, knob-with-arrow once it is collapsed.
+        private void PaintHandle()
+        {
+            if (_railLine != null) _railLine.style.display = _railOpen ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_railKnob != null) _railKnob.style.display = _railOpen ? DisplayStyle.None : DisplayStyle.Flex;
+        }
 
         public bool RailOpen => _railOpen;
 
@@ -217,15 +236,51 @@ namespace PrismLib.UI.Toolkit
 
             /* A drag handle instead of a toggle button: the same gesture Sapphire's timeline uses,
                where dragging narrows the pane and collapses it once it is too small to be useful.
-               One gesture does what a button plus a width setting were doing, and the width it
-               lands on is remembered. */
+
+               Open, it is a hairline — a filled bar the height of the window reads as a scrollbar,
+               which is what the first version looked like. Collapsed, it becomes a knob with an
+               arrow, because a hairline says "boundary" and gives no hint that anything is hidden
+               behind it. The hit area stays wider than the line either way. */
             var handle = Ui.Box(split);
-            handle.style.width = 5f;
+            handle.style.width = 7f;
             handle.style.flexShrink = 0f;
-            handle.style.backgroundColor = Tokens.PanelBorder;
+            handle.style.alignItems = Align.Center;
+            handle.style.justifyContent = Justify.Center;
             handle.pickingMode = PickingMode.Position;
-            handle.RegisterCallback<MouseEnterEvent>(_ => handle.style.backgroundColor = Tokens.Accent);
-            handle.RegisterCallback<MouseLeaveEvent>(_ => handle.style.backgroundColor = Tokens.PanelBorder);
+            Cursors.Set(handle, Cursors.Kind.ResizeHorizontal);
+
+            var line = Ui.Box(handle);
+            line.style.position = Position.Absolute;
+            line.style.top = 0f; line.style.bottom = 0f;
+            line.style.width = 1f;
+            line.style.backgroundColor = Tokens.PanelBorder;
+            line.pickingMode = PickingMode.Ignore;
+
+            var knob = Ui.Box(handle);
+            knob.style.width = 14f;
+            knob.style.height = 34f;
+            knob.style.alignItems = Align.Center;
+            knob.style.justifyContent = Justify.Center;
+            knob.style.backgroundColor = Tokens.RowAlt;
+            Ui.SetRadius(knob, Tokens.Radius);
+            knob.style.display = DisplayStyle.None;
+            knob.pickingMode = PickingMode.Ignore;
+            var knobArrow = Ui.Muted("\u203A", knob);
+            knobArrow.style.fontSize = Tokens.FontSize;
+            knobArrow.pickingMode = PickingMode.Ignore;
+
+            _railLine = line;
+            _railKnob = knob;
+            handle.RegisterCallback<MouseEnterEvent>(_ =>
+            {
+                line.style.backgroundColor = Tokens.Accent;
+                knob.style.backgroundColor = Tokens.RowHover;
+            });
+            handle.RegisterCallback<MouseLeaveEvent>(_ =>
+            {
+                line.style.backgroundColor = Tokens.PanelBorder;
+                knob.style.backgroundColor = Tokens.RowAlt;
+            });
             MakeRailHandle(handle, railScroll);
 
             var right = Ui.Box(split);
@@ -255,6 +310,7 @@ namespace PrismLib.UI.Toolkit
                theory. */
             _crumbs.BringToFront();
 
+            PaintHandle();
             IndexPages();
 
             // Open the first leaf, so the pane is never blank on arrival.

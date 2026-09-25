@@ -146,6 +146,7 @@ namespace PrismLib.UI.Toolkit
             _hexField.style.width = 110f;
             _hexField.style.fontSize = Tokens.FontSizeSmall;
             Skin.When<TextField>(_hexField, Skin.Field);
+            Cursors.Set(_hexField, Cursors.Kind.Text);
             // Commit on Enter or focus loss, never per keystroke: "#1a" is not a colour yet.
             _hexField.RegisterCallback<BlurEvent>(_ => ParseHex());
             _hexField.RegisterCallback<KeyDownEvent>(e =>

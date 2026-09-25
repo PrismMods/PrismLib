@@ -178,6 +178,14 @@ Drawn by hand rather than using UI Toolkit's own: `Toggle` (its `Toggle` is a ti
 mod does not have, so they would come out unstyled; `Colour` is three channel sliders instead of
 Sapphire's 485-line procedural wheel, because typing an exact value is easier than aiming at one.
 
+**Cursors are drawn, and the swap is GLOBAL.** USS `cursor` keywords are editor-only and a runtime
+mod has no cursor assets, so `Cursors` draws them in code and swaps through
+`UnityEngine.Cursor.SetCursor` on pointer enter. There is no per-element cursor at runtime, so every
+element that sets one must clear it on exit AND on `DetachFromPanelEvent` — a panel hidden while the
+pointer is over it would otherwise strand the cursor in that shape. Only the ambiguous ones get one:
+a resize edge and a text field look like anything else until the cursor says otherwise, while a
+button already looks like a button and the pointing hand is a web convention, not a desktop one.
+
 **Built-in controls have NO appearance.** UI Toolkit styles `Slider`, `TextField` and `ScrollView`
 from the default theme style sheet, which is an asset a runtime mod cannot have. `Toggle` and the
 dropdown were cheap to draw by hand; these are not — their dragging, focus and scrolling logic is

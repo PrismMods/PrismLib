@@ -160,6 +160,7 @@ namespace PrismLib.UI.Toolkit
             f.style.marginLeft = Tokens.Gap;
             f.style.fontSize = Tokens.FontSizeSmall;
             Skin.When<TextField>(f, Skin.Field);
+            Cursors.Set(f, Cursors.Kind.Text);
             Action apply = () => { if (!commit(f.value)) f.SetValueWithoutNotify(initial); };
             f.RegisterCallback<BlurEvent>(_ => apply());
             f.RegisterCallback<KeyDownEvent>(e =>
