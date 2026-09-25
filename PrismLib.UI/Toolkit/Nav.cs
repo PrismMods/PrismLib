@@ -131,8 +131,20 @@ namespace PrismLib.UI.Toolkit
         public void ToggleRail()
         {
             _railOpen = !_railOpen;
-            if (_railScroll != null) _railScroll.style.display = _railOpen ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_railScroll == null) return;
+            if (_railOpen)
+            {
+                _railScroll.style.display = DisplayStyle.Flex;
+                Anim.Width(_railScroll, _railWidth, Anim.Fast);
+            }
+            else
+            {
+                // Hidden only once it has finished closing, or it vanishes and the content jumps.
+                Anim.Width(_railScroll, 0f, Anim.Fast, () => _railScroll.style.display = DisplayStyle.None);
+            }
         }
+
+        private float _railWidth = 200f;
 
         public bool RailOpen => _railOpen;
 
@@ -148,6 +160,7 @@ namespace PrismLib.UI.Toolkit
 
             var railScroll = new ScrollView(ScrollViewMode.Vertical);
             railScroll.style.width = railWidth;
+            _railWidth = railWidth;
             railScroll.style.flexShrink = 0f;
             railScroll.style.minHeight = 0f;
             railScroll.contentContainer.style.flexShrink = 0f;
@@ -162,8 +175,13 @@ namespace PrismLib.UI.Toolkit
             right.style.minHeight = 0f;
             right.style.paddingLeft = Tokens.Pad;
 
+            /* Opaque, because it sits above a scrolling pane: without a background the rows slide
+               under the title and both are readable at once. */
             _crumbs = Ui.Row(right);
-            _crumbs.style.marginBottom = Tokens.Gap;
+            _crumbs.style.backgroundColor = Tokens.Panel;
+            _crumbs.style.paddingTop = Tokens.Gap;
+            _crumbs.style.paddingBottom = Tokens.Gap;
+            _crumbs.style.flexShrink = 0f;
 
             var contentScroll = new ScrollView(ScrollViewMode.Vertical);
             contentScroll.style.flexGrow = 1f;

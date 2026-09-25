@@ -101,6 +101,27 @@ namespace PrismLib.UI.Toolkit
             return track;
         }
 
+        /* A toggle and the rows it governs. Showing controls that the mod is currently ignoring is
+           the single most common way these settings screens confuse people — the accent picker
+           under a disabled "use a custom colour" was one, and Hide UI has several more. The body is
+           only built once; the toggle shows and hides it. */
+        public static VisualElement ToggleGroup(VisualElement parent, string label, bool value,
+                                                Action<bool> onChange, string tooltip = null)
+        {
+            var body = Ui.Box(parent);
+            Toggle(parent, label, value, v =>
+            {
+                body.style.display = v ? DisplayStyle.Flex : DisplayStyle.None;
+                if (onChange != null) onChange(v);
+            }, tooltip);
+            // Built before the toggle so the toggle reads above it, then moved back under it.
+            parent.Remove(body);
+            parent.Add(body);
+            body.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+            body.style.paddingLeft = Tokens.Pad;
+            return body;
+        }
+
         public static Slider Slider(VisualElement parent, string label, float value, float min, float max,
                                     Action<float> onChange, string tooltip = null, string format = "0.##")
         {

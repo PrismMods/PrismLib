@@ -50,6 +50,16 @@ namespace PrismLib.UI.Toolkit
         /// Footer strip along the bottom, above the resize grip. Always on top of Body's content.
         public VisualElement Footer { get; private set; }
 
+        /* Hint on the left, version on the right — the shape both mods' panels already use, so it
+           belongs to the window rather than to each panel that wants one. */
+        public void SetFooter(string hint, string right)
+        {
+            if (_footerHint != null) _footerHint.text = hint ?? "";
+            if (_footerRight != null) _footerRight.text = right ?? "";
+        }
+
+        private Label _footerHint, _footerRight;
+
         /// Set by the panel that owns this window, to raise its surface. Window has no Surface of
         /// its own — it is just the element tree inside one.
         public Action OnRaise;
@@ -134,8 +144,17 @@ namespace PrismLib.UI.Toolkit
                search box that follows starts exactly where the content pane does instead of
                floating in the middle of the header. */
             RailToggle = Ui.Btn("\u2261", null, bar);
-            RailToggle.style.width = 28f;
+            RailToggle.style.width = 34f;
+            RailToggle.style.height = 28f;
+            RailToggle.style.fontSize = Tokens.FontSize + 7f;   // it is an icon, not a letter
+            Ui.SetPadding(RailToggle, 0f);
+            RailToggle.style.unityTextAlign = TextAnchor.MiddleCenter;
             RailToggle.style.backgroundColor = Color.clear;
+            RailToggle.style.marginLeft = 4f;
+            // No resting background: it is a chrome affordance, not a button competing with the
+            // title beside it. It still lights on hover, which is what says it is clickable.
+            var railColours = RailToggle.userData;
+            RailToggle.RegisterCallback<MouseLeaveEvent>(_ => RailToggle.style.backgroundColor = Color.clear);
             RailToggle.tooltip = "Show or hide the sidebar";
 
             var label = Ui.Text(title, bar, Tokens.FontSize);
@@ -152,6 +171,9 @@ namespace PrismLib.UI.Toolkit
             Search.style.marginRight = Tokens.Gap;
             Skin.When<TextField>(Search, Skin.Field);
             bar.Add(Search);
+
+            var spacer = Ui.Box(bar);
+            spacer.style.flexGrow = 1f;   // pins the controls right whatever the search box does
 
             TitleBarRight = Ui.Row(bar);
 
@@ -207,8 +229,11 @@ namespace PrismLib.UI.Toolkit
             // every window competes with the content for a job done once.
             Footer.style.paddingLeft = Tokens.Pad;
             Footer.style.paddingRight = Tokens.Pad;
-            Footer.style.paddingTop = 3f;
-            Footer.style.paddingBottom = 3f;
+            Footer.style.paddingTop = 4f;
+            Footer.style.paddingBottom = 4f;
+            _footerHint = Ui.Muted("", Footer);
+            _footerHint.style.flexGrow = 1f;
+            _footerRight = Ui.Muted("", Footer);
 
             // Click anywhere in the window to raise it above the other one.
             Root.RegisterCallback<PointerDownEvent>(_ => { if (OnRaise != null) OnRaise(); });
@@ -336,21 +361,24 @@ namespace PrismLib.UI.Toolkit
             grip.pickingMode = PickingMode.Position;
             Root.Add(grip);
 
-            /* Three dots on the diagonal. The rotated bars this replaces never lined up — a
-               rotation about a percentage origin moves the box as well as turning it — and a grip
-               only has to say "drag here", which dots do without any transform at all. */
-            for (int i = 0; i < 3; i++)
-            {
-                var dot = new VisualElement();
-                dot.style.position = Position.Absolute;
-                dot.style.right = 3f + i * 4f;
-                dot.style.bottom = 3f;
-                dot.style.width = 2f;
-                dot.style.height = 2f + i * 4f;
-                dot.style.backgroundColor = Tokens.TextMuted;
-                dot.pickingMode = PickingMode.Ignore;
-                grip.Add(dot);
-            }
+            /* A 3x3 dot grid with the top-left corner dropped, which is the grip Bismuth's panels
+               already use. Dots rather than rotated bars: a rotation about a percentage origin
+               moves the box as well as turning it, which is why the earlier staircase never lined
+               up. */
+            for (int row = 0; row < 3; row++)
+                for (int col = 0; col < 3; col++)
+                {
+                    if (row + col < 2) continue;
+                    var dot = new VisualElement();
+                    dot.style.position = Position.Absolute;
+                    dot.style.right = 3f + (2 - col) * 4f;
+                    dot.style.bottom = 3f + (2 - row) * 4f;
+                    dot.style.width = 2f;
+                    dot.style.height = 2f;
+                    dot.style.backgroundColor = Tokens.TextMuted;
+                    dot.pickingMode = PickingMode.Ignore;
+                    grip.Add(dot);
+                }
 
             grip.RegisterCallback<PointerDownEvent>(e =>
             {

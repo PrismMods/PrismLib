@@ -65,6 +65,15 @@ namespace PrismLib.UI.Toolkit
             Run(e, from, toLeft, ms, (el, v) => el.style.left = v);
         }
 
+        /// Animate a width — a sidebar folding away, a panel opening.
+        public static void Width(VisualElement e, float to, int ms = Normal, Action done = null)
+        {
+            if (e == null) return;
+            float from = e.resolvedStyle.width;
+            if (float.IsNaN(from)) from = to;
+            Run(e, from, to, ms, (el, v) => el.style.width = v, done);
+        }
+
         /// A small scale bump — acknowledgement for a click that has no other visible result.
         public static void Pop(VisualElement e, float from = 0.96f, int ms = Fast)
         {

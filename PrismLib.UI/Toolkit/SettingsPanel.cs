@@ -95,6 +95,12 @@ namespace PrismLib.UI.Toolkit
 
         public void Toggle() => Visible = !Visible;
 
+        /// Hint on the left, version on the right — the shape both mods' own panels already use.
+        public void SetFooter(string hint, string right)
+        {
+            if (_window != null) _window.SetFooter(hint, right);
+        }
+
         /// Called every frame by the host. Nothing to do yet — settings change when the user
         /// changes them — but the call site exists so adding a live refresh later is one method.
         public void Tick() { }
