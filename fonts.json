@@ -1,0 +1,28 @@
+{
+    "packs": [
+        {
+            "id": "paperlogy",
+            "name": "Paperlogy",
+            "note": "9 weights · Latin + Korean + Japanese",
+            "size": "5.3 MB",
+            "url": "https://raw.githubusercontent.com/PrismMods/Bismuth/main/font-packs/paperlogy.zip",
+            "sha256": "3960b99dfd3520d129d67131e800f86497aacb758078a49c1a0ac075e6a5281f"
+        },
+        {
+            "id": "a2z",
+            "name": "에이투지체 (A2Z)",
+            "note": "9 weights · Latin + Korean",
+            "size": "1.8 MB",
+            "url": "https://raw.githubusercontent.com/PrismMods/Bismuth/main/font-packs/a2z.zip",
+            "sha256": "e96dd89a85c669e608b7e0afdc4c88f1825c0f927fc127d127af935fd0a9938d"
+        },
+        {
+            "id": "maplestory",
+            "name": "Maplestory",
+            "note": "Bold only · Latin + Korean + kana",
+            "size": "344 KB",
+            "url": "https://raw.githubusercontent.com/PrismMods/Bismuth/main/font-packs/maplestory.zip",
+            "sha256": "847b9420ab01887a6378e740a8657c17fac83c5b9b33e17ecc8b9ccdb202beca"
+        }
+    ]
+}

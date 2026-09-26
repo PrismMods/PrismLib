@@ -29,6 +29,10 @@
          anything else and can be unit-tested outside the game. -->
     <ItemGroup>
         <Reference Include="System" />
+        <Reference Include="System.Core" />
+        <!-- Fonts.cs only: a pack is a zip and the feed may carry a checksum. Still plain BCL. -->
+        <Reference Include="System.IO.Compression" />
+        <Reference Include="System.IO.Compression.FileSystem" />
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Properties\AssemblyInfo.cs" />
@@ -38,6 +42,7 @@
         <Compile Include="Search.cs" />
         <Compile Include="Settings.cs" />
         <Compile Include="Diagnostics.cs" />
+        <Compile Include="Fonts.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
