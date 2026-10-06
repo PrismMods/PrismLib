@@ -52,6 +52,39 @@ namespace PrismLib.UI.Toolkit
             return false;
         }
 
+        /* Is the user typing into one of our windows?
+
+           The game's "user is editing a field" test asks the uGUI EventSystem, which has never heard
+           of a UI Toolkit TextField — so a letter typed into a Prism search box or number field also
+           reached the editor and placed a tile. A mod ORs this into its own typing check; as with
+           the wheel, the input belongs to the game and only the mod can patch it.
+
+           Walks up from the focused element because the focus usually sits on the field's inner
+           text input, not on the field itself. Any TextInputBaseField<T> counts, so number fields
+           are covered too. */
+        public static bool TextFocused
+        {
+            get
+            {
+                for (int i = Stack.Count - 1; i >= 0; i--)
+                {
+                    var surface = Stack[i];
+                    if (!surface.Visible || surface.Root == null || surface.Root.panel == null) continue;
+                    var fc = surface.Root.panel.focusController;
+                    for (var e = fc != null ? fc.focusedElement as VisualElement : null; e != null; e = e.parent)
+                        if (IsTextInput(e.GetType())) return true;
+                }
+                return false;
+            }
+        }
+
+        private static bool IsTextInput(Type t)
+        {
+            for (; t != null && t != typeof(VisualElement); t = t.BaseType)
+                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(TextInputBaseField<>)) return true;
+            return false;
+        }
+
         /// Drive the wheel for every open window. The host calls this each frame with
         /// Input.mousePosition and Input.mouseScrollDelta.y — see Skin.Wheel for why.
         public static void TickWheel(Vector2 pointerScreen, float delta)

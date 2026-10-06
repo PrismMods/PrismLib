@@ -27,6 +27,9 @@ Add `PrismBootstrap.cs` to the mod's `<Compile>` list and call it first thing in
 ```csharp
 public static bool Load(UnityModManager.ModEntry entry)
 {
+    // Before ANY code that names a PrismLib.UI type: only one copy loads per session, so make
+    // every mod folder's copy the newest one first (see SyncUi).
+    PrismLib.Bootstrap.PrismBootstrap.SyncUi();
     if (PrismLib.Bootstrap.PrismBootstrap.Ensure(entry.Logger.Log)) UsePrism();
     // …the mod's own setup, which must not depend on the line above
 }
