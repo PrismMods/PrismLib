@@ -1,9 +1,9 @@
 {
-    "version": "0.3.7",
-    "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.7/PrismLib.dll",
-    "sha256": "cbd08bf9ea6874579293baa818ac1d49c093336780d0082729e00d6ab9e6c053",
+    "version": "0.3.8",
+    "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.8/PrismLib.dll",
+    "sha256": "1011824080a520858480c749ea361240f7d07aaba5b476ef78ed972d20dc91b7",
     "ui": {
-        "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.7/PrismLib.UI.dll",
-        "sha256": "e9ecd801d80a070840545848601a228ef4d0231bdc5491577c07276c111a79d6"
+        "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.8/PrismLib.UI.dll",
+        "sha256": "1a0444bbe3a06b98fa4620427301e4fe2edd20abc0a3f41e224a90c1e719ce1b"
     }
 }
