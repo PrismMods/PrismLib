@@ -14,9 +14,12 @@ REPO="PrismMods/PrismLib"
 VER="${1:-}"
 
 if [ -n "$VER" ]; then
-    sed -i '' -E "s/AssemblyVersion\(\"[0-9.]+\"\)/AssemblyVersion(\"$VER.0\")/;s/AssemblyFileVersion\(\"[0-9.]+\"\)/AssemblyFileVersion(\"$VER.0\")/" PrismLib/Properties/AssemblyInfo.cs
-    sed -i '' -E "s/new Version\([0-9]+, [0-9]+, [0-9]+\);/new Version(${VER//./, });/" PrismLib/Prism.cs
-    sed -i '' -E "s/AssemblyVersion\(\"[0-9.]+\"\)/AssemblyVersion(\"$VER.0\")/;s/AssemblyFileVersion\(\"[0-9.]+\"\)/AssemblyFileVersion(\"$VER.0\")/" PrismLib.UI/Properties/AssemblyInfo.cs
+    # perl -pi, not sed -i '': sed's in-place flag takes its backup suffix differently on BSD
+    # (macOS, needs the empty '' as a separate argument) and GNU (Linux, needs it attached, no
+    # space) — one spelling breaks on the other. Perl's is identical on both.
+    perl -pi -e "s/AssemblyVersion\(\"[0-9.]+\"\)/AssemblyVersion(\"$VER.0\")/; s/AssemblyFileVersion\(\"[0-9.]+\"\)/AssemblyFileVersion(\"$VER.0\")/" PrismLib/Properties/AssemblyInfo.cs
+    perl -pi -e "s/new Version\([0-9]+, [0-9]+, [0-9]+\);/new Version(${VER//./, });/" PrismLib/Prism.cs
+    perl -pi -e "s/AssemblyVersion\(\"[0-9.]+\"\)/AssemblyVersion(\"$VER.0\")/; s/AssemblyFileVersion\(\"[0-9.]+\"\)/AssemblyFileVersion(\"$VER.0\")/" PrismLib.UI/Properties/AssemblyInfo.cs
     echo "stamped $VER"
 fi
 

@@ -11,7 +11,12 @@
         <AssemblyName>PrismLib.UI</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <Deterministic>true</Deterministic>
-        <!-- Unity lives here. Never hardcode a home directory; accept either shipped layout. -->
+        <!-- Unity lives here. Never hardcode a home directory; accept either shipped layout.
+             dev.sh passes AdofaiRoot explicitly (it already found the game to install into); this
+             default only matters for a build run directly, outside dev.sh. -->
+        <AdofaiRoot Condition=" '$(AdofaiRoot)' == '' And Exists('$(HOME)/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice/ADanceOfFireAndIce.app') ">$(HOME)/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice</AdofaiRoot>
+        <AdofaiRoot Condition=" '$(AdofaiRoot)' == '' And Exists('$(HOME)/.local/share/Steam/steamapps/common/A Dance of Fire and Ice/ADanceOfFireAndIce_Data') ">$(HOME)/.local/share/Steam/steamapps/common/A Dance of Fire and Ice</AdofaiRoot>
+        <AdofaiRoot Condition=" '$(AdofaiRoot)' == '' And Exists('$(HOME)/.steam/steam/steamapps/common/A Dance of Fire and Ice/ADanceOfFireAndIce_Data') ">$(HOME)/.steam/steam/steamapps/common/A Dance of Fire and Ice</AdofaiRoot>
         <AdofaiRoot Condition=" '$(AdofaiRoot)' == '' ">$(HOME)/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice</AdofaiRoot>
         <AdofaiManaged Condition=" Exists('$(AdofaiRoot)/ADanceOfFireAndIce_Data/Managed/Assembly-CSharp.dll') ">$(AdofaiRoot)/ADanceOfFireAndIce_Data/Managed</AdofaiManaged>
         <AdofaiManaged Condition=" '$(AdofaiManaged)' == '' ">$(AdofaiRoot)/ADanceOfFireAndIce.app/Contents/Resources/Data/Managed</AdofaiManaged>

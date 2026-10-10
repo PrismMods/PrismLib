@@ -321,7 +321,16 @@ namespace PrismLib.UI
             bg.Radius = 4f;
             bg.color = new Color(1f, 1f, 1f, 0f);
             bg.raycastTarget = true;
-            _closeX = go.AddComponent<TextMeshProUGUI>();
+
+            // Own GameObject: TextMeshProUGUI and RoundedRectGraphic are both a Graphic, and a
+            // GameObject can only host one — the second AddComponent silently returns null, which
+            // is what made this a NullReferenceException instead of a visible warning.
+            var labelGo = new GameObject("CloseLabel", typeof(RectTransform));
+            labelGo.transform.SetParent(go.transform, false);
+            var lr = (RectTransform)labelGo.transform;
+            lr.anchorMin = Vector2.zero; lr.anchorMax = Vector2.one;
+            lr.offsetMin = Vector2.zero; lr.offsetMax = Vector2.zero;
+            _closeX = labelGo.AddComponent<TextMeshProUGUI>();
             if (_theme.Font != null) _closeX.font = _theme.Font;
             _closeX.text = "×";
             _closeX.fontSize = 16f;

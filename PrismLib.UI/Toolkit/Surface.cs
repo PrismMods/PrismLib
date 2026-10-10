@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.TextCore.Text;
 
 namespace PrismLib.UI.Toolkit
 {
@@ -77,43 +78,85 @@ namespace PrismLib.UI.Toolkit
         public void SetFont(Font font)
         {
             if (Root == null) { Ui.Log("Surface: SetFont ignored, no root"); return; }
-            var f = font ?? Fallback();
-            if (f == null) { Ui.Log("Surface: NO FONT AVAILABLE — labels will be blank"); return; }
-            Root.style.unityFontDefinition = FontDefinition.FromFont(f);
-            Ui.Log("Surface: font " + f.name + (font == null ? " (OS fallback)" : ""));
+            if (font != null)
+            {
+                Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+                Ui.Log("Surface: font " + font.name);
+                return;
+            }
+            var fa = Fallback();
+            if (fa == null) { Ui.Log("Surface: NO FONT AVAILABLE — labels will be blank"); return; }
+            Root.style.unityFontDefinition = FontDefinition.FromSDFFont(fa);
+            Ui.Log("Surface: font " + fa.name + " (OS fallback)");
         }
 
-        private static Font _fallback, _mono;
+        private static FontAsset _fallback, _mono;
+
+        /* Regular, in that order, because a name match alone is not enough — see OsFontAsset. */
+        private static readonly string[] _styles = { "Regular", "Book", "Normal", "Medium", "" };
 
         /* A monospace face for anything columnar. A log is the case that matters: timestamps and
            level tags only line up in a fixed pitch, and the game's own display font — which is what
            a mod's TMP asset is built from — is the worst possible choice for reading one. */
-        public static Font Mono()
+        public static FontAsset Mono()
         {
             if (_mono != null) return _mono;
-            try
-            {
-                _mono = Font.CreateDynamicFontFromOSFont(
-                    new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Courier New", "monospace" }, 14);
-            }
-            catch (Exception e) { Ui.Log("Surface: mono font unavailable: " + e.Message); }
+            _mono = OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, 14);
             return _mono ?? Fallback();
         }
 
         /* An OS font, built once. Cheap insurance: every mod has a different font pipeline and any
            of them can hand over null, but a debug window that renders nothing is worse than one in
            the wrong typeface. Not safe during the loader's static-ctor window (Time.frameCount 0),
-           which is why it is built on demand rather than at load. */
-        private static Font Fallback()
+           which is why it is built on demand rather than at load.
+
+           Goes through FontAsset.CreateFontAsset(family, style, size) rather than
+           Font.CreateDynamicFontFromOSFont: the legacy call matches a family NAME against the OS
+           list and hands back a non-null Font even when nothing can actually be rendered with it,
+           deferring the failure to glyph generation — which runs every frame a label is on screen.
+           Measured on Steam Linux Runtime: only "DejaVu Sans" was visible to the sandboxed process
+           at all, and fontconfig tags its regular weight style "Book", not "Regular" — a mismatch
+           CreateDynamicFontFromOSFont never surfaces, so the panel opened with every frame logging
+           "Unable to load font face" and not one visible character. CreateFontAsset checks the
+           family+style pair up front and returns null on a miss, so trying several style strings
+           per family here actually finds a working one instead of silently failing per frame. */
+        private static FontAsset Fallback()
         {
             if (_fallback != null) return _fallback;
-            try
-            {
-                _fallback = Font.CreateDynamicFontFromOSFont(
-                    new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans" }, 16);
-            }
-            catch (Exception e) { Ui.Log("Surface: OS font fallback failed: " + e.Message); }
+            _fallback = OsFontAsset(
+                new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, 16);
             return _fallback;
+        }
+
+        private static FontAsset OsFontAsset(string[] families, int pointSize)
+        {
+            foreach (string family in families)
+                foreach (string style in _styles)
+                {
+                    FontAsset fa;
+                    try
+                    {
+                        /* The 3-arg CreateFontAsset(family, style, size) passes GlyphRenderMode
+                           .DEFAULT (a raster atlas, not SDF) — confirmed by disassembling
+                           UnityEngine.TextCoreTextEngineModule.dll. UI Toolkit's faux-bold
+                           (FontStyle.Bold on a face with no real bold weight, which is all this
+                           fallback ever has) works by dilating the SDF glyph edge; on a raster
+                           atlas that dilation has nothing to act on and instead doubles and
+                           offsets the glyph. Headers and titles (the only bold text) rendered as
+                           a garbled double-strike while plain-weight labels were fine — request
+                           SDF explicitly so faux-bold has an edge to dilate. */
+                        fa = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset(
+                            family, style, pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA);
+                    }
+                    catch (Exception e) { Ui.Log("Surface: OS font '" + family + "' (" + style + ") failed: " + e.Message); continue; }
+                    if (fa != null)
+                    {
+                        Ui.Log("Surface: OS font asset '" + family + "' style '" + style + "'");
+                        return fa;
+                    }
+                }
+            Ui.Log("Surface: no OS font asset matched any candidate");
+            return null;
         }
 
         /* Shown and hidden with display, NOT by deactivating the GameObject.

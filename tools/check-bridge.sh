@@ -17,6 +17,15 @@ shift 2
 # the library. Methods that legitimately touch PrismLib are guarded and must NOT be listed.
 UNGATED="$*"
 
+# macOS, then Linux's two common Steam library locations — whichever exists. ADOFAI_ROOT
+# overrides all of them.
+if [ -z "${ADOFAI_ROOT:-}" ]; then
+    for p in \
+        "$HOME/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice" \
+        "$HOME/.local/share/Steam/steamapps/common/A Dance of Fire and Ice" \
+        "$HOME/.steam/steam/steamapps/common/A Dance of Fire and Ice"
+    do [ -d "$p" ] && { ADOFAI_ROOT="$p"; break; }; done
+fi
 GAME="${ADOFAI_ROOT:-$HOME/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice}"
 MANAGED="$GAME/ADanceOfFireAndIce.app/Contents/Resources/Data/Managed"
 [ -d "$MANAGED" ] || MANAGED="$GAME/ADanceOfFireAndIce_Data/Managed"

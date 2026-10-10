@@ -141,7 +141,7 @@ namespace PrismLib.UI.Toolkit
             Skin.When<ListView>(_list, lv => Skin.Scroll(lv.Q<ScrollView>()));
             // Logs are columnar: timestamps and tags only line up in a fixed pitch.
             var mono = Surface.Mono();
-            if (mono != null) _list.style.unityFontDefinition = FontDefinition.FromFont(mono);
+            if (mono != null) _list.style.unityFontDefinition = FontDefinition.FromSDFFont(mono);
 
             _status = Ui.Muted("", _window.Footer);
             _status.style.flexShrink = 0f;
