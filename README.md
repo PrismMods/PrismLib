@@ -1,61 +1,73 @@
 # PrismLib
 
-The shared layer under [Bismuth](https://github.com/PrismMods/Bismuth),
-[Sapphire](https://github.com/PrismMods/Sapphire) and Quartz — three ADOFAI mods by QuartzTeam
-that, run together, fight over the same handful of globals.
+Shared library for the ADOFAI mods [Bismuth](https://github.com/PrismMods/Bismuth),
+[Sapphire](https://github.com/PrismMods/Sapphire) and Quartz.
 
-Autoplay stops working. The editor camera stops following. A hotkey does two things or nothing.
-None of that is a Harmony conflict a loader can detect: it is two mods writing `RDC.auto` every
-frame, each certain it owns it. PrismLib is the arbiter — **claims** say who owns a piece of game
-state, a **key registry** says who wants a hotkey, and a **settings schema** lets all three describe
-their settings once so they can be rendered, searched and conflict-checked together.
+When several mods are installed together, they can write the same game state — `RDC.auto`, the
+editor camera, HUD visibility — or bind the same keys. Mod loaders do not detect this kind of
+conflict. PrismLib gives the mods a common place to coordinate:
 
-It is deliberately not a framework the mods live inside. Every call degrades: a mod that cannot load
-PrismLib, or is denied a claim, still works on its own.
+- **Claims** record which mod owns a piece of game state.
+- **The key registry** records which mods want a hotkey, so clashes can be reported.
+- **The settings schema** lets each mod describe its settings so they can be rendered and searched
+  together.
 
-## Installing
+PrismLib is optional for the mods that use it. If it cannot be loaded, or a claim is denied, a mod
+continues to work on its own.
 
-You don't. Any Prism mod carries [`bootstrap/PrismBootstrap.cs`](bootstrap/PrismBootstrap.cs), which
-installs PrismLib beside the mod folders on first run, verifies the download's SHA-256 before it ever
-loads it, and updates it in the background. Whichever Prism mod loads first wins; the rest find it
-already in memory.
+## Installation
+
+End users do not install PrismLib directly. Each Prism mod includes
+[`bootstrap/PrismBootstrap.cs`](bootstrap/PrismBootstrap.cs), which on first run downloads
+`PrismLib.dll` into a shared folder beside the mod folders and verifies its SHA-256 against the
+release feed before loading it. Newer versions are downloaded in the background and used from the
+next launch. If several Prism mods are installed, the first one to load installs the library and the
+others use the copy already in memory.
 
 ## Usage
 
-Add `PrismBootstrap.cs` to the mod's `<Compile>` list and call it first thing in `OnLoad`:
+Add `PrismBootstrap.cs` to the mod's `<Compile>` list and call it at the start of `OnLoad`:
 
 ```csharp
 public static bool Load(UnityModManager.ModEntry entry)
 {
-    // Before ANY code that names a PrismLib.UI type: only one copy loads per session, so make
-    // every mod folder's copy the newest one first (see SyncUi).
+    // Before any code that refers to a PrismLib.UI type: only one copy of PrismLib.UI loads per
+    // session, so bring every mod folder's copy up to the newest version first.
     PrismLib.Bootstrap.PrismBootstrap.SyncUi();
-    if (PrismLib.Bootstrap.PrismBootstrap.Ensure(entry.Logger.Log)) UsePrism();
-    // …the mod's own setup, which must not depend on the line above
+    if (PrismLib.Bootstrap.PrismBootstrap.Ensure(entry.Logger.Log, new Version(0, 3, 9))) UsePrism();
+    // ...the mod's own setup, which must not depend on the line above
 }
 
-// Separate, non-inlined: the CLR resolves a method's types when that method is JITted, so PrismLib
-// types may not appear in a method that could run before the resolver is installed.
+// Kept in a separate, non-inlined method: the runtime resolves a method's types when the method is
+// compiled, so PrismLib types must not appear in code that can run before Ensure().
 [MethodImpl(MethodImplOptions.NoInlining)]
 private static void UsePrism()
 {
     var me = Prism.Register("Sapphire", typeof(MainClass).Assembly.GetName().Version);
     Prism.Log = SapphireLog.Log;
     _autoplay = me.ClaimState(StateKey.Autoplay, "editor autoplay toggle");
-    if (_autoplay == null) { /* someone else owns it — leave RDC.auto alone */ }
+    if (_autoplay == null) { /* another mod owns it; leave RDC.auto alone */ }
 }
 ```
 
-**Two rules for the bridge class, both learned the hard way.** A PrismLib type may appear in a
-method BODY, never in a FIELD: field types are part of the class layout and are resolved when the
-type itself loads, before any method runs. A `private static ModHandle _me;` made the bridge
-unloadable, so `Ensure()` never ran, so the library it would have installed stayed missing — and
-UMM reported the whole mod as `OnToggle: TypeLoadException` and skipped it. Hold them as `object`
-and cast at use. Second, no caller outside the bridge may mention a PrismLib type, and any bridge
-method whose body touches one must be called behind `if (PrismBridge.Available)`.
+The second argument to `Ensure` is the minimum PrismLib version the mod needs. An older installed
+copy is replaced from the release feed.
 
-`tools/check-bridge.sh <Mod.dll> <Namespace.PrismBridge>` verifies both on a built mod, by loading
-it with PrismLib absent. Run it before shipping; the failure is invisible in-game.
+### Rules for the bridge class
+
+Keep every reference to `PrismLib.dll` in one class (conventionally `PrismBridge`) and follow two
+rules:
+
+1. **No PrismLib type in a field.** Field types are resolved when the class loads, before any of its
+   methods run. If `PrismLib.dll` is missing, the class fails to load, `Ensure()` never runs, and
+   UMM disables the mod with a `TypeLoadException`. Store handles as `object` and cast at the point
+   of use.
+2. **No PrismLib type outside the bridge**, and every bridge method that uses one is called only
+   when `PrismBridge.Available` is true.
+
+`tools/check-bridge.sh <Mod.dll> <Namespace.PrismBridge>` checks both rules against a built mod by
+loading it with `PrismLib.dll` absent. Run it before a release; these failures do not show up when
+the library is installed.
 
 ### Claims
 
@@ -64,20 +76,17 @@ using (var c = me.ClaimState(StateKey.EditorCamera, "camera path preview"))
     if (c != null) { /* write the camera */ }
 ```
 
-One owner at a time, first come first served. A denied claim returns `null` and is **not** an error —
-the caller carries on without touching that state, which is what a second editor suite should do
-rather than fighting the first every frame. Claims describe intent, they do not enforce it: nothing
-can stop a mod writing `RDC.auto` directly. What they buy is that a mod can ask, and that when a user
-reports "autoplay is broken" the log names the owner instead of leaving three suspects.
+A piece of state has one owner at a time, granted on a first-come basis. A denied claim returns
+`null`; the caller should then leave that state alone. Claims are not enforced — a mod can still
+write the state directly — but they let mods cooperate, and the log records the owner, which makes
+conflicts easier to diagnose.
 
-`StateKey`: `Autoplay`, `NoFail`, `EditorCamera`, `PathLock`, `EditorHud`, `GamePanels`, `GameHud`,
-`InputCapture`.
+Available keys: `Autoplay`, `NoFail`, `EditorCamera`, `PathLock`, `EditorHud`, `GamePanels`,
+`GameHud`, `InputCapture`, `DebugPanel`.
 
-`InputCapture` is the one worth calling out. Bismuth blocks the keyboard game-wide while its panel
-is open, so every Sapphire hotkey silently dies for as long as that panel is up — a mod cannot see
-that from its own side. The holder takes the claim while it swallows keys; everyone else checks
-`Claims.OwnerOf(StateKey.InputCapture)` once, in whatever function reads their hotkeys, and stands
-down.
+`InputCapture` is held by a mod while it intercepts keyboard input game-wide (for example, while a
+settings panel is open). Other mods can check `Claims.OwnerOf(StateKey.InputCapture)` in their
+hotkey handling and skip their hotkeys while another mod holds it.
 
 ### Keys
 
@@ -86,8 +95,8 @@ me.BindKey("quickchart.edit", (int)KeyCode.U, KeyMods.None, "Edit event paramete
 foreach (var other in Keys.Wanting((int)KeyCode.U, KeyMods.None, "Sapphire")) { /* warn */ }
 ```
 
-Registration never blocks — two mods may hold one key, and the user might want that. It guarantees
-only that the clash is visible, to the log and to a settings page.
+Registering a key never blocks another mod from using it; two mods may intentionally share a key.
+The registry makes overlaps visible in the log and in settings.
 
 ### Settings
 
@@ -103,28 +112,51 @@ me.DescribeSettings(new[] {
 });
 ```
 
-A mod declares what a setting *is* and how to read and write it; the mod keeps its own storage and
-its own look. `Settings.Search("bpm")` then answers across every loaded mod — which is Quartz's real
-problem, hundreds of settings and no way to find one.
+A mod describes each setting and how to read and write it; storage stays with the mod.
+`Settings.Search("bpm")` searches the settings of every loaded mod. `DescribeSettings` replaces the
+mod's previous description rather than adding to it.
+
+PrismLib also has a few settings of its own, stored in `settings.txt` beside `PrismLib.dll`
+(`PrismLib.Config`) and listed first in the settings window. Currently this is **Show FPS**, a
+frame-rate display shared by all Prism mods.
 
 ## PrismLib.UI
 
-A second assembly, for the parts of the interface the mods were copying between each other. It
-references Unity; `PrismLib.dll` stays plain BCL so it can load before anything and be tested
-outside the game.
+A second assembly containing interface code shared between the mods. It references Unity, while
+`PrismLib.dll` depends only on the .NET base library so it can load early and be tested outside the
+game (`tools/PrismLibTest.cs`).
 
-**Mods ship it, the bootstrapper does not install it.** Claims need a single shared instance across
-mods — UI does not. Two mods each drawing their own toast is correct, and `ToastStack` keeps them
-from overlapping by GameObject name rather than shared memory. So it is an ordinary dependency
-beside the mod's own DLL, which is what lets its call sites skip the `Available` guard that every
-`PrismLib` call needs. `lib/update-prismlib.sh` fetches both; the mod's deploy and release copy
-`PrismLib.UI.dll` into the mod folder.
+Mods ship `PrismLib.UI.dll` in their own folder; the bootstrapper does not install it. Interface
+code does not need one shared instance across mods, so it can be an ordinary dependency, and calls
+into it do not need the `Available` check. `lib/update-prismlib.sh` fetches both assemblies for a
+mod's build.
+
+It contains:
+
+- **Windows on UI Toolkit** — `Surface`, `Window` (drag, resize, scale, saved position), `Nav`,
+  `Tabs` and a set of widgets (toggle, slider, choice, text, colour, keybind).
+- **Layers** — each surface belongs to a layer (`Hud`, `Window`, `Popup`, `Modal`, `Tooltip`), so
+  popups always draw above windows.
+- **Popups** — `Popup.Open` and `Popup.Menu` for anchored menus that close on an outside click or
+  Escape.
+- **Escape handling** — `Ui.HandleEscape` closes the topmost popup or window once per key press,
+  even when several mods poll Escape.
+- **Input gate** — `InputGate` stops keys, the scroll wheel and mouse clicks reaching the game while
+  a Prism window is open (`Surface.BlocksGameInput`, on by default). Each mod applies the required
+  Harmony patches with its own Harmony instance.
+- **Shared panels** — `DebugPanel` (logs and fields from every mod), `SettingsPanel` (renders the
+  settings schema) and `FpsCounter`.
+- **Font handling** — fonts are loaded from files, and `FontFix` works around OS fonts whose regular
+  weight is not named "Regular", which otherwise fail to load on the Steam Linux runtime.
+- **Update toast** — `Toast` and `ToastStack`, below.
+
+### Update toast
 
 ```csharp
-_toast = new Toast("Sapphire");              // canvas becomes "SapphireUpdateToastCanvas"
-_toast.Theme.Accent = Theme.Accent;          // mutable, so a runtime re-skin follows
-_toast.Set(new ToastContent {                // null hides; call it every tick
-    Key = "avail:" + tag,                    // identity: dismissing this one doesn't suppress the next
+_toast = new Toast("Sapphire");              // canvas is named "SapphireUpdateToastCanvas"
+_toast.Theme.Accent = Theme.Accent;          // theme values can change at runtime
+_toast.Set(new ToastContent {                // null hides the card; call every tick
+    Key = "avail:" + tag,                    // dismissing one key does not suppress another
     Title = "Update available: " + tag,
     Hint = "Click to update",
     AutoHide = true,
@@ -133,27 +165,22 @@ _toast.Set(new ToastContent {                // null hides; call it every tick
 _toast.Tick();
 ```
 
-`Toast` owns the card — building, slotting, sliding, hover, the × that fades in on hover, the
-progress bar, the dismiss-key bookkeeping that stops a timed-out card sliding straight back in. The
-host owns the meaning and pushes it in as plain strings, which also keeps Unity objects on the main
-thread when the update check runs on a worker.
+`Toast` handles the card itself: layout, positioning, animation, hover, the close button, the
+progress bar, and remembering dismissed messages. The mod supplies the content as plain values, so
+an update check running on a worker thread does not need to touch Unity objects.
 
-`ToastStack` is the cross-mod convention: canvas `<Mod>UpdateToastCanvas`, card `UpdateToast`,
-measured in screen pixels so a foreign canvas with a different scaler still reports the box it
-covers. Quartz already follows it, so its toast and ours stack instead of overlapping.
+`ToastStack` keeps toasts from different mods from overlapping. Each mod names its toast canvas
+`<Mod>UpdateToastCanvas` and its card `UpdateToast`; cards are measured in screen pixels, so canvases
+with different scalers stack correctly. Quartz follows the same convention.
 
 ## Status
 
-Stage 1, arbitration (claims, keys, settings schema): done, adopted by Sapphire and Bismuth. Quartz
-is waiting.
+- Claims, the key registry and the settings schema are used by Bismuth and Sapphire. Quartz has not
+  adopted them yet.
+- PrismLib.UI is being adopted screen by screen. Interface code moves here when more than one mod
+  would otherwise keep its own copy; code that depends on one mod's state stays in that mod.
 
-PrismLib.UI has the update toast. More of the shared interface follows the same rule: it belongs
-here when both mods would otherwise keep their own copy, and it stays in the mod when it needs that
-mod's own state. A shared settings *renderer* is deliberately not planned — Quartz already generates
-settings pages from a settings class, and a third one would be the duplication this is meant to
-remove.
+## License
 
-## Licence
-
-MIT — see [LICENSE](LICENSE). The mods that link it are GPL-3.0; a permissive library keeps that
-choice theirs.
+MIT — see [LICENSE](LICENSE). The mods that use PrismLib are licensed under GPL-3.0; a permissive
+license for the library leaves that choice to each mod.
