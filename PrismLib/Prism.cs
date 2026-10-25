@@ -33,15 +33,39 @@ namespace PrismLib
         public static ModHandle Register(string id, Version version)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentException("mod id required", nameof(id));
+            ModHandle h;
             lock (_lock)
             {
-                ModHandle h;
                 if (_mods.TryGetValue(id, out h)) return h;
                 h = new ModHandle(id, version ?? new Version(0, 0, 0));
                 _mods[id] = h;
                 Log("PrismLib: " + id + " " + h.Version + " registered (lib " + Version + ")");
-                return h;
             }
+            DescribeOwnSettings();
+            return h;
+        }
+
+        /* The library's own settings, first in the settings window (Order below any mod's). Owned by
+           a handle that is not in the loaded-mods list: PrismLib is the host, not one of the mods. */
+        public const string FpsKey = "fps.show";
+
+        private static bool _ownDescribed;
+
+        private static void DescribeOwnSettings()
+        {
+            lock (_lock) { if (_ownDescribed) return; _ownDescribed = true; }
+            Settings.Register(new ModHandle("PrismLib", Version), new[]
+            {
+                new SettingEntry
+                {
+                    Id = FpsKey, Kind = SettingKind.Bool, Label = "Show FPS", Page = "PrismLib", Group = "Display",
+                    Tooltip = "Frame rate in the bottom-right corner, for every Prism mod",
+                    Keywords = new[] { "fps", "frame rate", "framerate", "performance" },
+                    Order = int.MinValue,
+                    Get = () => Config.GetBool(FpsKey),
+                    Set = v => Config.SetBool(FpsKey, Convert.ToBoolean(v)),
+                },
+            });
         }
 
         /// Is another Prism mod present, and which version? Replaces each mod's own reflection probe.

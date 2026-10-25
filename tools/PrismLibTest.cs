@@ -27,6 +27,20 @@ static class PrismLibTest
         Check(Prism.IsLoaded("bismuth", out v) && v == new Version(2, 3, 0), "IsLoaded is case-insensitive and reports the version");
         Check(!Prism.IsLoaded("Quartz", out v) && v == null, "an absent mod reports false");
 
+        Console.WriteLine("PrismLib's own settings");
+        bool fpsListed = false, fpsFirst = false, first = true;
+        foreach (var kv in Settings.Search(""))
+        {
+            if (kv.Value.Id == Prism.FpsKey) { fpsListed = kv.Key == "PrismLib"; fpsFirst = first; }
+            first = false;
+        }
+        Check(fpsListed, "the FPS setting is described, owned by PrismLib");
+        Check(fpsFirst, "it comes before every mod's settings");
+        Check(!Prism.IsLoaded("PrismLib", out v), "PrismLib's own handle is not listed as a loaded mod");
+        bool found = false;
+        foreach (var kv in Settings.Search("fps")) if (kv.Value.Id == Prism.FpsKey) found = true;
+        Check(found, "searching 'fps' finds it");
+
         Console.WriteLine("claims");
         string denied = null;
         Claims.Denied += (asker, key, owner) => denied = asker + "/" + key + "/" + owner;
@@ -119,7 +133,7 @@ static class PrismLibTest
             new SettingEntry { Id = "ui.scale", Kind = SettingKind.Float, Label = "UI scale", Get = () => 1.0 },
         });
         Check(Count(Settings.Of("Sapphire")) == 2, "an entry without a getter is dropped");
-        Check(Count(Settings.Search(null)) == 3, "an empty query returns everything from every mod");
+        Check(Count(Settings.Search(null)) == 4, "an empty query returns everything from every mod (and PrismLib's own)");
         var hits = new List<KeyValuePair<string, SettingEntry>>(Settings.Search("bpm"));
         Check(hits.Count == 1 && hits[0].Key == "Sapphire", "search finds one setting and names its owner");
         Check(Count(Settings.Search("tempo")) == 1, "a keyword matches when the label does not");
@@ -129,7 +143,7 @@ static class PrismLibTest
         hits[0].Value.Set(true);
         Check(stored && (bool)hits[0].Value.Get(), "Get/Set round-trip through the owning mod");
         a.DescribeSettings(new SettingEntry[0]);
-        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 1, "re-describing replaces only that mod's entries");
+        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 2, "re-describing replaces only that mod's entries");
 
         Console.WriteLine("diagnostics");
         int reads = 0;

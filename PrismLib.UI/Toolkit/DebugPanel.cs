@@ -39,6 +39,9 @@ namespace PrismLib.UI.Toolkit
         private Label _status;
 
         private readonly List<string> _rows = new List<string>();
+        // Source line number of each row, formatted only when a row is bound — padding every line
+        // of a 200 KB log once a second cost more than drawing the dozen rows on screen.
+        private readonly List<int> _rowNumbers = new List<int>();
         private VisualElement _tabActions;
         private Button _numbersBtn, _debugBtn;
         private bool _lineNumbers = true;
@@ -61,6 +64,13 @@ namespace PrismLib.UI.Toolkit
         {
             _tabs = tabs ?? (() => new DebugTab[0]);
             Build(title, font);
+        }
+
+        /// While open, keep keys and the wheel from the game (InputGate). On by default.
+        public bool BlocksGameInput
+        {
+            get { return _surface == null || _surface.BlocksGameInput; }
+            set { if (_surface != null) _surface.BlocksGameInput = value; }
         }
 
         public bool Visible
@@ -107,7 +117,7 @@ namespace PrismLib.UI.Toolkit
             /* Above the game's own canvases. UI Toolkit panels order against uGUI by the same
                number, and at 200 this sat behind anything the game drew full-screen. Sapphire's
                update toast is at 32700, so stay under that. */
-            _surface = new Surface("PrismDebugPanel", 30000f, font);
+            _surface = new Surface("PrismDebugPanel", Layer.Window, font);
             var root = _surface.Root;
             if (root == null) return;
 
@@ -133,7 +143,8 @@ namespace PrismLib.UI.Toolkit
             {
                 var l = e as Label;
                 if (l == null || i < 0 || i >= _rows.Count) return;
-                l.text = _rows[i];
+                l.text = _lineNumbers && i < _rowNumbers.Count && _rowNumbers[i] > 0
+                    ? _rowNumbers[i].ToString().PadLeft(5) + "  " + _rows[i] : _rows[i];
                 l.style.color = Tint(_rows[i]);
             }, card);
             _list.style.overflow = Overflow.Hidden;
@@ -185,13 +196,38 @@ namespace PrismLib.UI.Toolkit
             RefreshFooter();
         }
 
+        /* What the rows were last built from. The periodic refresh used to re-read the source, re-split
+           it and Rebuild the list every second whether or not anything had changed — a few ms per
+           second on a fast machine with a long log, a visible stutter on a slow one. A tab with a
+           file behind it is now skipped while that file and the view settings are unchanged. */
+        private string _builtKey;
+        private long _builtLength = -1;
+        private DateTime _builtWrite;
+
         public void Refresh()
         {
             if (_list == null) return;
             if (_current.Count == 0) RebuildTabs();
 
-            _rows.Clear();
             string q = _filter != null ? (_filter.value ?? "").Trim() : "";
+            string path = _active >= 0 && _active < _current.Count ? _current[_active].Path : null;
+            string key = _active + "|" + path + "|" + q + "|" + _showDebug + "|" + _lineNumbers;
+            long length = -1;
+            DateTime write = default(DateTime);
+            if (!string.IsNullOrEmpty(path))
+            {
+                try
+                {
+                    var fi = new System.IO.FileInfo(path);
+                    if (fi.Exists) { length = fi.Length; write = fi.LastWriteTimeUtc; }
+                }
+                catch { }
+            }
+            if (length >= 0 && key == _builtKey && length == _builtLength && write == _builtWrite) return;
+            _builtKey = key; _builtLength = length; _builtWrite = write;
+
+            _rows.Clear();
+            _rowNumbers.Clear();
             int total = 0, hidden = 0;
             if (_active >= 0 && _active < _current.Count)
             {
@@ -200,7 +236,7 @@ namespace PrismLib.UI.Toolkit
                 // A source is somebody else's delegate reading a file: it may throw, and it must not
                 // take the debug view down with it.
                 try { lines = tab.Lines != null ? tab.Lines() : null; }
-                catch (Exception e) { _rows.Add("<source threw: " + e.Message + ">"); }
+                catch (Exception e) { _rows.Add("<source threw: " + e.Message + ">"); _rowNumbers.Add(0); }
                 if (lines != null)
                 {
                     int n = 0;
@@ -211,13 +247,16 @@ namespace PrismLib.UI.Toolkit
                         if (q.Length > 0 && !Match(line, q)) continue;
                         // Numbered by position in the SOURCE, not in the filtered view — a line
                         // number that shifts when you type in the filter is worse than none.
-                        _rows.Add(_lineNumbers ? n.ToString().PadLeft(5) + "  " + line : line);
+                        _rows.Add(line);
+                        _rowNumbers.Add(n);
                     }
                 }
             }
 
-            _list.itemsSource = _rows;
-            _list.Rebuild();
+            // Same list object every time, so the existing row elements are re-bound in place rather
+            // than torn down and rebuilt.
+            if (_list.itemsSource != _rows) _list.itemsSource = _rows;
+            _list.RefreshItems();
             if (_status != null)
                 _status.text = _rows.Count + " of " + total + " line(s)"
                              + (hidden > 0 ? ", " + hidden + " debug hidden" : "");

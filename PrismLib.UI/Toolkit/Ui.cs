@@ -32,6 +32,17 @@ namespace PrismLib.UI.Toolkit
 
         public static bool AnyWindowOpen => OpenWindows > 0;
 
+        /// A visible surface wants the keyboard and wheel to itself — see InputGate.
+        public static bool BlocksGameInput
+        {
+            get
+            {
+                for (int i = 0; i < Stack.Count; i++)
+                    if (Stack[i].Visible && Stack[i].BlocksGameInput) return true;
+                return false;
+            }
+        }
+
         /* Is the pointer actually over one of our windows?
 
            AnyWindowOpen was too blunt for the editor's scroll-zoom: with a panel open anywhere on
@@ -107,23 +118,61 @@ namespace PrismLib.UI.Toolkit
             }
         }
 
-        /* Open surfaces, oldest first. Two windows exist now (debug and settings), so "which one
-           is on top" and "which one does Escape close" both need an answer, and neither can come
-           from Unity: separate UIDocument panels are ordered by sortingOrder, not by click. */
+        /* Open surfaces, bottom first: by layer, then by raise order (Surface.BringToFront keeps it
+           so). "Which one is on top" and "which one does Escape close" both need an answer, and
+           neither can come from Unity: separate UIDocument panels are ordered by sortingOrder,
+           not by click. */
         internal static readonly List<Surface> Stack = new List<Surface>();
 
-        /// Closes the most recently raised window. Returns false when none was open, so a caller
-        /// polling Escape knows whether to let the key through to the game.
-        public static bool CloseTop()
+        /* Escape, answered in one place. Walks the layers top-down — a popup before a modal before
+           a window — and the first visible surface takes it: a focused text field gives up focus
+           first (the way any desktop app treats Escape in a field), then the surface's own handler
+           runs, else it hides. Returns false when nothing was open, so the caller lets the key
+           through to the game.
+
+           At most once per frame. Every Prism mod polls Escape in its own Update and calls this, so
+           with two mods installed one press used to close two windows. A mod that already spent
+           this frame's Escape — cancelling a keybind capture — says so with ConsumeEscape. */
+        public static bool HandleEscape()
         {
+            if (_escapeFrame == Time.frameCount) return _escapeResult;
+            _escapeFrame = Time.frameCount;
+            _escapeResult = false;
             for (int i = Stack.Count - 1; i >= 0; i--)
             {
-                if (!Stack[i].Visible) continue;
-                Stack[i].Visible = false;
-                return true;
+                var s = Stack[i];
+                if (!s.Visible) continue;
+                var focused = s.Root != null && s.Root.panel != null && s.Root.panel.focusController != null
+                    ? s.Root.panel.focusController.focusedElement as VisualElement : null;
+                // The focus controller is the shared panel's, so only a field inside THIS surface counts.
+                if (focused != null && s.Root.Contains(focused))
+                    for (var e = focused; e != null; e = e.parent)
+                        if (IsTextInput(e.GetType())) { focused.Blur(); Log("Escape: blurred a field in " + s.Name); return _escapeResult = true; }
+                if (s.EscapeHandler != null)
+                {
+                    try { _escapeResult = s.EscapeHandler(); Log("Escape: " + s.Name + " handler -> " + _escapeResult); }
+                    catch (Exception e) { Log("Escape handler threw: " + e.Message); _escapeResult = true; }
+                    return _escapeResult;
+                }
+                s.Visible = false;
+                Log("Escape: hid " + s.Name);
+                return _escapeResult = true;
             }
             return false;
         }
+
+        /// This frame's Escape is spent (a keybind capture took it) — HandleEscape will not act on it.
+        public static void ConsumeEscape()
+        {
+            _escapeFrame = Time.frameCount;
+            _escapeResult = true;
+        }
+
+        private static int _escapeFrame = -1;
+        private static bool _escapeResult;
+
+        /// The mods' Escape poll. Same as HandleEscape — kept so their bridges need no change.
+        public static bool CloseTop() => HandleEscape();
         public static VisualElement Box(VisualElement parent = null)
         {
             var e = new VisualElement();

@@ -68,6 +68,10 @@
         <Compile Include="Toolkit\Nav.cs" />
         <Compile Include="Toolkit\SettingsPanel.cs" />
         <Compile Include="Toolkit\DebugPanel.cs" />
+        <Compile Include="Toolkit\Popup.cs" />
+        <Compile Include="Toolkit\InputGate.cs" />
+        <Compile Include="Toolkit\FpsCounter.cs" />
+        <Compile Include="Toolkit\FontFix.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

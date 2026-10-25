@@ -57,7 +57,7 @@ for dir in "$MODS"/*/; do
 done
 
 # ...and the source trees, so their next build compiles against the same thing.
-for repo in ../Sapphire ../Bismuth; do
+for repo in ../Sapphire ../Bismuth ../sapphire ../bismuth; do
     [ -d "$repo/lib" ] || continue
     cp "$DLL" "$UIDLL" "$repo/lib/"
     echo "refreshed  $repo/lib"

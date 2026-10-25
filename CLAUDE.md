@@ -258,6 +258,88 @@ still logs `alt+<key>` for anything that comes up later.
 **`DescribeSettings` REPLACES** everything a mod described; it does not append. Build the list and
 hand it over once.
 
+**Fonts load from FILES, then by family name** (`Surface.FileFontAsset`). A family+style FontAsset only
+works while TextCore can find that family again — it reloads the face by name whenever it adds
+glyphs, and on Steam Linux Runtime that reload asks for "DejaVu Sans" / "Regular", which
+fontconfig's "Book"-tagged DejaVu does not answer to: the asset built fine, then every label drew
+nothing. Inside the runtime container the game sees its own DejaVu under `/usr/share/fonts` and the
+host's fonts under `/run/host/usr/share/fonts`. Every panel also gets one shared `PanelTextSettings`
+whose default font is ours and whose fallback list is empty — left null, UI Toolkit falls back to a
+built-in default that does the same failing OS lookup.
+
+**Bold is a real face, not faux bold.** The bold file is attached as weight 700
+(`fontWeightTable[7].regularTypeface`); without it UI Toolkit dilates the regular SDF glyphs, which
+came out smeared on every header.
+
+**UMM's window showed blank or borrowed text on Linux — fixed by `FontFix`.** UMM's IMGUI font is a
+dynamic OS font ("DejaVu Sans"); TextCore builds a FontAsset for it with the style hard-coded to
+"Regular", and fontconfig tags DejaVu's regular weight "Book" (often the only family in the Steam
+runtime). Every label failed every frame — ~10,000 "Unable to find a font file" lines a second — and
+the window, with nothing of its own to draw, showed whatever TextCore generated last (a Prism label,
+then the FPS counter on every label). `FontFix` patches `FontAsset.CreateFontAsset(family, style,
+size)` (through the mod's Harmony, like InputGate): a "Regular" miss retries "Book"/"Normal"/…, and
+every result, misses included, is cached. Measured: errors 10k/s → 0, UMM text back.
+
+**Layers.** `Surface` takes a `Layer` (Window, Popup, Modal, Tooltip); each owns a band of
+`PanelSettings.sortingOrder` (30000/31000/31500/32000), so raising a window never lifts it over an
+open popup. `Ui.Stack` is kept in (layer, raise) order. A uGUI canvas sorted higher than the panel
+still draws on top — Bismuth's uGUI menu covers popups, which is correct, not a band failure.
+
+**Popups** (`Popup.Open`, `Popup.Menu`) share one Popup-layer surface, sit under their anchor (above
+it when there is no room), take the anchor's window scale, and close on an outside click (a
+transparent catcher under the card), on Escape, when their window hides, or when the anchor leaves
+the panel. Place from the PANEL's size — a just-shown surface has no layout yet.
+
+**PrismLib has settings of its own** (`PrismLib.Config`: key=value in `<mods root>/PrismLib/settings.txt`,
+beside the DLL). They are described under an owner "PrismLib" that is NOT a loaded mod, at
+`Order = int.MinValue`, so they come first in Prism · Settings. The first is `fps.show`: the FPS
+readout moved out of Bismuth (and Quartz) into `FpsCounter` — bottom-right, where Bismuth's sat — on
+the new `Layer.Hud`, which is never in `Ui.Stack`, never counted as open, never closed by Escape and
+never blocks input. Bridges call `FpsCounter.Tick(setting)` every frame; it counts a frame once even
+with two mods ticking. Bismuth carries an old `ShowFps = true` across once.
+
+**Performance, measured 2026-10-25** (frame-time probe, Linux, fast CPU): windows add nothing per
+frame once built (10.0 ms avg / 12–14 ms worst at 100 FPS, open or closed); first open is one
+80–100 ms spike. The debug window used to re-read, re-split and `Rebuild()` its list every second —
+now it skips while the tab's file and the view are unchanged and `RefreshItems()` in place, with line
+numbers formatted only for bound rows. The big Linux lag source was the font failure above (UMM's
+window, and PrismLib's own panels before fonts were loaded from files) — ~10,000 log lines a second.
+Changing UMM's `UIFont` does not help (in the runtime UMM resets it to the only family it can see),
+and neither does `GUI.skin.font` (UMM overwrites it in ScaleGUI).
+
+**Windows keep keys and the wheel from the game** (`InputGate`, `Surface.BlocksGameInput`, on by
+default; `DebugPanel`/`SettingsPanel` pass it through). While any visible surface has it, Unity's
+`GetKey`/`GetKeyDown`/`GetKeyUp`, `mouseScrollDelta` and scroll axes, and RDInput's
+`GetMain`/`WentDown`/`IsDown`/`GetState` read as nothing pressed. PrismLib.UI has no Harmony, so each
+mod calls `InputGate.EnsureInstalled(id, postfix)` every frame with a delegate that patches through
+its own Harmony — the first wins, and `Uninstalled(id)` on master-off lets the other take over. Each
+mod runs its own UI update and the bridge tick inside `InputGate.Exempt`, or the Escape/chord/wheel
+polls that drive Prism would be blocked too; autoplay is a registered bypass. Verified in-game: with
+a window open, presses neither move the level-select planet nor open the pause menu.
+
+- **The key that closes a window is still down for the rest of that frame.** A hiding surface holds
+  the gate shut until the frame ends, or Escape closed the window and then paused the game behind it.
+- **Engine calls (icalls) cannot be patched** on the game's Mono + UMM Harmony 2.3.6 ("Invalid IL
+  code"). `GetKey(KeyCode)` & co. are managed wrappers and patch fine; `GetMouseButton*` and
+  `anyKeyDown` ARE icalls. So mouse buttons are gated at the CALLERS: an IL scan finds every
+  Assembly-CSharp method calling them (18 on the 2026-10-22 build, incl. Rewired's
+  `UnityInputSource`, which feeds uGUI) and the mod transpiles each call to `InputGate.MouseButton*`
+  (patch kind `"redirect"`). `anyKeyDown` stays ungated.
+- **UI Toolkit reads the same `Input` calls**, but only through
+  `DefaultEventSystem.LegacyInputProcessor.Input`; every method of that wrapper runs exempt
+  (prefix + finalizer), so windows keep their clicks and wheel. A mod's own uGUI panels stay
+  clickable through `AddMouseExemption` (Sapphire: `PanelKit.AnyPanelHovered`, Bismuth: its menu).
+- Verified in-game: with a window open, clicks no longer move the level-select planet. NOT verified:
+  real clicks on Prism controls — `ydotool` presses never reach UI Toolkit, gate or no gate.
+- A mod's own postfix on a gated method may run BEFORE the gate's and still see the key (Bismuth's
+  `KeyLimiter press` log does) — that is not the game seeing it.
+
+**Escape is answered once** (`Ui.HandleEscape`; `CloseTop` routes to it): the topmost visible
+surface takes it — a focused text field in it blurs first, then its `EscapeHandler` (the popup host
+closes only its newest popup), else it hides. At most once per frame, because every mod's bridge
+polls Escape and calls it; a mod that spent the key on a keybind capture says so with
+`Ui.ConsumeEscape`. The game still sees Escape (pause menu) — the key is the game's.
+
 **Steps 2, 4, 5 and 6 are blocked behind 3**, and doing them early breaks things rather than
 helping: a page shell has nothing to put on it before the widgets exist, and `DragHandle`,
 `ResizeHandle`, `RoundedRectGraphic`, `PolyGraphic` and `FieldNav` are still what every uGUI panel
@@ -286,10 +368,14 @@ Nothing in PrismLib or PrismLib.UI references UMM. The mod's own entry point cal
 
 ## Testing
 
-The game cannot be scripted — it is a paid Steam title with no headless mode. Anything visual is
-verified by a human reloading in-game (UMM Ctrl+F10) and screenshotting. So: put logic that can be
-checked offline in `PrismLib.dll` and check it in `tools/PrismLibTest.cs`; the game also swallows
-exceptions silently, so instrument rather than assume.
+There is no headless mode. On macOS anything visual is verified by a human reloading in-game (UMM
+Ctrl+F10) and screenshotting. On the Linux/Hyprland machine it can be driven from a shell:
+`steam -applaunch 977950`, wait for the mod's log line, `ydotool key …` for chords (Alt+Shift+D is
+`56:1 42:1 32:1 32:0 42:0 56:0`; needs `ydotoold` running), `hyprctl dispatch 'hl.dsp.cursor.move({x=…, y=…})'`
+to place the pointer, and `grim -o <output>` to screenshot. Pointer MOVES reach UI Toolkit (hover
+works); `ydotool` button presses reach the GAME (they move the level-select planet) but never
+register as clicks in UI Toolkit, so trigger a widget from code to test it. Either way: put logic that can be checked offline in `PrismLib.dll` and check it in
+`tools/PrismLibTest.cs`; the game also swallows exceptions silently, so instrument rather than assume.
 
 ## Conventions
 

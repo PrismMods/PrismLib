@@ -76,6 +76,13 @@ namespace PrismLib.UI.Toolkit
             Build(title, font);
         }
 
+        /// While open, keep keys and the wheel from the game (InputGate). On by default.
+        public bool BlocksGameInput
+        {
+            get { return _surface == null || _surface.BlocksGameInput; }
+            set { if (_surface != null) _surface.BlocksGameInput = value; }
+        }
+
         public bool Visible
         {
             get { return _surface != null && _surface.Visible; }
@@ -121,7 +128,7 @@ namespace PrismLib.UI.Toolkit
         {
             // Named from the title, so a mod's own menu and the library's window are distinct
             // GameObjects with distinct saved geometry rather than two things called the same.
-            _surface = new Surface(Slug(title) + "Panel", 30000f, font);
+            _surface = new Surface(Slug(title) + "Panel", Layer.Window, font);
             if (_surface.Root == null) return;
 
             _window = new Window(_surface.Root, Slug(title), title,

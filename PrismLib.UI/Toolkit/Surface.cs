@@ -20,6 +20,10 @@ namespace PrismLib.UI.Toolkit
 
        One Surface per window. Sorting order decides what sits above what; the update toast's uGUI
        canvas is at 32700, so panels stay well below it. */
+    /* Hud draws under every window and is not a window: never in Ui.Stack, never counted as open,
+       never closed by Escape, never withholding input — a readout like the FPS counter. */
+    public enum Layer { Hud, Window, Popup, Modal, Tooltip }
+
     public sealed class Surface : IDisposable
     {
         private GameObject _go;
@@ -27,9 +31,30 @@ namespace PrismLib.UI.Toolkit
 
         public VisualElement Root { get; private set; }
 
-        /// name is used for the GameObject, so it shows up in a hierarchy dump as "<Mod>Prism…".
+        public Layer Layer { get; }
+
+        public string Name { get; }
+
+        /// While visible, keep keys and the wheel away from the game (InputGate). On by default:
+        /// a window you are typing or scrolling in should not also drive the world behind it.
+        public bool BlocksGameInput { get; set; } = true;
+
+        /* Called instead of hiding when Escape reaches this surface. The popup host uses it to
+           close only its newest popup rather than every one at once. Return true when consumed. */
+        internal Func<bool> EscapeHandler;
+
+        /// Raised when the surface hides or is disposed — a popup closes with the window it came from.
+        internal event Action Hidden;
+
+        /// The old signature. sortingOrder is ignored now: a window's order comes from its band.
         public Surface(string name, float sortingOrder = 100f, UnityEngine.TextCore.Text.FontAsset font = null)
+            : this(name, Layer.Window, font) { }
+
+        /// name is used for the GameObject, so it shows up in a hierarchy dump as "<Mod>Prism…".
+        public Surface(string name, Layer layer, UnityEngine.TextCore.Text.FontAsset font = null)
         {
+            Layer = layer;
+            Name = name;
             Ui.Log("Surface '" + name + "': creating UI Toolkit panel");
             _settings = ScriptableObject.CreateInstance<PanelSettings>();
             _settings.name = name + "PanelSettings";
@@ -40,9 +65,13 @@ namespace PrismLib.UI.Toolkit
             _settings.referenceResolution = new Vector2Int(1920, 1080);
             _settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
             _settings.match = 0.5f;
-            _settings.sortingOrder = sortingOrder;
+            _settings.textSettings = TextSettings(font);
 
-            Ui.Stack.Add(this);
+            // Starts visible (as the GameObject does), so it counts as open until hidden — the
+            // count used to start one short, and the first hide took OpenWindows negative.
+            if (Layer != Layer.Hud) Ui.OpenWindows++;
+            else BlocksGameInput = false;
+            BringToFront();
             _go = new GameObject(name);
             UnityEngine.Object.DontDestroyOnLoad(_go);
             var doc = _go.AddComponent<UIDocument>();
@@ -91,6 +120,25 @@ namespace PrismLib.UI.Toolkit
         }
 
         private static FontAsset _fallback, _mono;
+        private static PanelTextSettings _textSettings;
+
+        /* Every panel's text settings, with OUR face as the default. Left null, UI Toolkit falls
+           back to a built-in default that names an OS "DejaVu Sans" / "Regular" — which the Steam
+           runtime cannot resolve — and retries it for every label on every frame: ~10,000 "Unable
+           to load font face" lines a second, blank labels, and (once a real font was supplied)
+           every label drawing the same string. One shared instance; the fallback list is emptied
+           so nothing reaches for an OS font behind our back. */
+        private static PanelTextSettings TextSettings(FontAsset preferred)
+        {
+            if (_textSettings != null) return _textSettings;
+            _textSettings = ScriptableObject.CreateInstance<PanelTextSettings>();
+            _textSettings.name = "PrismPanelTextSettings";
+            _textSettings.defaultFontAsset = preferred ?? Fallback();
+            _textSettings.fallbackFontAssets = new System.Collections.Generic.List<FontAsset>();
+            Ui.Log("Surface: panel text settings, default font "
+                   + (_textSettings.defaultFontAsset != null ? _textSettings.defaultFontAsset.name : "NONE"));
+            return _textSettings;
+        }
 
         /* Regular, in that order, because a name match alone is not enough — see OsFontAsset. */
         private static readonly string[] _styles = { "Regular", "Book", "Normal", "Medium", "" };
@@ -101,8 +149,97 @@ namespace PrismLib.UI.Toolkit
         public static FontAsset Mono()
         {
             if (_mono != null) return _mono;
-            _mono = OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, 14);
+            _mono = FileFontAsset(_monoFiles, 14)
+                 ?? OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, 14);
             return _mono ?? Fallback();
+        }
+
+        /* Font FILES, tried before any family-name lookup. A family+style asset only works while
+           TextCore can find that family again: it reloads the face by name whenever it adds glyphs,
+           and on Steam Linux Runtime that reload asks for style "Regular" — which fontconfig's
+           "Book"-tagged DejaVu does not answer to. The asset was created fine and then every
+           frame logged "Unable to load font face" and drew nothing (232k lines in one session).
+           A path-built asset reloads by path, which cannot miss.
+
+           Pairs of regular + bold: the bold file becomes the asset's real 700 weight (see
+           AttachBold). Inside the runtime container the game sees its own DejaVu under
+           /usr/share/fonts and the host's fonts under /run/host. */
+        private static readonly string[][] _sansFiles =
+        {
+            new[] { "/run/host/usr/share/fonts/noto/NotoSans-Regular.ttf", "/run/host/usr/share/fonts/noto/NotoSans-Bold.ttf" },
+            new[] { "/usr/share/fonts/noto/NotoSans-Regular.ttf", "/usr/share/fonts/noto/NotoSans-Bold.ttf" },
+            new[] { "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf" },
+            new[] { "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" },
+            new[] { "/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf" },
+            new[] { "/run/host/usr/share/fonts/TTF/DejaVuSans.ttf", "/run/host/usr/share/fonts/TTF/DejaVuSans-Bold.ttf" },
+            new[] { @"C:\Windows\Fonts\segoeui.ttf", @"C:\Windows\Fonts\segoeuib.ttf" },
+            new[] { @"C:\Windows\Fonts\arial.ttf", @"C:\Windows\Fonts\arialbd.ttf" },
+        };
+
+        private static readonly string[][] _monoFiles =
+        {
+            new[] { "/run/host/usr/share/fonts/noto/NotoSansMono-Regular.ttf", "/run/host/usr/share/fonts/noto/NotoSansMono-Bold.ttf" },
+            new[] { "/usr/share/fonts/noto/NotoSansMono-Regular.ttf", "/usr/share/fonts/noto/NotoSansMono-Bold.ttf" },
+            new[] { "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf" },
+            new[] { "/usr/share/fonts/TTF/DejaVuSansMono.ttf", "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf" },
+            new[] { "/run/host/usr/share/fonts/TTF/DejaVuSansMono.ttf", "/run/host/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf" },
+            new[] { @"C:\Windows\Fonts\consola.ttf", @"C:\Windows\Fonts\consolab.ttf" },
+        };
+
+        // Printable ASCII plus the symbols the panels draw (arrows, ×, ✕, ▾, ↶ ↷, …, •).
+        private static readonly string _preload = BuildPreload();
+
+        private static string BuildPreload()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (char c = ' '; c <= '~'; c++) sb.Append(c);
+            sb.Append("×✕▾▸◂▴←→↑↓↶↷…•—–·°");
+            return sb.ToString();
+        }
+
+        private static FontAsset FileFontAsset(string[][] candidates, int pointSize)
+        {
+            foreach (var pair in candidates)
+            {
+                if (!System.IO.File.Exists(pair[0])) continue;
+                var fa = FromFile(pair[0], pointSize);
+                if (fa == null) continue;
+                Ui.Log("Surface: font file " + pair[0]);
+                if (pair.Length > 1 && System.IO.File.Exists(pair[1])) AttachBold(fa, FromFile(pair[1], pointSize), pair[1]);
+                return fa;
+            }
+            return null;
+        }
+
+        private static FontAsset FromFile(string path, int pointSize)
+        {
+            try
+            {
+                var fa = FontAsset.CreateFontAsset(path, 0, pointSize, 9,
+                    UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024);
+                if (fa != null)
+                {
+                    fa.name = System.IO.Path.GetFileNameWithoutExtension(path);
+                    string missing;
+                    bool all = fa.TryAddCharacters(_preload, out missing);
+                    Ui.Log("Surface: preloaded " + fa.name + (all ? "" : " (missing: " + missing + ")"));
+                }
+                return fa;
+            }
+            catch (Exception e) { Ui.Log("Surface: font file '" + path + "' failed: " + e.Message); return null; }
+        }
+
+        /* A real bold face for FontStyle.Bold. Without one UI Toolkit fakes bold by dilating the
+           regular glyphs' SDF edge, which at panel sizes comes out smeared and blurry — every header
+           and title. Weight 700 is slot 7 of the weight table; the text generator uses a typeface
+           found there instead of faking it. */
+        private static void AttachBold(FontAsset regular, FontAsset bold, string what)
+        {
+            if (regular == null || bold == null) return;
+            var table = regular.fontWeightTable;
+            if (table == null || table.Length < 8) { Ui.Log("Surface: no weight table — bold stays synthesised"); return; }
+            table[7].regularTypeface = bold;
+            Ui.Log("Surface: bold face " + what);
         }
 
         /* An OS font, built once. Cheap insurance: every mod has a different font pipeline and any
@@ -123,8 +260,8 @@ namespace PrismLib.UI.Toolkit
         private static FontAsset Fallback()
         {
             if (_fallback != null) return _fallback;
-            _fallback = OsFontAsset(
-                new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, 16);
+            _fallback = FileFontAsset(_sansFiles, 16)
+                     ?? OsFontAsset(new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, 16);
             return _fallback;
         }
 
@@ -152,6 +289,11 @@ namespace PrismLib.UI.Toolkit
                     if (fa != null)
                     {
                         Ui.Log("Surface: OS font asset '" + family + "' style '" + style + "'");
+                        // The family's own bold, where the OS has one (macOS's Helvetica Neue does).
+                        FontAsset bold = null;
+                        try { bold = FontAsset.CreateFontAsset(family, "Bold", pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA); }
+                        catch { }
+                        AttachBold(fa, bold, family + " Bold");
                         return fa;
                     }
                 }
@@ -176,10 +318,22 @@ namespace PrismLib.UI.Toolkit
             {
                 if (_visible == value) return;
                 _visible = value;
-                Ui.OpenWindows += value ? 1 : -1;
+                if (Layer != Layer.Hud) Ui.OpenWindows += value ? 1 : -1;
                 if (value) BringToFront();
                 if (Root != null) Root.style.display = value ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!value)
+                {
+                    if (BlocksGameInput) InputGate.HoldThisFrame();
+                    RaiseHidden();
+                }
             }
+        }
+
+        private void RaiseHidden()
+        {
+            var h = Hidden;
+            if (h == null) return;
+            try { h(); } catch (Exception e) { Ui.Log("Surface Hidden handler threw: " + e.Message); }
         }
 
         /// One-shot geometry report: proves layout actually ran and where the element landed.
@@ -199,22 +353,44 @@ namespace PrismLib.UI.Toolkit
             e.RegisterCallback(cb);
         }
 
-        /* Raise above every other Prism window. sortingOrder is what orders separate UIDocument
-           panels, so raising means taking a number above the highest anyone has used — a counter
-           rather than a swap, because two panels sharing a number order arbitrarily. */
+        /* Raise above everything else in this surface's layer. sortingOrder is what orders separate
+           UIDocument panels, so raising means taking a number above the highest in use — a counter
+           rather than a swap, because two panels sharing a number order arbitrarily.
+
+           Each layer owns a band of numbers, so a window raised a thousand times still sits under
+           an open popup, and nothing climbs into the update toast's canvas at 32700. A band that
+           runs out renumbers its surfaces in stacking order. Ui.Stack is kept in the same order
+           (layer, then raise), so walking it backwards always meets the topmost surface first. */
         public void BringToFront()
         {
+            if (Layer == Layer.Hud) { if (_settings != null) _settings.sortingOrder = _bandBase[0]; return; }
             Ui.Stack.Remove(this);
-            Ui.Stack.Add(this);
-            if (_settings != null) _settings.sortingOrder = ++_topOrder;
+            int at = Ui.Stack.Count;
+            while (at > 0 && Ui.Stack[at - 1].Layer > Layer) at--;
+            Ui.Stack.Insert(at, this);
+
+            int b = (int)Layer;
+            if (_bandNext[b] + 1f >= _bandBase[b] + _bandSpan[b]) Renumber(Layer);
+            else if (_settings != null) _settings.sortingOrder = ++_bandNext[b];
         }
 
-        private static float _topOrder = 30000f;
+        private static readonly float[] _bandBase = { 29000f, 30000f, 31000f, 31500f, 32000f };
+        private static readonly float[] _bandSpan = { 1000f, 1000f, 500f, 500f, 500f };
+        private static readonly float[] _bandNext = { 29000f, 30000f, 31000f, 31500f, 32000f };
+
+        private static void Renumber(Layer layer)
+        {
+            int b = (int)layer;
+            float n = _bandBase[b];
+            foreach (var s in Ui.Stack)
+                if (s.Layer == layer && s._settings != null) s._settings.sortingOrder = ++n;
+            _bandNext[b] = n;
+        }
 
         public void Dispose()
         {
             Ui.Stack.Remove(this);
-            if (_visible) { _visible = false; Ui.OpenWindows--; }
+            if (_visible) { _visible = false; if (Layer != Layer.Hud) Ui.OpenWindows--; RaiseHidden(); }
             if (_go != null) UnityEngine.Object.Destroy(_go);
             if (_settings != null) UnityEngine.Object.Destroy(_settings);
             _go = null; _settings = null; Root = null;
