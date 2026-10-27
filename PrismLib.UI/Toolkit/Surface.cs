@@ -211,6 +211,19 @@ namespace PrismLib.UI.Toolkit
             return null;
         }
 
+        /* The 5-arg overload that asks for SDF is Unity 6 only; ADOFAI 2.9's Unity 2022 has just the
+           3-arg one (a raster atlas — see OsFontAsset for what that costs bold text). Found by
+           reflection: naming it would bind the dll to Unity 6. */
+        private static readonly System.Reflection.MethodInfo _osSdf = typeof(FontAsset).GetMethod("CreateFontAsset",
+            new[] { typeof(string), typeof(string), typeof(int), typeof(int), typeof(UnityEngine.TextCore.LowLevel.GlyphRenderMode) });
+
+        private static FontAsset OsFont(string family, string style, int pointSize)
+        {
+            if (_osSdf != null)
+                return (FontAsset)_osSdf.Invoke(null, new object[] { family, style, pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA });
+            return FontAsset.CreateFontAsset(family, style, pointSize);
+        }
+
         private static FontAsset FromFile(string path, int pointSize)
         {
             try
@@ -282,8 +295,7 @@ namespace PrismLib.UI.Toolkit
                            offsets the glyph. Headers and titles (the only bold text) rendered as
                            a garbled double-strike while plain-weight labels were fine — request
                            SDF explicitly so faux-bold has an edge to dilate. */
-                        fa = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset(
-                            family, style, pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA);
+                        fa = OsFont(family, style, pointSize);
                     }
                     catch (Exception e) { Ui.Log("Surface: OS font '" + family + "' (" + style + ") failed: " + e.Message); continue; }
                     if (fa != null)
@@ -291,7 +303,7 @@ namespace PrismLib.UI.Toolkit
                         Ui.Log("Surface: OS font asset '" + family + "' style '" + style + "'");
                         // The family's own bold, where the OS has one (macOS's Helvetica Neue does).
                         FontAsset bold = null;
-                        try { bold = FontAsset.CreateFontAsset(family, "Bold", pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA); }
+                        try { bold = OsFont(family, "Bold", pointSize); }
                         catch { }
                         AttachBold(fa, bold, family + " Bold");
                         return fa;

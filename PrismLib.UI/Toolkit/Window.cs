@@ -50,7 +50,9 @@ namespace PrismLib.UI.Toolkit
         {
             if (Search == null) return;
             _searchBox.style.display = DisplayStyle.Flex;
-            Search.textEdition.placeholder = placeholder;
+            // Unity 6 only; ADOFAI 2.9 (Unity 2022) has no placeholder, so it is set by name.
+            var ph = typeof(ITextEdition).GetProperty("placeholder");
+            if (ph != null) ph.SetValue(Search.textEdition, placeholder, null);
             Search.RegisterValueChangedCallback(e =>
             {
                 _searchClear.style.display = string.IsNullOrEmpty(e.newValue)

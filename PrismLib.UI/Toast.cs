@@ -273,7 +273,7 @@ namespace PrismLib.UI
             t.fontSize = size;
             t.alignment = TextAlignmentOptions.MidlineLeft;
             t.color = color;
-            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.enableWordWrapping = false;   // textWrappingMode is Unity 6's TMP only (ADOFAI 2.9 is Unity 2022)
             t.overflowMode = TextOverflowModes.Ellipsis;
             t.raycastTarget = false;
             return t;
