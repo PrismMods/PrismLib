@@ -109,6 +109,13 @@ Three landmines, all found by the first panel that opened:
 - **Never show/hide a panel with `SetActive`.** `UIDocument` rebuilds its visual tree in `OnEnable`,
   so the second show hands back a different `rootVisualElement` and everything built into the old
   one is orphaned — the panel comes back empty with no error. Use `display`.
+- **Before Unity 6 a font does not inherit (ADOFAI 2.9 runs Unity 2022).** A font definition set on
+  the root never reached the labels: each resolved no font and laid out 0px tall, so the window drew
+  shapes and no text. Font loading was fine — set per element, both the SDF asset and a legacy Font
+  draw. `Surface.HandDownFonts` stamps the nearest ancestor's font onto every text element on a 200ms
+  schedule there (rows recycle, popups add elements later). Unity 2022 also has no 5-arg SDF family
+  overload, so on macOS the font comes from files (Arial, Menlo — which also carries the panel icons
+  Arial lacks, hence it is the sans face's fallback).
 - **A panel with no font draws no text.** `TMP_FontAsset.sourceFontFile` is an editor-time reference
   and is null in a player build, so mods generally cannot supply a `Font`; `Surface` falls back to
   `Font.CreateDynamicFontFromOSFont` (on demand — not safe at `Time.frameCount == 0`).

@@ -97,6 +97,7 @@ namespace PrismLib.UI.Toolkit
                     Ui.Log("Surface '" + name + "': SDF font " + font.name);
                 }
                 else SetFont(null);   // never leave a panel fontless; see Fallback
+                if (!FontsInherit) Root.schedule.Execute(() => HandDownFonts(Root, default(StyleFontDefinition))).Every(200);
             }
         }
 
@@ -117,6 +118,34 @@ namespace PrismLib.UI.Toolkit
             if (fa == null) { Ui.Log("Surface: NO FONT AVAILABLE — labels will be blank"); return; }
             Root.style.unityFontDefinition = FontDefinition.FromSDFFont(fa);
             Ui.Log("Surface: font " + fa.name + " (OS fallback)");
+        }
+
+        /* Before Unity 6 (ADOFAI 2.9 runs Unity 2022) a font set on an element does not reach its
+           descendants: in game every label under the root resolved no font and laid out 0px tall,
+           so no text drew at all; set on the label itself, it draws. There each surface hands its
+           font down by hand on a short schedule — list rows are recycled and popups add elements
+           later — giving every text element the nearest font set above it, as inheritance would.
+           Stamped elements are marked so a later font change above them still reaches them. */
+        private static readonly bool FontsInherit = UnityMajor() >= 6000;
+        private const string Stamped = "prism-font-handed-down";
+
+        private static int UnityMajor()
+        {
+            int n = 0;
+            foreach (char c in Application.unityVersion) { if (!char.IsDigit(c)) break; n = n * 10 + (c - '0'); }
+            return n;
+        }
+
+        private static void HandDownFonts(VisualElement e, StyleFontDefinition inherited)
+        {
+            var own = e.style.unityFontDefinition;
+            if (own.keyword == StyleKeyword.Undefined && !e.ClassListContains(Stamped)) inherited = own;
+            else if (e is UnityEngine.UIElements.TextElement && inherited.keyword == StyleKeyword.Undefined)
+            {
+                e.style.unityFontDefinition = inherited;
+                e.AddToClassList(Stamped);
+            }
+            for (int i = 0; i < e.hierarchy.childCount; i++) HandDownFonts(e.hierarchy[i], inherited);
         }
 
         private static FontAsset _fallback, _mono;
@@ -149,9 +178,16 @@ namespace PrismLib.UI.Toolkit
         public static FontAsset Mono()
         {
             if (_mono != null) return _mono;
+            return MonoOnly() ?? Fallback();
+        }
+
+        private static FontAsset MonoOnly()
+        {
+            if (_mono != null) return _mono;
             _mono = FileFontAsset(_monoFiles, 14)
+                 ?? (_osSdf == null ? FileFontAsset(_macMonoFiles, 14) : null)
                  ?? OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, 14);
-            return _mono ?? Fallback();
+            return _mono;
         }
 
         /* Font FILES, tried before any family-name lookup. A family+style asset only works while
@@ -184,6 +220,22 @@ namespace PrismLib.UI.Toolkit
             new[] { "/usr/share/fonts/TTF/DejaVuSansMono.ttf", "/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf" },
             new[] { "/run/host/usr/share/fonts/TTF/DejaVuSansMono.ttf", "/run/host/usr/share/fonts/TTF/DejaVuSansMono-Bold.ttf" },
             new[] { @"C:\Windows\Fonts\consola.ttf", @"C:\Windows\Fonts\consolab.ttf" },
+        };
+
+        /* macOS's own files, used FIRST only where there is no SDF family lookup (Unity 2022, ADOFAI
+           2.9): there the family path builds a raster atlas and every Prism label drew nothing.
+           On Unity 6 the family lookup keeps Helvetica Neue / Menlo, so 3.x looks unchanged.
+           Menlo.ttc's face 0 is its regular weight. */
+        private static readonly string[][] _macSansFiles =
+        {
+            new[] { "/System/Library/Fonts/Supplemental/Arial.ttf", "/System/Library/Fonts/Supplemental/Arial Bold.ttf" },
+            new[] { "/Library/Fonts/Arial.ttf", "/Library/Fonts/Arial Bold.ttf" },
+        };
+
+        private static readonly string[][] _macMonoFiles =
+        {
+            new[] { "/System/Library/Fonts/Menlo.ttc" },
+            new[] { "/System/Library/Fonts/Supplemental/Courier New.ttf", "/System/Library/Fonts/Supplemental/Courier New Bold.ttf" },
         };
 
         // Printable ASCII plus the symbols the panels draw (arrows, ×, ✕, ▾, ↶ ↷, …, •).
@@ -274,7 +326,16 @@ namespace PrismLib.UI.Toolkit
         {
             if (_fallback != null) return _fallback;
             _fallback = FileFontAsset(_sansFiles, 16)
+                     ?? (_osSdf == null ? FileFontAsset(_macSansFiles, 16) : null)
                      ?? OsFontAsset(new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, 16);
+            /* The monospace face as the sans face's fallback: Arial (macOS on 2.9) lacks the panel
+               icons (✕ ▾ ▸ ◂ ▴ ↶ ↷) and drew boxes; Menlo preloads every one of them. */
+            var mono = MonoOnly();
+            if (_fallback != null && mono != null && mono != _fallback)
+            {
+                if (_fallback.fallbackFontAssetTable == null) _fallback.fallbackFontAssetTable = new System.Collections.Generic.List<FontAsset>();
+                if (!_fallback.fallbackFontAssetTable.Contains(mono)) _fallback.fallbackFontAssetTable.Add(mono);
+            }
             return _fallback;
         }
 
