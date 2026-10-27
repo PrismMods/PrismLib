@@ -290,13 +290,14 @@ namespace PrismLib.UI.Toolkit
 
         /* Application.OpenURL on the containing directory. Deliberately not a per-mod delegate:
            every mod would implement the same Process.Start and get the quoting wrong differently,
-           and this needs no shell at all. */
+           and this needs no shell at all. Built through Uri: "file://" + a raw path breaks on
+           Windows drive letters and backslashes, and on the spaces every Steam path has. */
         private static void Reveal(string path)
         {
             try
             {
                 var dir = System.IO.Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir)) Application.OpenURL("file://" + dir);
+                if (!string.IsNullOrEmpty(dir)) Application.OpenURL(new Uri(dir).AbsoluteUri);
             }
             catch (Exception e) { Ui.Log("DebugPanel: could not open folder: " + e.Message); }
         }

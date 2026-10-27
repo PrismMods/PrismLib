@@ -141,6 +141,13 @@ namespace PrismLib.UI.Toolkit
             }
             psi.UseShellExecute = false;
             psi.CreateNoWindow = true;
+            // The loader's injection env: MelonLoader's arm64 dylib kills arm64e system binaries
+            // (dyld exit 134), so the helper would die after the game had already quit.
+            var injected = new List<string>();
+            foreach (string k in psi.EnvironmentVariables.Keys)
+                if (k.StartsWith("DYLD_", StringComparison.OrdinalIgnoreCase) || k.Equals("LD_PRELOAD", StringComparison.OrdinalIgnoreCase))
+                    injected.Add(k);
+            foreach (var k in injected) psi.EnvironmentVariables.Remove(k);
             try { Process.Start(psi); }
             catch (Exception e) { Ui.Log("RestartPrompt: helper failed, not quitting: " + e.Message); return; }
             Ui.Log("RestartPrompt: restarting through Steam");
