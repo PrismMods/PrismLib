@@ -148,6 +148,10 @@ static class PrismLibTest
         a.DescribeSettings(new SettingEntry[0]);
         Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 3, "re-describing replaces only that mod's entries");
 
+        Console.WriteLine("guards");
+        Check(Guards.Major("2.9.8") == 2 && Guards.Major("3.4.0") == 3 && Guards.Major("10.1") == 10, "Major reads the leading integer");
+        Check(Guards.Major("") == -1 && Guards.Major(null) == -1 && Guards.Major("v3") == -1, "no leading digit is -1");
+
         Console.WriteLine("diagnostics");
         int reads = 0;
         a.AddLog("SapphireLog", () => { reads++; return new[] { "one", "two" }; }, "/tmp/s.txt");
