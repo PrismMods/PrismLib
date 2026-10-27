@@ -6,7 +6,7 @@ namespace PrismLib.UI.Toolkit
 {
     /* Undo and redo for settings, for the whole session.
 
-       Bismuth had one undo, inside the position editor, holding a stack of restore closures with no
+       Topaz had one undo, inside the position editor, holding a stack of restore closures with no
        redo — so it could take back the last drag and nothing else. This is the general version: any
        widget that changes a value records how to put it back and how to do it again, and the two
        stacks last as long as the game does.

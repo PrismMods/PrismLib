@@ -9,7 +9,7 @@ namespace PrismLib.UI.Toolkit
 
        The game is Unity 6000.3 and ships UIElementsModule, so UI Toolkit is available to mods:
        retained-mode elements, flexbox layout, and ListView's row recycling, none of which the uGUI
-       framework in Bismuth and Sapphire gets without hand-rolling it.
+       framework in Topaz and Sapphire gets without hand-rolling it.
 
        What is NOT available is the authoring half. USS and UXML are imported by the editor, so a
        mod cannot compile a stylesheet at runtime — every style here is set in C# and every theme

@@ -7,7 +7,7 @@ namespace PrismLib
 
     /* One setting, described rather than drawn.
 
-       Bismuth's and Sapphire's settings panels are nearly the same screen written twice, and
+       Topaz's and Sapphire's settings panels are nearly the same screen written twice, and
        Quartz's problem is that it has so many settings nobody can find one. Both are the same
        missing piece: a mod should DECLARE its settings — type, label, group, keywords, how to
        read and write the value — and let a shared renderer lay them out, search them and report

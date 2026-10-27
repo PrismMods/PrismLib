@@ -1,6 +1,6 @@
 # PrismLib
 
-Shared library under QuartzTeam's ADOFAI mods — Bismuth, Sapphire, and Quartz later. Public repo
+Shared library under QuartzTeam's ADOFAI mods — Topaz, Sapphire, and Quartz later. Public repo
 `PrismMods/PrismLib`, MIT (the mods that link it are GPL-3.0). Split out of Sapphire's workspace on
 2026-09-24; the conversation history that produced it is in this project's transcript.
 
@@ -54,7 +54,7 @@ management for logs, player data, save data and fields, so the mods feel like on
 
 `./dev.sh` — build both assemblies, run the offline test, and install straight into the game:
 `PrismLib.dll` where the bootstrapper would have put it, `PrismLib.UI.dll` into every mod folder
-that already has a copy, and both into `../Sapphire/lib` and `../Bismuth/lib`. Then reload in-game
+that already has a copy, and both into `../Sapphire/lib` and `../Topaz/lib`. Then reload in-game
 (Ctrl+F10).
 
 **No release for a test.** The release path exists so end users get the library; it has no business
@@ -160,11 +160,11 @@ Order for the rest, each step leaving both mods building:
 4. `DragHandle` / `ResizeHandle` / `RoundedRectGraphic` / `PolyGraphic` → delete; `Window` and UI
    Toolkit's own styling replace them.
 5. `FieldNav` → delete; UI Toolkit has focus navigation.
-6. Mod-specific screens (Sapphire's editor palettes, Bismuth's `GameUiEditor`/`LocationEditor`) stay
+6. Mod-specific screens (Sapphire's editor palettes, Topaz's `GameUiEditor`/`LocationEditor`) stay
    in their mods, built on the shared widgets.
 
 Done: step 1 (both Themes push their palette into `Tokens`, so a shared window wears the colours of
-the mod that opened it); Bismuth's `LogViewer` (268 lines) deleted — the shared debug window
+the mod that opened it); Topaz's `LogViewer` (268 lines) deleted — the shared debug window
 replaced it.
 
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
@@ -255,9 +255,9 @@ dragger are laid out by the default style sheet, so each has to be placed by han
 container's midline. Fixing only the dragger moves the mismatch instead of removing it — the track
 was not centred either.
 
-**Bismuth's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
+**Topaz's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
 letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
-false for every key but `B` while Bismuth's panel is open, *including for Bismuth's own poll*, so
+false for every key but `B` while Topaz's panel is open, *including for Topaz's own poll*, so
 the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
 through the block. `Ctrl+Shift+D` / `Ctrl+Shift+P` remain as fallbacks and `PrismBridge.AltDiag`
 still logs `alt+<key>` for anything that comes up later.
@@ -290,7 +290,7 @@ every result, misses included, is cached. Measured: errors 10k/s → 0, UMM text
 **Layers.** `Surface` takes a `Layer` (Window, Popup, Modal, Tooltip); each owns a band of
 `PanelSettings.sortingOrder` (30000/31000/31500/32000), so raising a window never lifts it over an
 open popup. `Ui.Stack` is kept in (layer, raise) order. A uGUI canvas sorted higher than the panel
-still draws on top — Bismuth's uGUI menu covers popups, which is correct, not a band failure.
+still draws on top — Topaz's uGUI menu covers popups, which is correct, not a band failure.
 
 **Popups** (`Popup.Open`, `Popup.Menu`) share one Popup-layer surface, sit under their anchor (above
 it when there is no room), take the anchor's window scale, and close on an outside click (a
@@ -300,10 +300,10 @@ the panel. Place from the PANEL's size — a just-shown surface has no layout ye
 **PrismLib has settings of its own** (`PrismLib.Config`: key=value in `<mods root>/PrismLib/settings.txt`,
 beside the DLL). They are described under an owner "PrismLib" that is NOT a loaded mod, at
 `Order = int.MinValue`, so they come first in Prism · Settings. The first is `fps.show`: the FPS
-readout moved out of Bismuth (and Quartz) into `FpsCounter` — bottom-right, where Bismuth's sat — on
+readout moved out of Topaz (and Quartz) into `FpsCounter` — bottom-right, where Topaz's sat — on
 the new `Layer.Hud`, which is never in `Ui.Stack`, never counted as open, never closed by Escape and
 never blocks input. Bridges call `FpsCounter.Tick(setting)` every frame; it counts a frame once even
-with two mods ticking. Bismuth carries an old `ShowFps = true` across once.
+with two mods ticking. Topaz carries an old `ShowFps = true` across once.
 
 **Performance, measured 2026-10-25** (frame-time probe, Linux, fast CPU): windows add nothing per
 frame once built (10.0 ms avg / 12–14 ms worst at 100 FPS, open or closed); first open is one
@@ -335,10 +335,10 @@ a window open, presses neither move the level-select planet nor open the pause m
 - **UI Toolkit reads the same `Input` calls**, but only through
   `DefaultEventSystem.LegacyInputProcessor.Input`; every method of that wrapper runs exempt
   (prefix + finalizer), so windows keep their clicks and wheel. A mod's own uGUI panels stay
-  clickable through `AddMouseExemption` (Sapphire: `PanelKit.AnyPanelHovered`, Bismuth: its menu).
+  clickable through `AddMouseExemption` (Sapphire: `PanelKit.AnyPanelHovered`, Topaz: its menu).
 - Verified in-game: with a window open, clicks no longer move the level-select planet. NOT verified:
   real clicks on Prism controls — `ydotool` presses never reach UI Toolkit, gate or no gate.
-- A mod's own postfix on a gated method may run BEFORE the gate's and still see the key (Bismuth's
+- A mod's own postfix on a gated method may run BEFORE the gate's and still see the key (Topaz's
   `KeyLimiter press` log does) — that is not the game seeing it.
 
 **Escape is answered once** (`Ui.HandleEscape`; `CloseTop` routes to it): the topmost visible

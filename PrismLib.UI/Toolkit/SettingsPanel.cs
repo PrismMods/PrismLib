@@ -30,7 +30,7 @@ namespace PrismLib.UI.Toolkit
 
     /* Every mod's settings in one window, grouped and searchable.
 
-       This is the screen the widget port exists for. Bismuth's and Sapphire's settings panels were
+       This is the screen the widget port exists for. Topaz's and Sapphire's settings panels were
        described as "almost identical" and they are: the same rows, drawn by two copies of the same
        UIBuilder. Here a mod DESCRIBES its settings and this draws them, so the layout is written
        once and a new setting is a line of data rather than a screenful of layout code.

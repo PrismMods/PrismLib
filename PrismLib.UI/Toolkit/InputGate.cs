@@ -81,7 +81,7 @@ namespace PrismLib.UI.Toolkit
             finally { _exempt--; }
         }
 
-        /// A mod's own "I am reading input for myself" flag (Bismuth's RawReadExempt).
+        /// A mod's own "I am reading input for myself" flag (Topaz's RawReadExempt).
         public static void AddExemption(Func<bool> probe) { if (probe != null) _exemptProbes.Add(probe); }
 
         /// The pointer is on this mod's own (non-Prism) UI, which must stay clickable.

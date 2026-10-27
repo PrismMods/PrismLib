@@ -4,9 +4,9 @@ using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
 {
-    /* The colour picker, ported from Bismuth's.
+    /* The colour picker, ported from Topaz's.
 
-       Bismuth's is the one worth keeping of the three: a collapsed row showing the swatch and hex,
+       Topaz's is the one worth keeping of the three: a collapsed row showing the swatch and hex,
        which opens into a saturation/value square, a hue strip, an optional alpha strip, numeric
        channels and a hex field. Sapphire's wheel and the three bare sliders that were here first
        both lose to it — the square is how people actually pick a colour, and the hex field is how

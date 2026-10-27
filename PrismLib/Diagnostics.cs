@@ -7,7 +7,7 @@ namespace PrismLib
     public sealed class LogSource
     {
         public string Owner;
-        public string Name;               // "SapphireLog", "BismuthLog"
+        public string Name;               // "SapphireLog", "TopazLog"
         public string Path;               // on disk, for an "open folder" button; may be null
         public Func<IEnumerable<string>> Tail;   // most recent lines, newest last
         public Action Clear;              // optional: wipes the file, for a "Clear" button

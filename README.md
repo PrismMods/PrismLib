@@ -1,6 +1,6 @@
 # PrismLib
 
-Shared library for the ADOFAI mods [Bismuth](https://github.com/PrismMods/Bismuth),
+Shared library for the ADOFAI mods [Topaz](https://github.com/PrismMods/Topaz),
 [Sapphire](https://github.com/PrismMods/Sapphire) and Quartz.
 
 When several mods are installed together, they can write the same game state — `RDC.auto`, the
@@ -175,7 +175,7 @@ with different scalers stack correctly. Quartz follows the same convention.
 
 ## Status
 
-- Claims, the key registry and the settings schema are used by Bismuth and Sapphire. Quartz has not
+- Claims, the key registry and the settings schema are used by Topaz and Sapphire. Quartz has not
   adopted them yet.
 - PrismLib.UI is being adopted screen by screen. Interface code moves here when more than one mod
   would otherwise keep its own copy; code that depends on one mod's state stays in that mod.

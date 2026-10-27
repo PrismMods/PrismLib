@@ -6,14 +6,14 @@ using UnityEngine.UIElements;
 namespace PrismLib.UI.Toolkit
 {
     /// One stop. The host keeps its own model and maps to this — PrismLib.UI knows nothing about
-    /// Bismuth's ColorStop or anyone else's.
+    /// Topaz's ColorStop or anyone else's.
     public sealed class GradientStop
     {
         public float Position;
         public Color Colour = Color.white;
     }
 
-    /* The gradient editor, ported from Bismuth's.
+    /* The gradient editor, ported from Topaz's.
 
        A baked strip with a draggable marker per stop, and the selected stop's colour and position
        edited below it. Clicking empty strip adds a stop there; that is the interaction worth

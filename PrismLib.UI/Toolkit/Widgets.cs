@@ -308,7 +308,7 @@ namespace PrismLib.UI.Toolkit
             return b;
         }
 
-        /* Colour. The picker itself is ColourPicker — Bismuth's model, the best of the three the
+        /* Colour. The picker itself is ColourPicker — Topaz's model, the best of the three the
            mods had — and this is just the row that hosts it. */
         public static VisualElement Colour(VisualElement parent, string label, Color value,
                                            Action<Color> onChange, string tooltip = null,

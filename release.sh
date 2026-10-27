@@ -123,7 +123,7 @@ FEED="https://raw.githubusercontent.com/$REPO/main/prismlib.json"
 for _ in $(seq 1 30); do
     if curl -fsS "$FEED" 2>/dev/null | grep -q "\"version\": \"$VER\""; then
         echo "feed is live: $FEED"
-        echo "Next: ./lib/update-prismlib.sh in each mod (Sapphire, Bismuth)."
+        echo "Next: ./lib/update-prismlib.sh in each mod (Sapphire, Topaz)."
         exit 0
     fi
     sleep 10

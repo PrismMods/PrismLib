@@ -5,7 +5,7 @@ using System.IO;
 namespace PrismLib
 {
     /* PrismLib's own settings — things that belong to the suite rather than to any one mod (the FPS
-       display first; Bismuth and Quartz each used to draw their own).
+       display first; Topaz and Quartz each used to draw their own).
 
        A flat key=value file beside PrismLib.dll, in the shared folder every Prism mod already uses,
        so one switch serves every mod. Plain text and written whole on each change: it holds a

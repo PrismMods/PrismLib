@@ -6,7 +6,7 @@ namespace PrismLib.UI.Toolkit
 {
     /* Shared motion.
 
-       Sapphire grew a UiAnim that drives lerps from its per-frame Tick; Bismuth animates by hand in
+       Sapphire grew a UiAnim that drives lerps from its per-frame Tick; Topaz animates by hand in
        a few places and not at all in others, so the same action feels different depending on which
        mod drew the panel. UI Toolkit already has a scheduler and an animation system, so this is a
        thin set of named motions over it rather than another tween engine — and being named is the

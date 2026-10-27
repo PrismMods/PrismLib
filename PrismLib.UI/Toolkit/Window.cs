@@ -395,7 +395,7 @@ namespace PrismLib.UI.Toolkit
             Cursors.Set(grip, Cursors.Kind.ResizeCorner);
             Root.Add(grip);
 
-            /* A 3x3 dot grid with the top-left corner dropped, which is the grip Bismuth's panels
+            /* A 3x3 dot grid with the top-left corner dropped, which is the grip Topaz's panels
                already use. Dots rather than rotated bars: a rotation about a percentage origin
                moves the box as well as turning it, which is why the earlier staircase never lined
                up. */

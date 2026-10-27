@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace PrismLib
 {
-    /* PrismLib — the shared layer under Bismuth, Sapphire and Quartz.
+    /* PrismLib — the shared layer under Topaz, Sapphire and Quartz.
 
        It exists because those three mods fight over things the GAME owns exactly one of:
        autoplay, no-fail, the editor camera, the path lock, HUD visibility — and over the

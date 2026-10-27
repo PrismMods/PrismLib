@@ -17,7 +17,7 @@ namespace PrismLib.UI.Toolkit
         public Action Clear;
     }
 
-    /* The in-game debug view: every mod's log and state in one window, like Bismuth's log viewer
+    /* The in-game debug view: every mod's log and state in one window, like Topaz's log viewer
        but shared and not per-mod.
 
        Takes plain strings and delegates, NOT PrismLib types. That is deliberate — PrismLib.UI must

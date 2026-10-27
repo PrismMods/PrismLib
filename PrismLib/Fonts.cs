@@ -12,7 +12,7 @@ namespace PrismLib
     /* Shared font packs.
 
        Fonts live here rather than in a mod because they are big and every mod wants the same
-       ones: a Korean family runs to tens of megabytes, and Bismuth and Sapphire both restyle
+       ones: a Korean family runs to tens of megabytes, and Topaz and Sapphire both restyle
        game text. Installed once under PrismLib, a pack is visible to all of them — the
        alternative is each mod downloading its own copy of the same 30 MB.
 

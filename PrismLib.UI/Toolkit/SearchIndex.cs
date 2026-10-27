@@ -6,10 +6,10 @@ namespace PrismLib.UI.Toolkit
 {
     /* What the search box searches.
 
-       Ported from Bismuth's SettingsSearch: widgets register themselves as they are built, so the
+       Ported from Topaz's SettingsSearch: widgets register themselves as they are built, so the
        index is whatever the menu actually contains rather than a list somebody has to remember to
        update. The difference here is that pages are built lazily, so Nav builds each one once into
-       a throwaway container at startup purely to harvest its labels — the same thing Bismuth gets
+       a throwaway container at startup purely to harvest its labels — the same thing Topaz gets
        for free by building every tab up front.
 
        A hit knows its page, which is what lets a result navigate rather than just report. */
@@ -46,7 +46,7 @@ namespace PrismLib.UI.Toolkit
             CurrentGroup = null;
         }
 
-        /* Two characters minimum, copied from Bismuth's rule and for its reason: a colour picker's
+        /* Two characters minimum, copied from Topaz's rule and for its reason: a colour picker's
            R, G and B rows are labels too, and a search that offers "R" as a result is noise. */
         public static void Note(string label)
         {

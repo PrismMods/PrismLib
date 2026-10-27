@@ -38,7 +38,7 @@ namespace PrismLib.UI
 
     /* A top-right toast card: slides in, shows optional progress, closes on × or by timing out.
 
-       This is Sapphire's update toast with the Sapphire taken out. Bismuth wanted the same card,
+       This is Sapphire's update toast with the Sapphire taken out. Topaz wanted the same card,
        and copying 350 lines of Unity layout into a second mod — then a third — is how three mods
        end up with three slightly different toasts and three separate bugs.
 

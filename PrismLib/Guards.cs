@@ -9,7 +9,7 @@ namespace PrismLib
 
        Quartz targets ADOFAI 3.x. On 2.x its patches fail to build (scnGame.Play's "remakeFloors"
        parameter), and a Harmony replacement that fails to build takes every mod's patches on that
-       method with it — on 2.9.8 nothing Bismuth had on scnGame.Play ever ran. So on 2.x Quartz is
+       method with it — on 2.9.8 nothing Topaz had on scnGame.Play ever ran. So on 2.x Quartz is
        shut down through whichever loader runs it: MelonLoader's Unregister when MelonLoader is
        loaded (OnDeinitializeMelon → its runtime's Unload, and its ticks stop), otherwise UMM's
        own OnUnload (MainCore.Dispose) and Active = false — runtime only, nothing persisted, so a

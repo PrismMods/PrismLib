@@ -19,12 +19,12 @@ static class PrismLibTest
     {
         Prism.Log = _ => { };
         var a = Prism.Register("Sapphire", new Version(1, 0, 0));
-        var b = Prism.Register("Bismuth", new Version(2, 3, 0));
+        var b = Prism.Register("Topaz", new Version(2, 3, 0));
 
         Console.WriteLine("registry");
         Check(ReferenceEquals(a, Prism.Register("Sapphire", new Version(9, 9, 9))), "re-registering returns the same handle");
         Version v;
-        Check(Prism.IsLoaded("bismuth", out v) && v == new Version(2, 3, 0), "IsLoaded is case-insensitive and reports the version");
+        Check(Prism.IsLoaded("topaz", out v) && v == new Version(2, 3, 0), "IsLoaded is case-insensitive and reports the version");
         Check(!Prism.IsLoaded("Quartz", out v) && v == null, "an absent mod reports false");
 
         Console.WriteLine("PrismLib's own settings");
@@ -50,27 +50,27 @@ static class PrismLibTest
         var c1 = a.ClaimState(StateKey.Autoplay, "toggle");
         Check(c1 != null, "a free key is granted");
         Check(b.ClaimState(StateKey.Autoplay, "trainer") == null, "a held key is denied to the second asker");
-        Check(denied == "Bismuth/Autoplay/Sapphire", "the denial names asker, key and owner");
+        Check(denied == "Topaz/Autoplay/Sapphire", "the denial names asker, key and owner");
         Check(a.ClaimState(StateKey.Autoplay, "again") != null, "the owner may re-claim what it holds");
         Check(a.OwnsState(StateKey.Autoplay) && !b.OwnsState(StateKey.Autoplay), "OwnsState follows the owner");
         c1.Release();
         c1.Release();                                                   // releasing twice must not free someone else's later claim
         Check(Claims.OwnerOf(StateKey.Autoplay) == null, "release frees the key");
         var c2 = b.ClaimState(StateKey.Autoplay, "trainer");
-        Check(c2 != null && Claims.OwnerOf(StateKey.Autoplay) == "Bismuth", "the key is grantable again after release");
+        Check(c2 != null && Claims.OwnerOf(StateKey.Autoplay) == "Topaz", "the key is grantable again after release");
         c1.Release();
-        Check(Claims.OwnerOf(StateKey.Autoplay) == "Bismuth", "a stale Claim cannot release the new owner's key");
+        Check(Claims.OwnerOf(StateKey.Autoplay) == "Topaz", "a stale Claim cannot release the new owner's key");
         using (a.ClaimState(StateKey.EditorCamera, "path preview")) { }
         Check(Claims.OwnerOf(StateKey.EditorCamera) == null, "using() releases on scope exit");
         a.ClaimState(StateKey.PathLock, "lock");
         a.ClaimState(StateKey.EditorHud, "hide");
         Claims.ReleaseAll("Sapphire");
         Check(Claims.OwnerOf(StateKey.PathLock) == null && Claims.OwnerOf(StateKey.EditorHud) == null, "ReleaseAll drops every key one mod held");
-        Check(Claims.OwnerOf(StateKey.Autoplay) == "Bismuth", "ReleaseAll leaves other mods alone");
+        Check(Claims.OwnerOf(StateKey.Autoplay) == "Topaz", "ReleaseAll leaves other mods alone");
 
         Check(Claims.OwnerOf(StateKey.InputCapture) == null, "nobody holds the keyboard by default");
         using (b.ClaimState(StateKey.InputCapture, "panel open"))
-            Check(Claims.OwnerOf(StateKey.InputCapture) == "Bismuth" && !a.OwnsState(StateKey.InputCapture),
+            Check(Claims.OwnerOf(StateKey.InputCapture) == "Topaz" && !a.OwnsState(StateKey.InputCapture),
                   "a keyboard grab is visible to the mod that must stand down");
 
         /* The debug window aggregates EVERY mod's sources, so a second copy would show the same
@@ -81,7 +81,7 @@ static class PrismLibTest
         dbg.Release();
         Check(b.ClaimState(StateKey.DebugPanel, "hotkey") != null,
               "the other mod can take it once the owner is gone");
-        Claims.ReleaseAll("Bismuth");
+        Claims.ReleaseAll("Topaz");
 
         Console.WriteLine("keys");
         Keys.KeyName = i => "K" + i;
@@ -90,12 +90,12 @@ static class PrismLibTest
         a.BindKey("pan", 97, KeyMods.None, "Pan");
         Check(clashA == null, "the first binding is not a conflict");
         b.BindKey("auto", 97, KeyMods.None, "Autoplay");
-        Check(clashA != null && clashA.Owner == "Bismuth" && clashB.Owner == "Sapphire", "an overlap reports newcomer and incumbent");
+        Check(clashA != null && clashA.Owner == "Topaz" && clashB.Owner == "Sapphire", "an overlap reports newcomer and incumbent");
         clashA = null;
         a.BindKey("pan", 97, KeyMods.Shift, "Pan");                     // same id, rebound: replaces, no self-conflict
         Check(clashA == null, "a modifier makes it a different key");
         int n97 = 0;
-        foreach (var k in Keys.Wanting(97, KeyMods.None, "Bismuth")) n97++;
+        foreach (var k in Keys.Wanting(97, KeyMods.None, "Topaz")) n97++;
         Check(n97 == 0, "the rebind left nothing of Sapphire's on plain K97");
         int pairs = 0;
         foreach (var p in Keys.Conflicts()) pairs++;
@@ -155,7 +155,7 @@ static class PrismLibTest
         Console.WriteLine("diagnostics");
         int reads = 0;
         a.AddLog("SapphireLog", () => { reads++; return new[] { "one", "two" }; }, "/tmp/s.txt");
-        b.AddLog("BismuthLog", () => new[] { "x" }, null);
+        b.AddLog("TopazLog", () => new[] { "x" }, null);
         a.AddFields("Level", () => new[] { new KeyValuePair<string, string>("bpm", "120") });
         Check(Count(Diagnostics.Logs) == 2 && Count(Diagnostics.Fields) == 1, "sources register per mod");
         Check(reads == 0, "a source is pulled, not pushed — nothing read until someone looks");

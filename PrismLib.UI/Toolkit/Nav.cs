@@ -64,7 +64,7 @@ namespace PrismLib.UI.Toolkit
 
         /* Search shows RESULTS, not a filtered rail. Filtering the rail answers "which page might
            hold this", which is the question the user already could not answer; a result list
-           answers "here is the setting, and here is where it lives". Ported from Bismuth. */
+           answers "here is the setting, and here is where it lives". Ported from Topaz. */
         public void Filter(string query)
         {
             _filter = (query ?? "").Trim();

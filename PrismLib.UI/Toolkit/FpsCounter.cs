@@ -3,8 +3,8 @@ using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
 {
-    /* The frame-rate readout, shared by every Prism mod (Bismuth and Quartz each drew their own).
-       Bottom-right, 10px in, white with a shadow — where Bismuth's sat, so it does not move for
+    /* The frame-rate readout, shared by every Prism mod (Topaz and Quartz each drew their own).
+       Bottom-right, 10px in, white with a shadow — where Topaz's sat, so it does not move for
        anyone switching over.
 
        Driven, not self-running: each mod's bridge calls Tick every frame with the PrismLib setting,
