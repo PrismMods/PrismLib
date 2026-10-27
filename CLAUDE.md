@@ -257,7 +257,7 @@ was not centred either.
 
 **Topaz's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
 letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
-false for every key but `B` while Topaz's panel is open, *including for Topaz's own poll*, so
+false for every key but `T` while Topaz's panel is open, *including for Topaz's own poll*, so
 the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
 through the block. `Ctrl+Shift+D` / `Ctrl+Shift+P` remain as fallbacks and `PrismBridge.AltDiag`
 still logs `alt+<key>` for anything that comes up later.
