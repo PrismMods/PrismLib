@@ -72,6 +72,7 @@
         <Compile Include="Toolkit\InputGate.cs" />
         <Compile Include="Toolkit\FpsCounter.cs" />
         <Compile Include="Toolkit\FontFix.cs" />
+        <Compile Include="Toolkit\RestartPrompt.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

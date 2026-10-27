@@ -48,6 +48,8 @@ namespace PrismLib
         /* The library's own settings, first in the settings window (Order below any mod's). Owned by
            a handle that is not in the loaded-mods list: PrismLib is the host, not one of the mods. */
         public const string FpsKey = "fps.show";
+        /// What to do once a mod installs an update: 0 ask, 1 restart, 2 later (RestartPrompt's values).
+        public const string RestartKey = "update.restart";
 
         private static bool _ownDescribed;
 
@@ -65,7 +67,24 @@ namespace PrismLib
                     Get = () => Config.GetBool(FpsKey),
                     Set = v => Config.SetBool(FpsKey, Convert.ToBoolean(v)),
                 },
+                new SettingEntry
+                {
+                    Id = RestartKey, Kind = SettingKind.Enum, Label = "After a mod update", Page = "PrismLib", Group = "Updates",
+                    Tooltip = "What to do once a Prism mod has installed an update",
+                    Keywords = new[] { "restart", "update", "relaunch", "remember" },
+                    Order = int.MinValue + 1,
+                    Options = new[] { "Ask", "Restart now", "Restart later" },
+                    Get = () => GetRestartChoice(),
+                    Set = v => Config.Set(RestartKey, Convert.ToInt32(v).ToString()),
+                },
             });
+        }
+
+        // Bridges read the key through Config themselves, so they also work against a 0.3.9 install.
+        private static int GetRestartChoice()
+        {
+            int v;
+            return int.TryParse(Config.Get(RestartKey), out v) && v >= 0 && v <= 2 ? v : 0;
         }
 
         /// Is another Prism mod present, and which version? Replaces each mod's own reflection probe.

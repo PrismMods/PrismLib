@@ -40,6 +40,9 @@ static class PrismLibTest
         bool found = false;
         foreach (var kv in Settings.Search("fps")) if (kv.Value.Id == Prism.FpsKey) found = true;
         Check(found, "searching 'fps' finds it");
+        found = false;
+        foreach (var kv in Settings.Search("restart")) if (kv.Value.Id == Prism.RestartKey) found = kv.Key == "PrismLib" && Convert.ToInt32(kv.Value.Get()) == 0;
+        Check(found, "the restart choice is PrismLib's and defaults to Ask");
 
         Console.WriteLine("claims");
         string denied = null;
@@ -133,7 +136,7 @@ static class PrismLibTest
             new SettingEntry { Id = "ui.scale", Kind = SettingKind.Float, Label = "UI scale", Get = () => 1.0 },
         });
         Check(Count(Settings.Of("Sapphire")) == 2, "an entry without a getter is dropped");
-        Check(Count(Settings.Search(null)) == 4, "an empty query returns everything from every mod (and PrismLib's own)");
+        Check(Count(Settings.Search(null)) == 5, "an empty query returns everything from every mod (and PrismLib's own)");
         var hits = new List<KeyValuePair<string, SettingEntry>>(Settings.Search("bpm"));
         Check(hits.Count == 1 && hits[0].Key == "Sapphire", "search finds one setting and names its owner");
         Check(Count(Settings.Search("tempo")) == 1, "a keyword matches when the label does not");
@@ -143,7 +146,7 @@ static class PrismLibTest
         hits[0].Value.Set(true);
         Check(stored && (bool)hits[0].Value.Get(), "Get/Set round-trip through the owning mod");
         a.DescribeSettings(new SettingEntry[0]);
-        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 2, "re-describing replaces only that mod's entries");
+        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 3, "re-describing replaces only that mod's entries");
 
         Console.WriteLine("diagnostics");
         int reads = 0;
