@@ -157,6 +157,11 @@ namespace PrismLib.UI.Toolkit
         }
 
         private static FontAsset _fallback, _mono;
+        /* Glyphs are sampled well above the size they are drawn at. Masters of 14–16px, magnified by the
+           panel scale (1.4 on a 1440p screen) and again by a Retina backing scale, drew every edge soft —
+           the "blurry text" in every Prism window. Padding about a tenth of it, like TMP's 90/9: at 9px on
+           a 16px master the distance field was spread over half the glyph. */
+        private const int SamplePx = 64, PadPx = 6;
         private static PanelTextSettings _textSettings;
 
         /* Every panel's text settings, with OUR face as the default. Left null, UI Toolkit falls
@@ -192,9 +197,9 @@ namespace PrismLib.UI.Toolkit
         private static FontAsset MonoOnly()
         {
             if (_mono != null) return _mono;
-            _mono = FileFontAsset(_monoFiles, 14)
-                 ?? (_osSdf == null ? FileFontAsset(_macMonoFiles, 14) : null)
-                 ?? OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, 14);
+            _mono = FileFontAsset(_monoFiles, SamplePx)
+                 ?? (_osSdf == null ? FileFontAsset(_macMonoFiles, SamplePx) : null)
+                 ?? OsFontAsset(new[] { "Menlo", "SF Mono", "Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Courier New", "monospace" }, SamplePx);
             return _mono;
         }
 
@@ -280,7 +285,7 @@ namespace PrismLib.UI.Toolkit
         private static FontAsset OsFont(string family, string style, int pointSize)
         {
             if (_osSdf != null)
-                return (FontAsset)_osSdf.Invoke(null, new object[] { family, style, pointSize, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA });
+                return (FontAsset)_osSdf.Invoke(null, new object[] { family, style, pointSize, PadPx, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA });
             return FontAsset.CreateFontAsset(family, style, pointSize);
         }
 
@@ -288,7 +293,7 @@ namespace PrismLib.UI.Toolkit
         {
             try
             {
-                var fa = FontAsset.CreateFontAsset(path, 0, pointSize, 9,
+                var fa = FontAsset.CreateFontAsset(path, 0, pointSize, PadPx,
                     UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024);
                 if (fa != null)
                 {
@@ -333,9 +338,9 @@ namespace PrismLib.UI.Toolkit
         private static FontAsset Fallback()
         {
             if (_fallback != null) return _fallback;
-            _fallback = FileFontAsset(_sansFiles, 16)
-                     ?? (_osSdf == null ? FileFontAsset(_macSansFiles, 16) : null)
-                     ?? OsFontAsset(new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, 16);
+            _fallback = FileFontAsset(_sansFiles, SamplePx)
+                     ?? (_osSdf == null ? FileFontAsset(_macSansFiles, SamplePx) : null)
+                     ?? OsFontAsset(new[] { "Helvetica Neue", "Helvetica", "Arial", "Segoe UI", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Cantarell", "FreeSans" }, SamplePx);
             /* The monospace face as the sans face's fallback: Arial (macOS on 2.9) lacks the panel
                icons (✕ ▾ ▸ ◂ ▴ ↶ ↷) and drew boxes; Menlo preloads every one of them. */
             var mono = MonoOnly();

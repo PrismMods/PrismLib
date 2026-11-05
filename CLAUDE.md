@@ -281,6 +281,10 @@ host's fonts under `/run/host/usr/share/fonts`. Every panel also gets one shared
 whose default font is ours and whose fallback list is empty — left null, UI Toolkit falls back to a
 built-in default that does the same failing OS lookup.
 
+**Fonts are sampled at 64px, not at the size they draw.** 14–16px SDF masters with 9px padding were
+magnified by the panel scale (1.4 at 1440p) and a Retina backing scale, and every Prism window's text
+came out blurry; 64/6 fixed it (confirmed in-game 2026-11-05). Keep padding near a tenth of the size.
+
 **Bold is a real face, not faux bold.** The bold file is attached as weight 700
 (`fontWeightTable[7].regularTypeface`); without it UI Toolkit dilates the regular SDF glyphs, which
 came out smeared on every header.
