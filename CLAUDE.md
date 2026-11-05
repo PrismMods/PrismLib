@@ -103,6 +103,35 @@ scrolling a Prism list would also zoom the world behind it. Sapphire's `ZoomCame
 it. It cannot be enforced from the library — the input belongs to the game and the patch belongs to
 the mod.
 
+## The shared layout editor
+
+One full-screen session for moving every Prism mod's on-screen elements: Quartz's repositioning
+menu rebuilt on UI Toolkit (select, drag with edge/centre snapping, corner resize, rotation knob
+snapping to quarter turns, nine-way anchor with Closest, X/Y/size/rotation fields, crop mode,
+undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 1.
+
+- **Registry in `PrismLib.dll`** (`Layout`, `LayoutTarget`, `ModHandle.DescribeLayout`): every mod's
+  targets must reach one editor, so it is a single shared instance. Plain delegates; a second
+  `DescribeLayout` replaces the mod's list. A bridge calls `Layout.Unregister(<id>)` in Shutdown,
+  next to `Diagnostics.Unregister`.
+- **Editor in `PrismLib.UI`** (`LayoutEditor`, fed `EditTarget`s, which copy `LayoutTarget` field
+  for field plus `Owner`). The `StateKey.LayoutEditor` claim holder builds it over a source that
+  converts `Layout.All()`, opens it on `Layout.OpenRequested`, calls `Reload()` on `Layout.Changed`
+  and `Tick()` every frame. Without PrismLib.dll a mod can still feed its own targets directly.
+- **Conventions**: screen pixels, origin bottom-left; degrees counter-clockwise; anchors 0-8 in
+  reading order from the top-left; crop `{left, bottom, right, top}` as fractions trimmed. The
+  pure geometry is `LayoutMath` (BCL only, compiled straight into `tools/PrismLibTest.cs`).
+- Boxes are re-read from `GetBox` every tick, never cached. Every call into a mod goes through one
+  guard: a target whose mod went away is hidden and reported once, not every frame.
+- History keys are per gesture (`Owner/Id#n`), never per label: `History` coalesces same-key
+  entries within 0.9 s, and a label key would undo into whichever target is selected later. For the
+  same reason the inspector does not use `Widgets.Text`/`Choice`.
+- **Test rig**: `tools/LayoutProbe` (UMM dev mod; `build.sh` after `./dev.sh`). F9 opens the editor
+  over three boxes. An `autotest` file in its mod folder runs `AutoTest.cs` instead: synthetic
+  UI Toolkit events against the real panel, PASS/FAIL lines in its `probe.log`, then the game
+  quits. A still click must send down and up in the same frame, or the real mouse's own move event
+  lands between them and turns it into a drag.
+
 ## UI
 
 Unity **6000.3.211**, and the game ships `UnityEngine.UIElementsModule.dll`. Runtime UI Toolkit is
