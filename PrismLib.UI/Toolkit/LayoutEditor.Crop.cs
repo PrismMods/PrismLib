@@ -55,11 +55,9 @@ namespace PrismLib.UI.Toolkit
         {
             var c = Guard(f, () => (float[])f.T.GetCrop().Clone(), null);
             if (c == null) return;
-            c[side] = value;
-            if (side == 0) c[2] = Math.Min(c[2], 0.95f - Math.Max(0f, value));     // the dragged side wins
-            if (side == 2) c[0] = Math.Min(c[0], 0.95f - Math.Max(0f, value));
-            if (side == 1) c[3] = Math.Min(c[3], 0.95f - Math.Max(0f, value));
-            if (side == 3) c[1] = Math.Min(c[1], 0.95f - Math.Max(0f, value));
+            // The dragged edge stops with 5% left; the opposite edge is never pushed.
+            int opposite = (side + 2) % 4;
+            c[side] = Math.Max(0f, Math.Min(value, 0.95f - c[opposite]));
             c = LayoutMath.ClampCrop(c);
             Vector2 centre = g.C + Rotate(new Vector2((c[0] - c[2]) * g.W / 2f, (c[1] - c[3]) * g.H / 2f), g.Rot);
             Guard(f, () => { f.T.SetCrop(c); f.T.MoveTo(centre.x, centre.y); return true; }, false);
