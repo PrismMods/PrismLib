@@ -170,9 +170,9 @@ namespace PrismLib.UI.Toolkit
                toggles default on — a debug view that hides things by default sends people looking
                for a bug in the log instead of in the mod. */
             var numbers = Ui.Btn("#", () => { _lineNumbers = !_lineNumbers; RefreshFooter(); Refresh(); }, _window.Footer);
-            numbers.tooltip = "Line numbers";
+            numbers.tooltip = Words.T("Line numbers");
             var dbg = Ui.Btn("dbg", () => { _showDebug = !_showDebug; RefreshFooter(); Refresh(); }, _window.Footer);
-            dbg.tooltip = "Show [dbg] and [perf] lines";
+            dbg.tooltip = Words.T("Show [dbg] and [perf] lines");
             _numbersBtn = numbers; _debugBtn = dbg;
             _tabActions = Ui.Row(_window.Footer);
             RefreshFooter();

@@ -52,7 +52,7 @@ namespace PrismLib.UI.Toolkit
             _searchBox.style.display = DisplayStyle.Flex;
             // Unity 6 only; ADOFAI 2.9 (Unity 2022) has no placeholder, so it is set by name.
             var ph = typeof(ITextEdition).GetProperty("placeholder");
-            if (ph != null) ph.SetValue(Search.textEdition, placeholder, null);
+            if (ph != null) ph.SetValue(Search.textEdition, Words.T(placeholder), null);
             Search.RegisterValueChangedCallback(e =>
             {
                 _searchClear.style.display = string.IsNullOrEmpty(e.newValue)
@@ -216,8 +216,8 @@ namespace PrismLib.UI.Toolkit
             TitleBarRight.Add(redo);
             Action refreshHistory = () =>
             {
-                Enable(undo, History.CanUndo, "Undo " + (History.NextUndo ?? ""));
-                Enable(redo, History.CanRedo, "Redo " + (History.NextRedo ?? ""));
+                Enable(undo, History.CanUndo, History.NextUndo == null ? Words.T("Undo") : Words.F("Undo {0}", Words.T(History.NextUndo)));
+                Enable(redo, History.CanRedo, History.NextRedo == null ? Words.T("Redo") : Words.F("Redo {0}", Words.T(History.NextRedo)));
             };
             History.Changed += refreshHistory;
             refreshHistory();
@@ -286,7 +286,7 @@ namespace PrismLib.UI.Toolkit
             b.style.fontSize = Tokens.FontSize + 2f;
             Ui.SetPadding(b, 0f);
             b.style.unityTextAlign = TextAnchor.MiddleCenter;
-            b.tooltip = tip;
+            b.tooltip = Words.T(tip);
             return b;
         }
 

@@ -214,7 +214,7 @@ namespace PrismLib.UI.Toolkit
 
         public static Label Text(string text, VisualElement parent = null, float? size = null, Color? color = null)
         {
-            var l = new Label(text ?? "");
+            var l = new Label(Words.T(text ?? ""));
             l.style.fontSize = size ?? Tokens.FontSize;
             l.style.color = color ?? Theme.For(parent).Text;
             l.style.whiteSpace = WhiteSpace.NoWrap;
@@ -236,7 +236,7 @@ namespace PrismLib.UI.Toolkit
 
         public static Button Btn(string text, Action onClick, VisualElement parent = null)
         {
-            var b = new Button(onClick != null ? () => onClick() : (Action)null) { text = text ?? "" };
+            var b = new Button(onClick != null ? () => onClick() : (Action)null) { text = Words.T(text ?? "") };
             var t = Theme.For(parent);
             var c = new BtnColors { Rest = t.RowAlt, Hover = t.RowHover, Text = t.Text };
             b.userData = c;

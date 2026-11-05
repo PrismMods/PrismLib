@@ -286,6 +286,24 @@ host's fonts under `/run/host/usr/share/fonts`. Every panel also gets one shared
 whose default font is ours and whose fallback list is empty — left null, UI Toolkit falls back to a
 built-in default that does the same failing OS lookup.
 
+**Colours are per window (`Theme`); sizes stay global (`Tokens`).** Widgets read
+`Theme.For(element)`: the nearest themed ancestor (a Surface, a popup card that took its anchor's),
+else the `Theme.Use` scope being built, else `Theme.Default`, which IS the Tokens fields — so a
+bridge's `PushTokens` still works. Panels build their window in the constructor, so bridges build
+them inside their own scheme (`Wearing(() => new SettingsPanel(…))`); setting `.Theme` afterwards
+misses the chrome. `Theme.FromAccent` is Quartz's derivation. Each mod keeps its palette in a
+`Theme` refreshed by `PushTokens` (Topaz amber, Sapphire blue, Quartz red).
+
+**Text goes through `Words.T`** — `Ui.Text`, `Ui.Btn`, row labels and tooltips, setting rows on
+intake — so page code never calls it. English is the key. Mods' translators come first
+(`Words.AddTranslator(Loc.T)`, so their labels translate in any Prism window), then PrismLib.UI's
+own Korean table for its own words. `Words.Language` comes from the bridge's language setting. A
+duplicate key in that table's initializer would throw from the static constructor and take every
+string with it — check with `grep -o '{ "[^"]*",' Toolkit/Words.cs | sort | uniq -d`.
+
+`Theme` and `Words` are newer than 0.3.10: bridges reach them behind NoInlining + catch and hold
+a scheme as `object`, or an older copy loaded by another mod would stop the class loading.
+
 **Fonts are sampled at 64px, not at the size they draw.** 14–16px SDF masters with 9px padding were
 magnified by the panel scale (1.4 at 1440p) and a Retina backing scale, and every Prism window's text
 came out blurry; 64/6 fixed it (confirmed in-game 2026-11-05). Keep padding near a tenth of the size.

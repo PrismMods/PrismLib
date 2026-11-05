@@ -41,6 +41,8 @@ namespace PrismLib.UI.Toolkit
         /// Label on the left, whatever the caller adds on the right.
         public static VisualElement Row(VisualElement parent, string label, string tooltip = null)
         {
+            label = Words.T(label);       // before Note, so a search in the player's language finds it
+            tooltip = Words.T(tooltip);
             var row = Ui.Row(parent);
             row.style.minHeight = RowHeight;
             row.style.marginBottom = 2f;
@@ -295,7 +297,7 @@ namespace PrismLib.UI.Toolkit
                 if (!armed)
                 {
                     armed = true;
-                    b.text = "Sure?";
+                    b.text = Words.T("Sure?");
                     b.style.backgroundColor = Theme.For(b).Danger;
                     Anim.Pop(b);
                     return;
@@ -332,15 +334,15 @@ namespace PrismLib.UI.Toolkit
         {
             var host = Row(parent, label, tooltip);
             Button b = null;
-            b = Ui.Btn(string.IsNullOrEmpty(current) ? "unbound" : current, () =>
+            b = Ui.Btn(string.IsNullOrEmpty(current) ? Words.T("unbound") : current, () =>
             {
-                b.text = "press a key…";
+                b.text = Words.T("press a key…");
                 Ui.Highlight(b, true);
                 try
                 {
                     beginCapture(name =>
                     {
-                        b.text = string.IsNullOrEmpty(name) ? "unbound" : name;
+                        b.text = string.IsNullOrEmpty(name) ? Words.T("unbound") : name;
                         Ui.Highlight(b, false);
                         Anim.Pop(b);
                     });
@@ -435,6 +437,8 @@ namespace PrismLib.UI.Toolkit
         public static Button DangerButton(VisualElement parent, string text, Action onConfirm,
                                           string tooltip = null)
         {
+            text = Words.T(text);
+            tooltip = Words.T(tooltip);
             var row = Ui.Row(parent);
             row.style.minHeight = RowHeight;
             row.style.marginBottom = 2f;
@@ -445,7 +449,7 @@ namespace PrismLib.UI.Toolkit
             bool armed = false;
             b = Ui.Btn(text, () =>
             {
-                if (!armed) { armed = true; b.text = "Sure?"; b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
+                if (!armed) { armed = true; b.text = Words.T("Sure?"); b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
                 armed = false;
                 b.text = text;
                 b.style.backgroundColor = Theme.For(b).RowAlt;

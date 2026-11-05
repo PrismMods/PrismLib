@@ -193,6 +193,7 @@ namespace PrismLib.UI.Toolkit
         {
             if (_nav != null) { _nav.Refresh(); return; }
             _rows = new List<SettingRow>(_source());
+            foreach (var r in _rows) Localise(r);
             _pages.Clear();
             foreach (var r in _rows)
             {
@@ -237,7 +238,7 @@ namespace PrismLib.UI.Toolkit
                 shown++;
             }
 
-            if (shown == 0) Ui.Muted(q.Length > 0 ? "No setting matches '" + q + "'" : "Nothing here yet", _body);
+            if (shown == 0) Ui.Muted(q.Length > 0 ? Words.F("No setting matches '{0}'", q) : "Nothing here yet", _body);
             if (_status != null)
                 _status.text = shown + " of " + _rows.Count + " setting(s)"
                              + (q.Length > 0 ? " matching" : " on " + page);
@@ -289,7 +290,7 @@ namespace PrismLib.UI.Toolkit
                         Widgets.Colour(Target, r.Label, ToColour(r.Get()), v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Key:
-                        if (r.Capture == null) { Ui.Muted(r.Label + " — not rebindable here", Target); break; }
+                        if (r.Capture == null) { Ui.Muted(Words.F("{0} — not rebindable here", r.Label), Target); break; }
                         Widgets.Key(Target, r.Label, Convert.ToString(r.Get()), r.Capture, r.Tooltip);
                         break;
                 }
@@ -299,6 +300,18 @@ namespace PrismLib.UI.Toolkit
                 Ui.Log("SettingsPanel: '" + r.Label + "' failed to build: " + e.Message);
                 Ui.Muted(r.Label + " — unavailable", Target);
             }
+        }
+
+        /* Rows arrive in English (PrismLib's own always do). Translated on the way in rather than when
+           drawn, so the search box matches what the player reads. */
+        private static void Localise(SettingRow r)
+        {
+            r.Page = Words.T(r.Page); r.Group = Words.T(r.Group);
+            r.Label = Words.T(r.Label); r.Tooltip = Words.T(r.Tooltip); r.ActionLabel = Words.T(r.ActionLabel);
+            if (r.Options == null) return;
+            var o = new string[r.Options.Length];
+            for (int i = 0; i < o.Length; i++) o[i] = Words.T(r.Options[i]);
+            r.Options = o;
         }
 
         /* A mod may hand a colour over as a Color or as the "#rrggbb" it serialises. Accept both:

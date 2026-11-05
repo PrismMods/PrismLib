@@ -59,7 +59,7 @@ namespace PrismLib.UI.Toolkit
             if (!string.IsNullOrEmpty(mod) && !_mods.Contains(mod)) _mods.Add(mod);
             _write = write;
             if (_surface == null && !Build()) return;
-            _body.text = string.Join(" and ", _mods.ToArray()) + " updated. Restart the game now to load the new version?";
+            _body.text = Words.F("{0} updated. Restart the game now to load the new version?", string.Join(Words.T(" and "), _mods.ToArray()));
             _rememberRow.style.display = _write != null ? DisplayStyle.Flex : DisplayStyle.None;
             _surface.Visible = true;
         }
