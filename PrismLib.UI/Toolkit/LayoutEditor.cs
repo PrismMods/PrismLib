@@ -25,6 +25,7 @@ namespace PrismLib.UI.Toolkit
         private readonly List<Frame> _all = new List<Frame>();
         private Frame _selected;
         private bool _visible;
+        private bool _cropMode;     // set by the inspector's Crop toggle (LayoutEditor.Crop.cs)
         private readonly HashSet<string> _reported = new HashSet<string>();
 
         private sealed class Frame
@@ -231,7 +232,7 @@ namespace PrismLib.UI.Toolkit
             float k = Scale();
             if (k <= 0f) return;
             var s = ToScreen(e.position, k);
-            if (TryBeginExtra(s, e.pointerId)) { e.StopPropagation(); return; }
+            if (TryBeginExtra(s, e.pointerId)) { _layer.CapturePointer(e.pointerId); e.StopPropagation(); return; }
             var stack = StackAt(s);
             if (stack.Count == 0) { _selected = null; SelectionChanged(); return; }
             bool selectedHere = _selected != null && stack.Contains(_selected);
