@@ -134,6 +134,7 @@ namespace PrismLib.UI.Toolkit
             _empty.style.unityTextAlign = TextAnchor.MiddleCenter;
 
             var done = Ui.Btn("Done", () => Visible = false, _layer);
+            done.name = "layout-done";   // the label is translated (Words.T), the name is not
             done.style.position = Position.Absolute;
             done.style.bottom = 28; done.style.left = Length.Percent(50);
             done.style.translate = new Translate(Length.Percent(-50), 0);
