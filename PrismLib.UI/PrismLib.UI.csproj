@@ -74,6 +74,7 @@
         <Compile Include="Toolkit\FpsCounter.cs" />
         <Compile Include="Toolkit\FontFix.cs" />
         <Compile Include="Toolkit\RestartPrompt.cs" />
+        <Compile Include="Toolkit\MacKeys.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
