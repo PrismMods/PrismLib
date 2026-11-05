@@ -155,7 +155,7 @@ namespace PrismLib.UI.Toolkit
 
             var bar = Ui.Row(Root);
             bar.style.height = TitleHeight;
-            bar.style.backgroundColor = Tokens.TitleBar;
+            bar.style.backgroundColor = Theme.For(Root).TitleBar;
             bar.style.paddingLeft = Tokens.Pad;
             bar.style.paddingRight = Tokens.Gap;
             // No rail toggle: the rail has a drag handle of its own, which resizes as well as
@@ -237,7 +237,7 @@ namespace PrismLib.UI.Toolkit
                 Ui.SetPadding(close, 0f);
                 close.style.unityTextAlign = TextAnchor.MiddleCenter;
                 close.style.fontSize = Tokens.FontSize;
-                close.RegisterCallback<MouseEnterEvent>(_ => close.style.backgroundColor = Tokens.Danger);
+                close.RegisterCallback<MouseEnterEvent>(_ => close.style.backgroundColor = Theme.For(close).Danger);
                 close.RegisterCallback<MouseLeaveEvent>(_ => close.style.backgroundColor = Color.clear);
             }
 
@@ -254,7 +254,7 @@ namespace PrismLib.UI.Toolkit
             Ui.SetPadding(Body, Tokens.Pad);
 
             Footer = Ui.Row(Root);
-            Footer.style.backgroundColor = Tokens.TitleBar;
+            Footer.style.backgroundColor = Theme.For(Root).TitleBar;
             // No scale buttons on the chrome: panel size is a setting, and a control that lives on
             // every window competes with the content for a job done once.
             Footer.style.paddingLeft = Tokens.Pad;
@@ -409,7 +409,7 @@ namespace PrismLib.UI.Toolkit
                     dot.style.bottom = 3f + (2 - row) * 4f;
                     dot.style.width = 2f;
                     dot.style.height = 2f;
-                    dot.style.backgroundColor = Tokens.TextMuted;
+                    dot.style.backgroundColor = Theme.For(Root).TextMuted;
                     dot.pickingMode = PickingMode.Ignore;
                     grip.Add(dot);
                 }

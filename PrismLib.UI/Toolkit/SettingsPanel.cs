@@ -41,6 +41,14 @@ namespace PrismLib.UI.Toolkit
     {
         private readonly Func<IEnumerable<SettingRow>> _source;
         private Surface _surface;
+        private Theme _theme;
+
+        /// The scheme this panel draws in — the owning mod's. Null draws in Theme.Default, the Tokens a mod pushed.
+        public Theme Theme
+        {
+            get { return _theme; }
+            set { _theme = value; if (_surface != null) _surface.Theme = value; }
+        }
         private Window _window;
         private Tabs _tabs;
         private ScrollView _body;
@@ -129,6 +137,7 @@ namespace PrismLib.UI.Toolkit
             // Named from the title, so a mod's own menu and the library's window are distinct
             // GameObjects with distinct saved geometry rather than two things called the same.
             _surface = new Surface(Slug(title) + "Panel", Layer.Window, font);
+            _surface.Theme = _theme;
             if (_surface.Root == null) return;
 
             _window = new Window(_surface.Root, Slug(title), title,

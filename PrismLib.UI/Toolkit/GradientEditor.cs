@@ -55,7 +55,7 @@ namespace PrismLib.UI.Toolkit
             _strip.style.marginRight = MarkerWidth / 2f;
             Ui.SetRadius(_strip, 3f);
             Ui.SetBorderWidth(_strip, 1f);
-            Ui.SetBorderColor(_strip, Tokens.PanelBorder);
+            Ui.SetBorderColor(_strip, Theme.For(_strip).PanelBorder);
             _strip.pickingMode = PickingMode.Position;
             Root.Add(_strip);
 
@@ -156,7 +156,7 @@ namespace PrismLib.UI.Toolkit
                 Ui.SetRadius(m, MarkerWidth / 2f);
                 m.style.backgroundColor = s.Colour;
                 Ui.SetBorderWidth(m, 2f);
-                Ui.SetBorderColor(m, s == _selected ? Tokens.Accent : Color.white);
+                Ui.SetBorderColor(m, s == _selected ? Theme.For(m).Accent : Color.white);
                 m.pickingMode = PickingMode.Position;
                 _markerLayer.Add(m);
 

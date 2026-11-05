@@ -25,7 +25,7 @@ namespace PrismLib.UI.Toolkit
             var tracker = slider.Q(className: "unity-base-slider__tracker");
             if (tracker != null)
             {
-                tracker.style.backgroundColor = Tokens.RowAlt;
+                tracker.style.backgroundColor = Theme.For(slider).RowAlt;
                 tracker.style.position = Position.Absolute;
                 tracker.style.left = 0f; tracker.style.right = 0f;
                 tracker.style.top = Length.Percent(50f);
@@ -37,7 +37,7 @@ namespace PrismLib.UI.Toolkit
             var dragger = slider.Q(className: "unity-base-slider__dragger");
             if (dragger != null)
             {
-                dragger.style.backgroundColor = Tokens.Accent;
+                dragger.style.backgroundColor = Theme.For(slider).Accent;
                 dragger.style.width = 12f;
                 dragger.style.height = 12f;
                 Ui.SetRadius(dragger, 6f);
@@ -63,15 +63,16 @@ namespace PrismLib.UI.Toolkit
             if (input == null) input = field.Q("unity-text-input");
             if (input != null)
             {
-                input.style.backgroundColor = Tokens.Row;
-                input.style.color = Tokens.Text;
-                Ui.SetBorderColor(input, Tokens.PanelBorder);
+                var t = Theme.For(field);
+                input.style.backgroundColor = t.Row;
+                input.style.color = t.Text;
+                Ui.SetBorderColor(input, t.PanelBorder);
                 Ui.SetBorderWidth(input, 1f);
                 Ui.SetRadius(input, 4f);
                 Ui.SetPadding(input, 4f);
                 input.style.unityTextAlign = TextAnchor.MiddleLeft;
                 // Without this the caret is drawn in the theme's colour, which is nothing.
-                input.style.unityBackgroundImageTintColor = Tokens.Text;
+                input.style.unityBackgroundImageTintColor = t.Text;
             }
             var label = field.Q<Label>(className: "unity-base-field__label");
             if (label != null) label.style.display = DisplayStyle.None;
@@ -104,7 +105,7 @@ namespace PrismLib.UI.Toolkit
                 var dragger = slider.Q(className: "unity-base-slider__dragger");
                 if (dragger != null)
                 {
-                    dragger.style.backgroundColor = Tokens.RowHover;
+                    dragger.style.backgroundColor = Theme.For(s).RowHover;
                     dragger.style.width = 6f;
                     Ui.SetRadius(dragger, 3f);
                     Ui.SetBorderWidth(dragger, 0f);

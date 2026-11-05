@@ -56,7 +56,7 @@ namespace PrismLib.UI.Toolkit
             l.style.flexShrink = 1f;
             l.pickingMode = PickingMode.Ignore;
 
-            row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Tokens.Row);
+            row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Theme.For(row).Row);
             row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
 
             var right = Ui.Row(row);
@@ -66,7 +66,7 @@ namespace PrismLib.UI.Toolkit
             /* Every row reserves the arrow's width, filled or not. Without it the switches on rows
                that have a page behind them sit one arrow to the left of the ones that do not, and a
                column of toggles reads as ragged. */
-            var arrow = Ui.Text("", row, ArrowSize, Tokens.TextMuted);
+            var arrow = Ui.Text("", row, ArrowSize, Theme.For(row).TextMuted);
             arrow.name = "arrow";
             arrow.style.width = ArrowSlot;
             arrow.style.unityTextAlign = TextAnchor.MiddleRight;
@@ -92,7 +92,8 @@ namespace PrismLib.UI.Toolkit
             track.style.width = 36f;
             track.style.height = 18f;
             Ui.SetRadius(track, 9f);
-            track.style.backgroundColor = value ? Tokens.Accent : Tokens.RowAlt;
+            var th = Theme.For(host);
+            track.style.backgroundColor = value ? th.Accent : th.RowAlt;
             track.pickingMode = PickingMode.Position;
 
             var knob = new VisualElement();
@@ -110,7 +111,7 @@ namespace PrismLib.UI.Toolkit
             var set = Track(label, value, v =>
             {
                 state = v;
-                track.style.backgroundColor = v ? Tokens.Accent : Tokens.RowAlt;
+                track.style.backgroundColor = v ? Theme.For(track).Accent : Theme.For(track).RowAlt;
                 Anim.Move(knob, v ? 20f : 2f, Anim.Fast);
                 try { if (onChange != null) onChange(v); } catch (Exception e) { Ui.Log("Toggle handler threw: " + e.Message); }
             });
@@ -295,16 +296,16 @@ namespace PrismLib.UI.Toolkit
                 {
                     armed = true;
                     b.text = "Sure?";
-                    b.style.backgroundColor = Tokens.Danger;
+                    b.style.backgroundColor = Theme.For(b).Danger;
                     Anim.Pop(b);
                     return;
                 }
                 armed = false;
                 b.text = buttonText;
-                b.style.backgroundColor = Tokens.RowAlt;
+                b.style.backgroundColor = Theme.For(b).RowAlt;
                 try { if (onConfirm != null) onConfirm(); } catch (Exception e) { Ui.Log("Danger handler threw: " + e.Message); }
             }, host);
-            b.style.color = Tokens.Danger;
+            b.style.color = Theme.For(b).Danger;
             return b;
         }
 
@@ -372,7 +373,7 @@ namespace PrismLib.UI.Toolkit
             arrow.style.fontSize = Tokens.FontSize + 3f;   // it was a speck at body size
             var l = Ui.Text(title, head, Tokens.FontSize);
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            l.style.color = Tokens.TextMuted;
+            l.style.color = Theme.For(l).TextMuted;
             l.pickingMode = PickingMode.Ignore;
 
             var body = Ui.Box(parent);
@@ -403,7 +404,7 @@ namespace PrismLib.UI.Toolkit
             row.style.paddingRight = 4f;
             row.style.marginBottom = 2f;
             Ui.SetRadius(row, Tokens.Radius);
-            row.style.backgroundColor = Tokens.Row;
+            row.style.backgroundColor = Theme.For(row).Row;
 
             var text = Ui.Box(row);
             text.style.flexGrow = 1f;
@@ -424,7 +425,7 @@ namespace PrismLib.UI.Toolkit
         /// Marks a list entry as the active one, the way a profile list shows which is loaded.
         public static void MarkActive(VisualElement actions, string label = "Active")
         {
-            var tag = Ui.Text(label, null, Tokens.FontSizeSmall, Tokens.Accent);
+            var tag = Ui.Text(label, null, Tokens.FontSizeSmall, Theme.For(actions).Accent);
             tag.style.marginRight = Tokens.Gap;
             actions.Insert(0, tag);
         }
@@ -444,13 +445,13 @@ namespace PrismLib.UI.Toolkit
             bool armed = false;
             b = Ui.Btn(text, () =>
             {
-                if (!armed) { armed = true; b.text = "Sure?"; b.style.backgroundColor = Tokens.Danger; Anim.Pop(b); return; }
+                if (!armed) { armed = true; b.text = "Sure?"; b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
                 armed = false;
                 b.text = text;
-                b.style.backgroundColor = Tokens.RowAlt;
+                b.style.backgroundColor = Theme.For(b).RowAlt;
                 try { if (onConfirm != null) onConfirm(); } catch (Exception e) { Ui.Log("Danger handler threw: " + e.Message); }
             }, row);
-            b.style.color = Tokens.Danger;
+            b.style.color = Theme.For(b).Danger;
             return b;
         }
 
@@ -515,7 +516,7 @@ namespace PrismLib.UI.Toolkit
         {
             var l = Ui.Text(text, parent, Tokens.FontSize);
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            l.style.color = Tokens.TextMuted;
+            l.style.color = Theme.For(l).TextMuted;
             l.style.marginTop = Tokens.Pad;
             l.style.marginBottom = Tokens.Gap;
             l.style.flexShrink = 0f;

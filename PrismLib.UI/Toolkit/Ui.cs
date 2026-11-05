@@ -203,8 +203,9 @@ namespace PrismLib.UI.Toolkit
         public static VisualElement Card(VisualElement parent = null)
         {
             var e = Box(parent);
-            e.style.backgroundColor = Tokens.Panel;
-            SetBorderColor(e, Tokens.PanelBorder);
+            var t = Theme.For(e);
+            e.style.backgroundColor = t.Panel;
+            SetBorderColor(e, t.PanelBorder);
             SetBorderWidth(e, 1f);
             SetRadius(e, Tokens.Radius);
             SetPadding(e, Tokens.Pad);
@@ -215,7 +216,7 @@ namespace PrismLib.UI.Toolkit
         {
             var l = new Label(text ?? "");
             l.style.fontSize = size ?? Tokens.FontSize;
-            l.style.color = color ?? Tokens.Text;
+            l.style.color = color ?? Theme.For(parent).Text;
             l.style.whiteSpace = WhiteSpace.NoWrap;
             l.style.textOverflow = TextOverflow.Ellipsis;
             l.style.overflow = Overflow.Hidden;
@@ -224,7 +225,7 @@ namespace PrismLib.UI.Toolkit
         }
 
         public static Label Muted(string text, VisualElement parent = null)
-            => Text(text, parent, Tokens.FontSizeSmall, Tokens.TextMuted);
+            => Text(text, parent, Tokens.FontSizeSmall, Theme.For(parent).TextMuted);
 
         /* A button's resting and hover colours live in a holder on the element, not in the hover
            callbacks. Setting backgroundColor from outside used to work until the pointer left the
@@ -236,7 +237,8 @@ namespace PrismLib.UI.Toolkit
         public static Button Btn(string text, Action onClick, VisualElement parent = null)
         {
             var b = new Button(onClick != null ? () => onClick() : (Action)null) { text = text ?? "" };
-            var c = new BtnColors { Rest = Tokens.RowAlt, Hover = Tokens.RowHover, Text = Tokens.Text };
+            var t = Theme.For(parent);
+            var c = new BtnColors { Rest = t.RowAlt, Hover = t.RowHover, Text = t.Text };
             b.userData = c;
             b.style.fontSize = Tokens.FontSizeSmall;
             b.style.color = c.Text;
@@ -268,9 +270,10 @@ namespace PrismLib.UI.Toolkit
         {
             var c = b?.userData as BtnColors;
             if (c == null) return;
-            c.Rest = on ? Tokens.Accent : Tokens.RowAlt;
-            c.Hover = on ? Lighten(Tokens.Accent, 0.12f) : Tokens.RowHover;
-            c.Text = on ? new Color(0.06f, 0.06f, 0.08f, 1f) : Tokens.Text;
+            var t = Theme.For(b);
+            c.Rest = on ? t.Accent : t.RowAlt;
+            c.Hover = on ? Lighten(t.Accent, 0.12f) : t.RowHover;
+            c.Text = on ? new Color(0.06f, 0.06f, 0.08f, 1f) : t.Text;
             b.style.backgroundColor = c.Rest;
             b.style.color = c.Text;
         }

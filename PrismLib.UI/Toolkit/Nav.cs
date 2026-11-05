@@ -54,6 +54,9 @@ namespace PrismLib.UI.Toolkit
     public sealed class Nav
     {
         private readonly VisualElement _rail, _crumbs, _content;
+        private readonly VisualElement _host;
+        // Read at use, not cached: the window may be given its scheme after the Nav is built.
+        private Theme T { get { return Theme.For(_host); } }
         private readonly List<NavItem> _roots;
         private readonly List<NavItem> _path = new List<NavItem>();
         private readonly HashSet<string> _expanded = new HashSet<string>();
@@ -107,7 +110,7 @@ namespace PrismLib.UI.Toolkit
                 var where = Ui.Muted(string.IsNullOrEmpty(h.Group) ? h.Page : h.Page + " · " + h.Group, row);
                 where.pickingMode = PickingMode.Ignore;
 
-                row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Tokens.Row);
+                row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = T.Row);
                 row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
                 row.RegisterCallback<ClickEvent>(_ => GoTo(h));
             }
@@ -130,10 +133,10 @@ namespace PrismLib.UI.Toolkit
                 if (!(e.userData is string) || (string)e.userData != label) continue;
                 /* Fade a highlight out rather than in: the row is already on screen by the time
                    this runs, so starting lit and settling is what draws the eye to it. */
-                e.style.backgroundColor = Tokens.Accent;
+                e.style.backgroundColor = T.Accent;
                 e.experimental.animation.Start(1f, 0f, 900, (el, t) =>
                 {
-                    var c = Tokens.Accent;
+                    var c = T.Accent;
                     c.a = t * 0.5f;
                     el.style.backgroundColor = c;
                 });
@@ -233,6 +236,7 @@ namespace PrismLib.UI.Toolkit
 
         public Nav(VisualElement parent, IEnumerable<NavItem> items, float railWidth = 200f)
         {
+            _host = parent;
             _roots = new List<NavItem>(items ?? new NavItem[0]);
 
             var split = Ui.Row(parent);
@@ -276,7 +280,7 @@ namespace PrismLib.UI.Toolkit
             line.style.position = Position.Absolute;
             line.style.top = 0f; line.style.bottom = 0f;
             line.style.width = 1f;
-            line.style.backgroundColor = Tokens.PanelBorder;
+            line.style.backgroundColor = T.PanelBorder;
             line.pickingMode = PickingMode.Ignore;
 
             var knob = Ui.Box(handle);
@@ -284,7 +288,7 @@ namespace PrismLib.UI.Toolkit
             knob.style.height = 34f;
             knob.style.alignItems = Align.Center;
             knob.style.justifyContent = Justify.Center;
-            knob.style.backgroundColor = Tokens.RowAlt;
+            knob.style.backgroundColor = T.RowAlt;
             Ui.SetRadius(knob, Tokens.Radius);
             knob.style.display = DisplayStyle.None;
             knob.pickingMode = PickingMode.Ignore;
@@ -296,13 +300,13 @@ namespace PrismLib.UI.Toolkit
             _railKnob = knob;
             handle.RegisterCallback<MouseEnterEvent>(_ =>
             {
-                line.style.backgroundColor = Tokens.Accent;
-                knob.style.backgroundColor = Tokens.RowHover;
+                line.style.backgroundColor = T.Accent;
+                knob.style.backgroundColor = T.RowHover;
             });
             handle.RegisterCallback<MouseLeaveEvent>(_ =>
             {
-                line.style.backgroundColor = Tokens.PanelBorder;
-                knob.style.backgroundColor = Tokens.RowAlt;
+                line.style.backgroundColor = T.PanelBorder;
+                knob.style.backgroundColor = T.RowAlt;
             });
             MakeRailHandle(handle, railScroll);
 
@@ -316,7 +320,7 @@ namespace PrismLib.UI.Toolkit
                line of height at the top of every page to say something the eye had just read.
                The element stays for search, which has nothing else to announce itself with. */
             _crumbs = Ui.Row(right);
-            _crumbs.style.backgroundColor = Tokens.Panel;
+            _crumbs.style.backgroundColor = T.Panel;
             _crumbs.style.flexShrink = 0f;
 
             var contentScroll = new ScrollView(ScrollViewMode.Vertical);
@@ -415,7 +419,7 @@ namespace PrismLib.UI.Toolkit
                    nothing. Upper case, smaller than the items under it, and muted — the opposite
                    of the treatment a selected item gets. */
                 var heading = Ui.Text(item.Title.ToUpperInvariant(), _rail,
-                                      Tokens.FontSizeSmall - 2f, Tokens.TextMuted);
+                                      Tokens.FontSizeSmall - 2f, T.TextMuted);
                 heading.style.unityFontStyleAndWeight = FontStyle.Bold;
                 heading.style.letterSpacing = 1.5f;
                 heading.style.marginTop = depth == 0 ? Tokens.Pad + 4f : Tokens.Gap;
@@ -436,7 +440,7 @@ namespace PrismLib.UI.Toolkit
             // The selected LEAF is the highlighted one. A branch on the path is merely open, and
             // colouring it as selected too makes it unclear which page is actually showing.
             bool selected = onPath && !item.IsBranch;
-            row.style.backgroundColor = selected ? Tokens.RowHover : Color.clear;
+            row.style.backgroundColor = selected ? T.RowHover : Color.clear;
             Ui.SetRadius(row, 4f);
             if (!string.IsNullOrEmpty(item.Tooltip)) row.tooltip = item.Tooltip;
 
@@ -453,7 +457,7 @@ namespace PrismLib.UI.Toolkit
             }
 
             var label = Ui.Text(item.Title, row, Tokens.FontSize,
-                                selected ? Tokens.Text : Tokens.TextMuted);
+                                selected ? T.Text : T.TextMuted);
             label.style.flexGrow = 1f;
             label.pickingMode = PickingMode.Ignore;
 
@@ -462,13 +466,13 @@ namespace PrismLib.UI.Toolkit
             {
                 row.RegisterCallback<MouseEnterEvent>(_ =>
                 {
-                    row.style.backgroundColor = Tokens.Row;
-                    label.style.color = Tokens.Text;
+                    row.style.backgroundColor = T.Row;
+                    label.style.color = T.Text;
                 });
                 row.RegisterCallback<MouseLeaveEvent>(_ =>
                 {
                     row.style.backgroundColor = Color.clear;
-                    label.style.color = Tokens.TextMuted;
+                    label.style.color = T.TextMuted;
                 });
             }
 
@@ -517,7 +521,7 @@ namespace PrismLib.UI.Toolkit
                 }
                 var crumb = Ui.Text(Title(step.Title), _crumbs,
                                     last ? Tokens.FontSizeTitle : Tokens.FontSizeSmall,
-                                    last ? Tokens.Text : Tokens.TextMuted);
+                                    last ? T.Text : T.TextMuted);
                 if (last) crumb.style.unityFontStyleAndWeight = FontStyle.Bold;
                 if (last) continue;
                 // An ancestor crumb expands its branch in the rail; there is no page of its own to
@@ -550,7 +554,7 @@ namespace PrismLib.UI.Toolkit
                 var back = Ui.Row(_content);
                 back.style.minHeight = 30f;
                 back.pickingMode = PickingMode.Position;
-                var arrow = Ui.Text("\u2039  " + home, back, Tokens.FontSize, Tokens.Accent);
+                var arrow = Ui.Text("\u2039  " + home, back, Tokens.FontSize, T.Accent);
                 arrow.pickingMode = PickingMode.Ignore;
                 back.RegisterCallback<ClickEvent>(_ => Pop());
 

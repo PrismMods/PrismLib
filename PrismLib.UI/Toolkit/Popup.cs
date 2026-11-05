@@ -61,9 +61,9 @@ namespace PrismLib.UI.Toolkit
                     row.style.height = Tokens.RowHeight;
                     row.style.paddingLeft = 8f; row.style.paddingRight = 8f;
                     Ui.SetRadius(row, 4f);
-                    var label = Ui.Text(items[i], row, Tokens.FontSizeSmall, i == selected ? Tokens.Accent : Tokens.Text);
+                    var label = Ui.Text(items[i], row, Tokens.FontSizeSmall, i == selected ? Theme.For(row).Accent : Theme.For(row).Text);
                     label.pickingMode = PickingMode.Ignore;
-                    row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Tokens.RowHover);
+                    row.RegisterCallback<MouseEnterEvent>(_ => row.style.backgroundColor = Theme.For(row).RowHover);
                     row.RegisterCallback<MouseLeaveEvent>(_ => row.style.backgroundColor = Color.clear);
                     row.RegisterCallback<PointerUpEvent>(e =>
                     {
@@ -90,7 +90,10 @@ namespace PrismLib.UI.Toolkit
             _catcher.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); Close(); });
             root.Add(_catcher);
 
-            Content = Ui.Card();
+            // The anchor's scheme, not the shared popup host's: a menu opened from a Quartz window is Quartz's.
+            var theme = Theme.For(anchor);
+            using (Theme.Use(theme)) Content = Ui.Card();
+            Theme.Set(Content, theme);
             Content.style.position = Position.Absolute;
             Content.style.paddingLeft = 4f; Content.style.paddingRight = 4f;
             Content.style.paddingTop = 4f; Content.style.paddingBottom = 4f;

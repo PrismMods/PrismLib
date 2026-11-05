@@ -78,7 +78,7 @@ namespace PrismLib.UI.Toolkit
             _swatch.style.right = 0f; _swatch.style.bottom = 0f;
             Ui.SetRadius(_swatch, 4f);
             Ui.SetBorderWidth(_swatch, 1f);
-            Ui.SetBorderColor(_swatch, Tokens.PanelBorder);
+            Ui.SetBorderColor(_swatch, Theme.For(_swatch).PanelBorder);
             swatchBg.Add(_swatch);
 
             head.RegisterCallback<ClickEvent>(_ =>

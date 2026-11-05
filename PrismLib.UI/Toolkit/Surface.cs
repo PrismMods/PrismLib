@@ -35,6 +35,14 @@ namespace PrismLib.UI.Toolkit
 
         public string Name { get; }
 
+        private Theme _theme;
+        /// This surface's colour scheme. Set it before building into Root; null draws in Theme.Default.
+        public Theme Theme
+        {
+            get { return _theme; }
+            set { _theme = value; if (Root != null) Theme.Set(Root, value); }
+        }
+
         /// While visible, keep keys and the wheel away from the game (InputGate). On by default:
         /// a window you are typing or scrolling in should not also drive the world behind it.
         public bool BlocksGameInput { get; set; } = true;
