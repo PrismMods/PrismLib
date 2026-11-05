@@ -43,9 +43,27 @@ namespace PrismLib.Bootstrap
         private static bool _ran;
         private static bool _ok;
         private static string _dir;      // the shared PrismLib folder, next to the mod folders
+        private static string _root;     // the mods root the mod passed in, if it did
+        private static string _bundle;   // the PrismLib.dll copy shipped inside the mod's own zip
 
-        /// Returns true when PrismLib is present and loadable. Safe to call more than once.
-        public static bool Ensure(Action<string> log = null, Version minimum = null)
+        /// What a mod names the PrismLib.dll it ships. Not ".dll": a loader that scans or resolves
+        /// DLLs in the mod folder (MelonLoader's UserLibs, UMMBridge) would load it straight from
+        /// there, a second PrismLib beside the shared one.
+        public const string BundleName = "PrismLib.bundle";
+
+        /* Returns true when PrismLib is present and loadable. Safe to call more than once; only the
+           first call's paths count.
+
+           `modsRoot` is the folder that holds the mod folders (UMMMods, Mods, Plugins). Without it
+           the root is guessed from where this code was loaded, which goes wrong when the mod is not
+           loaded from its own folder: under UMMBridge the guess put PrismLib in steamapps/, and
+           Quartz's code runs from a versioned runtime store (…/Runtime/versions/<ver>/).
+
+           `bundle` is the copy the mod ships (default: BundleName beside this code). It is installed
+           whenever it is newer than the shared copy, so a mod's first launch needs no network; the
+           feed still updates it in the background afterwards, because PrismLib releases more often
+           than the mods do. */
+        public static bool Ensure(Action<string> log = null, Version minimum = null, string modsRoot = null, string bundle = null)
         {
             if (log != null && _log == null)
             {
@@ -54,6 +72,17 @@ namespace PrismLib.Bootstrap
             }
             if (_ran) return _ok;
             _ran = true;
+            if (!string.IsNullOrEmpty(modsRoot))
+            {
+                try
+                {
+                    if (Directory.Exists(modsRoot)) _root = Path.GetFullPath(modsRoot);
+                    else Say("mods root " + modsRoot + " does not exist, guessing instead");
+                }
+                catch (Exception e) { Say("mods root " + modsRoot + " unusable, guessing instead: " + e.Message); }
+            }
+            _bundle = !string.IsNullOrEmpty(bundle) ? bundle
+                    : SelfDir() != null ? Path.Combine(SelfDir(), BundleName) : null;
             SyncUi();
             // First, unconditionally: PrismLib.UI ships beside the mod and must resolve whether or
             // not the shared PrismLib below can be reached.
@@ -65,18 +94,22 @@ namespace PrismLib.Bootstrap
 
         private static bool Run(Version minimum)
         {
-            // Another Prism mod may already have loaded it this session. Nothing to do.
+            _dir = SharedDir();
+            string path = _dir == null ? null : Path.Combine(_dir, "PrismLib.dll");
+
+            // Another Prism mod may already have loaded it this session. A newer bundle still goes
+            // onto disk, so the next launch runs it.
             foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
                 if (a.GetName().Name == "PrismLib")
                 {
                     Say("already loaded: " + a.GetName().Version);
+                    if (path != null) InstallBundled(path);
                     return a.GetName().Version >= minimum;
                 }
 
-            _dir = SharedDir();
             if (_dir == null) { Say("no mods folder found"); return false; }
-            string path = Path.Combine(_dir, "PrismLib.dll");
             PromotePending(path);
+            InstallBundled(path);
 
             Version have = VersionOf(path);
             if (have == null || have < minimum)
@@ -205,6 +238,7 @@ namespace PrismLib.Bootstrap
 
         private static string ModsRoot()
         {
+            if (_root != null) return _root;
             try
             {
                 string self = SelfDir();
@@ -243,10 +277,8 @@ namespace PrismLib.Bootstrap
         {
             try
             {
-                string self = SelfDir();
-                if (self == null) return null;
-                string root = IsModRoot(self) ? Path.GetDirectoryName(self)
-                                              : Path.GetDirectoryName(Path.GetDirectoryName(self));
+                string mods = ModsRoot();
+                string root = mods == null ? null : Path.GetDirectoryName(mods);
                 if (root == null) return null;
                 string dir = Path.Combine(root, "UserLibs");
                 return Directory.Exists(dir) ? dir : null;
@@ -297,22 +329,43 @@ namespace PrismLib.Bootstrap
                     Say("SHA-256 mismatch, discarding (want " + feed.Sha256 + ", got " + got + ")");
                     return false;
                 }
-                string tmp = path + ".new";
-                File.WriteAllBytes(tmp, dll);
-                try
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                    File.Move(tmp, path);
-                }
-                catch (Exception e)
-                {
-                    Say("installed " + feed.Version + " as pending (" + e.Message + ")");
-                    return false;
-                }
-                Say("installed " + feed.Version);
-                return true;
+                return Place(dll, path, feed.Version.ToString());
             }
             catch (Exception e) { Say("install failed: " + e.Message); return false; }
+        }
+
+        /* The mod's own zip is as trusted as the mod, so no hash. Compared against the pending copy
+           too, so an older bundle never overwrites a newer download waiting for the next launch. */
+        private static void InstallBundled(string path)
+        {
+            try
+            {
+                if (_bundle == null || !File.Exists(_bundle)) return;
+                Version b = VersionOf(_bundle), have = VersionOf(path), pending = VersionOf(path + ".new");
+                if (b == null || (have != null && b <= have) || (pending != null && b <= pending)) return;
+                Place(File.ReadAllBytes(_bundle), path, b + " (bundled)");
+            }
+            catch (Exception e) { Say("bundled copy not installed: " + e.Message); }
+        }
+
+        // Written beside, then swapped in. A loaded DLL cannot be deleted on Windows, so there it
+        // stays as .new and PromotePending takes it on the next launch.
+        private static bool Place(byte[] dll, string path, string what)
+        {
+            string tmp = path + ".new";
+            File.WriteAllBytes(tmp, dll);
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+                File.Move(tmp, path);
+            }
+            catch (Exception e)
+            {
+                Say("installed " + what + " as pending (" + e.Message + ")");
+                return false;
+            }
+            Say("installed " + what);
+            return true;
         }
 
         /* Windows will not delete a DLL the process has loaded, and the background update runs right

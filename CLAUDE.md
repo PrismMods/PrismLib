@@ -45,6 +45,13 @@ management for logs, player data, save data and fields, so the mods feel like on
   when that method is JITted.
 - **Each mod's `release.sh` must copy `lib/PrismLib.UI.dll` into the zip.** Leaving it out breaks
   released builds the same way, on users' machines instead of yours.
+- **`PrismLib.dll` ships too, as `PrismLib.bundle` — never as a `.dll`.** `Ensure` installs it
+  into the shared folder when it is newer, so a first launch needs no network; the feed keeps
+  updating it in the background. Named `.dll` it would sit where MelonLoader's UserLibs or
+  UMMBridge load DLLs from, and a second PrismLib would load beside the shared one. A mod's
+  `release.sh` runs `lib/update-prismlib.sh` first (SHA-checked against the feed), so it ships the
+  latest PUBLISHED PrismLib and fails to build if it needs an unreleased API — release PrismLib
+  first. Mods pass `modsRoot` and the bundle path to `Ensure` from their UMM `modEntry.Path`.
 - `AssemblyVersion` in both `Properties/AssemblyInfo.cs` must track `Prism.Version` — the
   bootstrapper picks a copy by assembly version read from file metadata.
 - `raw.githubusercontent` caches `prismlib.json` for a few minutes, so a just-published release is
@@ -365,6 +372,11 @@ UMM gives each mod a folder (`<game>/UMMMods/<Mod>/<Mod>.dll`); **MelonLoader mo
 than by walking up a fixed number of levels, which is what it used to do — that put PrismLib in the
 game root for a MelonLoader mod. Verified by running `Ensure` from a DLL placed in each layout
 (`/tmp/loadercheck`), not by reading the code.
+
+A mod whose code does not run from its own folder passes the root: `Ensure(log, minimum, modsRoot)`.
+Quartz loads from a versioned runtime store (`…/Runtime/versions/<ver>/`), where the guess put
+PrismLib at `…/Runtime/versions/PrismLib` — reproduced, and fixed by the anchor, in the same kind of
+layout check (2026-11-05). `UserLibs` is `<modsRoot>/../UserLibs` either way.
 
 The resolver searches beside the mod, then the shared folder, then `<game>/UserLibs`. A MelonLoader
 build should ship `PrismLib.UI.dll` in **UserLibs**, not `Mods` — MelonLoader scans `Mods/*.dll` for
