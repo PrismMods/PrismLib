@@ -64,6 +64,7 @@
         <Compile Include="Toolkit\ColourPicker.cs" />
         <Compile Include="Toolkit\GradientEditor.cs" />
         <Compile Include="Toolkit\History.cs" />
+        <Compile Include="Toolkit\LayoutMath.cs" />
         <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
         <Compile Include="Toolkit\SearchIndex.cs" />

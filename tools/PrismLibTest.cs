@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PrismLib;
+using PrismLib.UI.Toolkit;
 
 // Offline check for the arbitration rules. The game cannot be scripted, so this is where the
 // claim/key/search logic is allowed to fail loudly.
@@ -224,6 +225,21 @@ static class PrismLibTest
         Check(lc != null && b.ClaimState(StateKey.LayoutEditor, "editor") == null, "LayoutEditor is an ordinary first-come claim");
         lc.Release();
         Check((int)StateKey.LayoutEditor == (int)StateKey.DebugPanel + 1, "LayoutEditor is appended after DebugPanel");
+
+        Console.WriteLine("layout math");
+        Check(LayoutMath.SnapThreshold(2160) == 16f, "threshold scales with screen height");
+        Check(LayoutMath.Snap(103, new float[] { 0, 100, 960 }, 8) == 100, "snaps to a guide within the threshold");
+        Check(LayoutMath.Snap(109, new float[] { 0, 100, 960 }, 8) == 109, "leaves a value outside the threshold alone");
+        Check(LayoutMath.ClosestAnchor(1800, 100, 1920, 1080) == 8, "bottom-right third is anchor 8");
+        Check(LayoutMath.ClosestAnchor(960, 540, 1920, 1080) == 4, "middle is anchor 4");
+        Check(LayoutMath.ClosestAnchor(10, 1070, 1920, 1080) == 0, "top-left third is anchor 0");
+        var ap = LayoutMath.AnchorPoint(2, 1920, 1080); Check(ap[0] == 1920 && ap[1] == 1080, "anchor 2 is the top-right corner");
+        ap = LayoutMath.AnchorPoint(7, 1920, 1080); Check(ap[0] == 960 && ap[1] == 0, "anchor 7 is the bottom centre");
+        Check(LayoutMath.SnapRotation(87) == 90 && LayoutMath.SnapRotation(-3) == 0 && LayoutMath.SnapRotation(184) == 180, "rotation snaps within 5 degrees of a quarter turn");
+        Check(LayoutMath.SnapRotation(80) == 80 && LayoutMath.SnapRotation(-90) == 270, "outside the window it is kept; results normalise into [0, 360)");
+        var cr = LayoutMath.ClampCrop(new float[] { 0.7f, -0.2f, 0.6f, 0.1f });
+        Check(Math.Abs(cr[0] - 0.7f) < 1e-5 && Math.Abs(cr[2] - 0.25f) < 1e-5, "left kept, right clamped so 5% stays visible");
+        Check(cr[1] == 0f && Math.Abs(cr[3] - 0.1f) < 1e-5, "negative crop clamps to 0");
 
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
