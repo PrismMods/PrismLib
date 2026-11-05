@@ -432,3 +432,7 @@ register as clicks in UI Toolkit, so trigger a widget from code to test it. Eith
 - `CONFLICTS.md` is the cross-mod audit (C1–C15). **Gitignored on purpose** — it names bugs in
   another author's mod and is not public until they agree.
 - Cross-mod facts live in this project's memory (`prismlib`, `versioning`, `conventions`).
+
+## Commits
+
+Read `agents/commits.md` before any commit or push (format, splitting, no AI co-author lines).
