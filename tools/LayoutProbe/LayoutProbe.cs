@@ -125,7 +125,7 @@ namespace LayoutProbe
             yield return new EditTarget
             {
                 Owner = "LayoutProbe", Id = "c", Label = "Probe C",
-                GetBox = () => { if (AutoTest.CThrows) throw new ObjectDisposedException("Probe C"); return pc.Get(); },
+                GetBox = () => { if (AutoTest.CThrows) throw new ObjectDisposedException("Probe C"); return AutoTest.CNull ? null : pc.Get(); },
                 MoveTo = (x, y) => { pc.Cx = x; pc.Cy = y; },
                 GetScale = () => pc.Scale, SetScale = s => pc.Scale = s,
             };

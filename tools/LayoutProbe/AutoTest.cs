@@ -15,7 +15,7 @@ namespace LayoutProbe
         internal static LayoutEditor Editor;
         internal static Box A, B, C;
         internal static Action<bool> SetEmpty;
-        internal static bool CThrows;
+        internal static bool CThrows, CNull;
         int _pass, _fail;
         bool _closed;
 
@@ -192,6 +192,85 @@ namespace LayoutProbe
             var empty = Root.Query<Label>().ToList().FirstOrDefault(l => l.text == "Nothing to arrange yet");
             Check(empty != null && empty.resolvedStyle.display == DisplayStyle.Flex, "an empty target list shows the empty state");
             SetEmpty(false); Editor.Reload(); yield return null;
+
+            // ── Review fixes ────────────────────────────────────────────────
+            CThrows = false; CNull = false;
+            Editor.Reload(); for (int i = 0; i < 3; i++) yield return null;
+            A.Cx = W * 0.3f; A.Cy = H * 0.65f; A.Rot = 0f; A.Scale = 1f; A.Crop = new float[4];
+            B.Cx = W * 0.8f; B.Cy = H * 0.8f; C.Cx = W * 0.6f; C.Cy = H * 0.25f;
+            yield return null; yield return null;
+            yield return Click(Ctr(A));
+
+            // Grips, knob and anchor are on screen, also after a Reload
+            for (int round = 0; round < 2; round++)
+            {
+                for (int i = 0; i < 3; i++) yield return null;
+                var g0 = Root.Q("layout-grip-0"); var kn = Root.Q("layout-knob"); var ad = Root.Q("layout-anchor-dot");
+                bool on = g0 != null && kn != null && ad != null && g0.panel != null && kn.panel != null && ad.panel != null
+                          && g0.resolvedStyle.display == DisplayStyle.Flex && kn.resolvedStyle.display == DisplayStyle.Flex;
+                Check(on, round == 0 ? "grips, knob and anchor dot are on screen for the selected box" : "and still after a Reload",
+                      "grip " + (g0?.panel != null) + " knob " + (kn?.panel != null) + " dot " + (ad?.panel != null));
+                Editor.Reload();
+            }
+
+            // A target whose GetBox returns null is not clickable
+            yield return Click(Ctr(C));
+            CNull = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));   // empty: deselect
+            yield return Click(Ctr(C));
+            Check(Root.Q<TextField>("layout-x") == null, "a target whose box went null cannot be selected", "inspector X " + Root.Q<TextField>("layout-x")?.value);
+            CNull = false;
+
+            // Hit-testing and snapping follow rotation
+            A.Rot = 90f; yield return null; yield return null;
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));
+            yield return Click(Ctr(A) + new Vector2(0, 140f));        // inside the turned box only
+            var fx2 = Root.Q<TextField>("layout-x");
+            Check(fx2 != null && Near(float.Parse(fx2.value, System.Globalization.CultureInfo.InvariantCulture), A.Cx), "a click inside the rotated box selects it");
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));
+            yield return Click(Ctr(A) + new Vector2(140f, 0));        // inside the unrotated box only
+            Check(Root.Q<TextField>("layout-x") == null, "a click beside the rotated box misses it");
+            yield return Click(Ctr(A));
+            yield return Drag(Ctr(A), new Vector2(94f, A.Cy));       // turned: left edge 4 px from the screen edge
+            Check(Near(A.Cx, 90f, 0.01f), "the rotated box's own edge snaps to the screen edge", "Cx=" + A.Cx);
+            A.Rot = 0f; A.Cx = W * 0.3f; yield return null; yield return null;
+
+            // Leaving a field without typing changes nothing; Escape cancels what was typed
+            yield return Click(Ctr(A));
+            A.Scale = 1.2345f;
+            for (int i = 0; i < 3; i++) yield return null;
+            var fs = Root.Q<TextField>("layout-size");
+            fs.Focus(); yield return null; fs.Blur(); yield return null; yield return null;
+            Check(A.Scale == 1.2345f, "focusing and leaving Size without typing keeps the exact value", "scale=" + A.Scale);
+            fs.Focus(); yield return null;
+            fs.SetValueWithoutNotify("3");
+            using (var ke = KeyDownEvent.GetPooled('\0', KeyCode.Escape, EventModifiers.None)) { ke.target = fs; fs.SendEvent(ke); }
+            fs.Blur(); yield return null; yield return null;
+            Check(A.Scale == 1.2345f, "Escape in a field cancels the typed value", "scale=" + A.Scale);
+            A.Scale = 1f;
+
+            // Dragging a crop edge past the other stops at 5% and leaves the other edge alone
+            A.Crop = new[] { 0.1f, 0f, 0f, 0f };
+            yield return null; yield return null;
+            var crop2 = ButtonNamed("layout-crop");
+            if (crop2 != null) { Submit(crop2); yield return null; yield return null; }
+            var rm = new Vector2(A.Cx + A.Get()[2] / 2f, A.Cy);
+            yield return Drag(rm, new Vector2(A.Cx - A.W * 2f, A.Cy));
+            Check(Near(A.Crop[0], 0.1f, 0.001f) && Near(A.Crop[2], 0.85f, 0.01f), "the dragged edge stops; the opposite one stays", "crop=" + string.Join("/", A.Crop));
+            if (crop2 != null) { Submit(crop2); yield return null; }
+            A.Crop = new float[4];
+
+            // Ctrl+Z reads its keys exempt from the input gate the editor itself raises
+            yield return Drag(Ctr(A), Ctr(A) + new Vector2(60f, 0));
+            float movedX = A.Cx;
+            bool sawBlocking = false, fired = false;
+            LayoutEditor.KeyHeld = k => { sawBlocking |= InputGate.Blocking; return k == KeyCode.LeftControl; };
+            LayoutEditor.KeyPressed = k => { sawBlocking |= InputGate.Blocking; if (k == KeyCode.Z && !fired) { fired = true; return true; } return false; };
+            for (int i = 0; i < 4; i++) yield return null;
+            LayoutEditor.KeyHeld = Input.GetKey; LayoutEditor.KeyPressed = Input.GetKeyDown;
+            Check(!sawBlocking, "the editor reads its undo keys exempt from InputGate");
+            Check(Near(A.Cx, movedX - 60f), "Ctrl+Z undoes the last gesture", "Cx=" + A.Cx + " was " + movedX);
 
             // Done
             var done = ButtonNamed("layout-done");
