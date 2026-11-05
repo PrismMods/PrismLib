@@ -128,17 +128,34 @@ namespace PrismLib.UI.Toolkit
             tf.style.width = 90f;
             Skin.When<TextField>(tf, Skin.Field);
             tf.style.fontSize = Tokens.FontSizeSmall;
+            // Commit only what was typed: the shown text is rounded, so committing it on every blur
+            // would nudge the value and add an undo step for nothing. Escape puts the text back.
+            string shown = null;
+            bool cancelled = false;
             Action commit = () =>
             {
                 var f = _selected;
                 float v;
-                if (f == null || !float.TryParse(tf.value, NumberStyles.Float, Inv, out v)) return;
+                if (f == null || tf.value == shown || !float.TryParse(tf.value, NumberStyles.Float, Inv, out v)) return;
+                shown = tf.value;
                 BeginGesture(f);
                 Guard(f, () => { apply(v); return true; }, false);
                 EndGesture(f);
             };
-            tf.RegisterCallback<BlurEvent>(_ => commit());
-            tf.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) commit(); });
+            tf.RegisterCallback<FocusInEvent>(_ => { shown = tf.value; cancelled = false; });
+            // Ui.HandleEscape blurs the field itself, possibly before the Escape key event reaches
+            // it, so a blur while Escape is down is a cancel too.
+            tf.RegisterCallback<BlurEvent>(_ =>
+            {
+                if (!cancelled && !InputGate.Exempt(() => KeyHeld(KeyCode.Escape))) commit();
+                else if (shown != null) tf.SetValueWithoutNotify(shown);
+                cancelled = false;
+            });
+            tf.RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) commit();
+                else if (e.keyCode == KeyCode.Escape) { cancelled = true; if (shown != null) tf.SetValueWithoutNotify(shown); }
+            });
             row.Add(tf);
             return tf;
         }
@@ -216,6 +233,12 @@ namespace PrismLib.UI.Toolkit
         }
 
         // Cmd/Ctrl+Z undoes, with Shift redoes, while the editor is open.
+        // The key reads go through these so LayoutProbe's autotest can drive and observe them.
+        internal static Func<KeyCode, bool> KeyHeld = Input.GetKey;
+        internal static Func<KeyCode, bool> KeyPressed = Input.GetKeyDown;
+
+        // Exempt: the editor's own surface raises the input gate, which would otherwise read
+        // every key as up and leave Ctrl+Z dead.
         private void TickUndoKeys()
         {
             bool mod = false, z = false, shift = false;
@@ -232,9 +255,3 @@ namespace PrismLib.UI.Toolkit
         }
     }
 }
-        // The key reads go through these so LayoutProbe's autotest can drive and observe them.
-        internal static Func<KeyCode, bool> KeyHeld = Input.GetKey;
-        internal static Func<KeyCode, bool> KeyPressed = Input.GetKeyDown;
-
-        // Exempt: the editor's own surface raises the input gate, which would otherwise read
-        // every key as up and leave Ctrl+Z dead.
