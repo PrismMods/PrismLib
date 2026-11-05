@@ -1,0 +1,9 @@
+{
+  "Id": "LayoutProbe",
+  "DisplayName": "LayoutProbe (PrismLib dev tool)",
+  "Author": "PrismMods",
+  "Version": "0.0.1",
+  "ManagerVersion": "0.32.4.0",
+  "AssemblyName": "LayoutProbe.dll",
+  "EntryMethod": "LayoutProbe.Main.Load"
+}
