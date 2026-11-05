@@ -190,7 +190,12 @@ namespace PrismLib.UI.Toolkit
         private void Place(Frame f, float k)
         {
             float[] b = Guard(f, () => f.T.GetBox(), null);
-            if (b == null || b.Length < 4) { f.Box.style.display = DisplayStyle.None; f.Tag.style.display = DisplayStyle.None; return; }
+            if (b == null || b.Length < 4)
+            {
+                f.B = null;   // hidden AND unclickable: StackAt and the handles go by B
+                f.Box.style.display = DisplayStyle.None; f.Tag.style.display = DisplayStyle.None;
+                return;
+            }
             f.B = b;
             float left = (b[0] - b[2] / 2f) * k, top = (Screen.height - b[1] - b[3] / 2f) * k;
             f.Box.style.display = DisplayStyle.Flex;
@@ -217,7 +222,9 @@ namespace PrismLib.UI.Toolkit
             {
                 var f = _all[i];
                 if (f.Broken || f.B == null) continue;
-                if (Math.Abs(s.x - f.B[0]) <= f.B[2] / 2f && Math.Abs(s.y - f.B[1]) <= f.B[3] / 2f) hit.Add(f);
+                // In the box's own frame, so a turned box is hit where it is drawn.
+                Vector2 local = Rotate(s - new Vector2(f.B[0], f.B[1]), -RotationOf(f));
+                if (Math.Abs(local.x) <= f.B[2] / 2f && Math.Abs(local.y) <= f.B[3] / 2f) hit.Add(f);
             }
             return hit;
         }
@@ -292,11 +299,13 @@ namespace PrismLib.UI.Toolkit
             }
         }
 
-        // Snap the box's edges and centre to the screen edges and centre lines.
-        private static Vector2 SnapCentre(Frame f, Vector2 c)
+        // Snap the box's edges and centre to the screen edges and centre lines; a turned box snaps
+        // by the edges of what is drawn (its rotated bounding box).
+        private Vector2 SnapCentre(Frame f, Vector2 c)
         {
             float t = LayoutMath.SnapThreshold(Screen.height);
-            float hw = f.B[2] / 2f, hh = f.B[3] / 2f;
+            float r = RotationOf(f) * Mathf.Deg2Rad, cos = Math.Abs(Mathf.Cos(r)), sin = Math.Abs(Mathf.Sin(r));
+            float hw = (f.B[2] * cos + f.B[3] * sin) / 2f, hh = (f.B[2] * sin + f.B[3] * cos) / 2f;
             c.x = SnapAxis(c.x, hw, new float[] { 0f, Screen.width / 2f, Screen.width }, t);
             c.y = SnapAxis(c.y, hh, new float[] { 0f, Screen.height / 2f, Screen.height }, t);
             return c;
