@@ -46,7 +46,8 @@
 - **Reference pixels:** 1080p. Screen px = reference px × `screenH / 1080`.
 - **Coordinates, anchor indexes and crop order** are identical to Plan 2's Global Constraints: bottom-left origin; anchors 0–8 from the top-left in reading order; crop `{left, bottom, right, top}`.
 - **No per-frame CPU pixel work.** Never call `GetPixel(s)`/`SetPixels`/`Apply` on the feed. Crop and flip go through `RawImage.uvRect` only.
-- **Camera lifecycle:** `Play()` stalls the main thread for 0.7–1.3 s, so the camera runs whenever Enabled and access is granted. It is not stopped when hidden; it restarts only on Enabled, camera or resolution changes.
+- **Camera lifecycle:** `Play()` stalls the main thread for 0.7–1.3 s, so the camera runs whenever Enabled and access is granted. It is not stopped when hidden; it restarts on Enabled, camera or resolution changes.
+- **Restart after every scene change:** Unity itself stops `WebCamTexture` on every scene change (Plan 1 gate). `CamFeed` calls `Play()` once after each `SceneManager.activeSceneChanged` when the feed should be running.
 - **Draw order:** a `ScreenSpaceOverlay` canvas at `sortingOrder = 90`. That's below Topaz's key viewer (100), overlay (999), editor (31000) and menu (32000).
 - **PrismLib landmines** (`PrismLib/CLAUDE.md`):
   - no PrismLib type in any field, and none outside `PrismBridge.cs`;
@@ -157,7 +158,8 @@ internal static class CamGeometry {
 internal static class MacPatchPlan {
     public const string UsageText = "CamDisplay shows your hand cam in-game.";
     public static bool NeedsPatch(string entitlementsXml, string infoPlistXml);
-    public static string LaunchLine(string gameDir, bool hasMelonLoaderScript);
+    public static string LaunchLine(string gameDir, string helperScript);   // helperScript: "setup_helper.sh", "melonloader-launch.sh" or null
+    public static string PickHelper(Func<string, bool> existsInGameDir);    // setup_helper.sh first, then melonloader-launch.sh, else null
 }
 ```
 
@@ -206,8 +208,11 @@ s = CamSettings.FromJson(null, j => null, out bad); Check(!bad && s.Enabled, "mi
 Check(MacPatchPlan.NeedsPatch("<key>com.apple.security.cs.disable-library-validation</key>", "<key>NSCameraUsageDescription</key>"), "no camera entitlement needs the patch");
 Check(!MacPatchPlan.NeedsPatch("<key>com.apple.security.device.camera</key><true/>", "<key>NSCameraUsageDescription</key>"), "entitlement + usage key is patched");
 Check(MacPatchPlan.NeedsPatch("<key>com.apple.security.device.camera</key><true/>", "<dict></dict>"), "missing usage key needs the patch");
-Check(MacPatchPlan.LaunchLine("/G a", true) == "\"/G a/CamDisplayLaunch\" \"/G a/melonloader-launch.sh\" %command%", "launch line with MelonLoader");
-Check(MacPatchPlan.LaunchLine("/G a", false) == "\"/G a/CamDisplayLaunch\" %command%", "launch line without MelonLoader");
+Check(MacPatchPlan.LaunchLine("/G a", "setup_helper.sh") == "\"/G a/CamDisplayLaunch\" \"/G a/setup_helper.sh\" %command%", "launch line wraps UMMInstall's helper");
+Check(MacPatchPlan.LaunchLine("/G a", "melonloader-launch.sh") == "\"/G a/CamDisplayLaunch\" \"/G a/melonloader-launch.sh\" %command%", "launch line wraps MelonLoader's script");
+Check(MacPatchPlan.LaunchLine("/G a", null) == "\"/G a/CamDisplayLaunch\" %command%", "launch line without a helper");
+Check(MacPatchPlan.PickHelper(f => true) == "setup_helper.sh", "setup_helper.sh wins when both exist");
+Check(MacPatchPlan.PickHelper(f => f == "melonloader-launch.sh") == "melonloader-launch.sh" && MacPatchPlan.PickHelper(f => false) == null, "falls back to MelonLoader's script, then none");
 ```
 
 `Near(a, b)` is `Math.Abs(a - b) < 0.01`.
@@ -254,7 +259,7 @@ internal sealed class CamFeed {
     public string[] Devices();                   // WebCamTexture.devices names
     public void Restart(CamSettings s);          // RequestUserAuthorization once, then PickDevice + new WebCamTexture(name, Width, Height, Fps).Play()
     public void Stop();
-    public void Tick();                          // detects denial / loss (isPlaying went false) → Status, no retry loop
+    public void Tick();                          // detects denial / loss → Status; after a scene change, Play() once if the feed should run
 }
 internal sealed class CamView {
     public CamView();                            // DontDestroyOnLoad canvas, ScreenSpaceOverlay, sortingOrder 90, one RawImage, raycastTarget false
@@ -276,6 +281,7 @@ Expected, by screenshot:
 - **Default flips:** the image is upside-down and mirrored compared with a raw camera view.
 - **Contexts:** the cam is hidden in level select and the editor, and visible there once `ShowInLevelSelect`/`ShowInEditor` are set to true in `CamDisplay.json` and the game is reloaded.
 - **Unplugged:** with an external camera unplugged mid-run, the cam hides, the log shows the status once, and there are no repeated exceptions in `CamDisplayLog.txt`.
+- **Scene changes:** going level select → level → level select → editor, the feed is live after every change. The log shows one restart per scene change, and no restart loops.
 
 - [ ] **Step 2: Confirm the scene names**
 
@@ -397,7 +403,7 @@ internal static class MacPatch {
 }
 internal static class Launcher {
     public static string Install();              // write the resource to <game>/CamDisplayLaunch, chmod 755, codesign -s -; "" or an error
-    public static string Line();                 // MacPatchPlan.LaunchLine(gameDir, File.Exists(gameDir + "/melonloader-launch.sh"))
+    public static string Line();                 // MacPatchPlan.LaunchLine(gameDir, MacPatchPlan.PickHelper(f => File.Exists(Path.Combine(gameDir, f))))
 }
 ```
 

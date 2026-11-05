@@ -108,7 +108,7 @@ The cam's position, size, rotation, anchor and crop are edited only in the layou
 
 The spike measured `WebCamTexture.Play()` **blocking the main thread for 0.7–1.3 s** on macOS. Stopping the camera whenever the cam is hidden would therefore cause a stall on every entry into a level.
 
-So the camera runs whenever CamDisplay is enabled and access is granted, and the Enabled toggle is the off switch. A hidden cam keeps the device open, so the macOS camera light stays on.
+So the camera runs whenever CamDisplay is enabled and access is granted, and the Enabled toggle is the off switch. Unity stops the webcam on every scene change (see "Gate result"), so CamDisplay calls `Play()` again after each scene change. That restart lands during the transition, not in gameplay. A hidden cam keeps the device open, so the macOS camera light stays on.
 
 The builder should re-measure `Play()` on Windows and Linux. If the stall is negligible there, stopping while hidden is allowed on those platforms.
 
@@ -204,11 +204,14 @@ Related behavior:
 
 **B. Launcher:**
 
-- **What it is:** a tiny native macOS binary (C, universal arm64 + x86_64) that `posix_spawn`s its arguments with responsibility disclaimed, waits, and exits with the child's status. Disclaiming uses `responsibility_spawnattrs_setdisclaim`, a private libsystem symbol looked up with `dlsym`; terminal apps use the same technique. Steam still sees one process tree.
+- **What it is:** a tiny native macOS binary (C, universal arm64 + x86_64). It calls `posix_spawn` with `POSIX_SPAWN_SETEXEC` and responsibility disclaimed, so it **replaces itself** with its arguments and the game keeps the PID Steam started.
+  - Disclaiming uses `responsibility_spawnattrs_setdisclaim`, a private libsystem symbol looked up with `dlsym`; terminal apps use the same technique.
+  - The first version spawned a child and waited for it, and Steam's Stop then took about 36 s, because Steam asked a non-app process to quit.
 - **How it gets installed:** the mod embeds the launcher, writes it into the game folder itself, makes it executable and ad-hoc signs it. Files the game process writes aren't quarantined, which avoids a Gatekeeper block on a downloaded binary.
-- **Launch options:** the mod shows the exact Steam Launch Options line, with a copy button:
-  - with MelonLoader: `"<game>/CamDisplayLaunch" "<game>/melonloader-launch.sh" %command%`
-  - without MelonLoader: `"<game>/CamDisplayLaunch" %command%`
+- **Launch options:** the mod shows the exact Steam Launch Options line, with a copy button. The line puts the launcher in front of the helper the user already uses:
+  - with UMMInstall's `setup_helper.sh` (the user's rig): `"<game>/CamDisplayLaunch" "<game>/setup_helper.sh" %command%`
+  - with MelonLoader's own script: `"<game>/CamDisplayLaunch" "<game>/melonloader-launch.sh" %command%`
+  - with neither: `"<game>/CamDisplayLaunch" %command%`
 - **Untested:**
   - the launcher itself (the spike proved the idea with `open`, not with disclaim);
   - whether vanilla UMM users (no MelonLoader) need it. MelonLoader's script comment says Steam launches a plain `.app` through LaunchServices, which would already make the game its own responsible process.
@@ -219,6 +222,23 @@ Related behavior:
 - Run the macOS patch on a 2.9 bundle too. Its entitlements may differ; they are read at runtime, but verify that.
 
 Possible later improvement (not in scope): propose responsibility-disclaim to MelonLoader's macOS launch wrapper upstream.
+
+### Gate result (2026-11-06): PASS
+
+Setup: the game patched with `tools/mac-camera-patch.sh`; launch options `"<G>/CamDisplayLaunch" "<G>/setup_helper.sh" %command%`; started from Steam.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Camera works | pass | `hasAuth=True`, `1280x720`, `updates` rising at about 15 fps. tccd attributes the request to `com.7thbeat.adofai`. |
+| MelonLoader injected | pass | `Latest.log`: `UMMBridge.dll` loaded, `[Umm] active mods: [CamProbe, Sapphire, Topaz]`. |
+| Process tree | pass | The game PID equals Steam's `ProcID`, and its parent is `steam_osx`. |
+| Steam tracks the game | pass | `Game process added` / `removed` for AppID 977950. The overlay is **not a requirement**: the user says players don't use it because it interferes with gameplay. |
+| Stop works | pass | `TerminateApp` at 02:15:41, game removed at 02:15:44 (3 s). |
+
+**Finding that changes Part 2:** Unity's `WebCamTexture` is **stopped by Unity itself** on **every scene change** (`AVCaptureSession stopRunning` called from `UnityPlayer`, main thread). Seen at startup → `scnLevelSelect`, → `scnEditor`, and back.
+- One `Play()` afterwards resumes the feed. The restart cost 0.13–1.2 s on the main thread, so it lands during the scene transition, not in gameplay.
+- CamDisplay must therefore restart the feed after every scene change.
+- It is untested whether this also happens on Windows/Linux, or with no other mods loaded. The restart covers it either way.
 
 **Windows / Linux:** no known gate. Windows has a per-user "let desktop apps access your camera" privacy toggle, and its failure should show in the status text. The user has an Arch Linux machine for testing.
 
