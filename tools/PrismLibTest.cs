@@ -200,6 +200,31 @@ static class PrismLibTest
         Diagnostics.Unregister("Sapphire");
         Check(Count(Diagnostics.Logs) == 1 && Count(Diagnostics.Fields) == 0, "a mod going away takes its sources");
 
+        Console.WriteLine("layout");
+        Func<float[]> box = () => new float[] { 100, 100, 50, 30 };
+        Func<string, LayoutTarget> T = id => new LayoutTarget { Id = id, Label = id, GetBox = box, MoveTo = (x, y) => { }, GetScale = () => 1f, SetScale = s => { } };
+        int changed = 0; Layout.Changed += () => changed++;
+        a.DescribeLayout(new[] { T("cam"), T("hud") });
+        b.DescribeLayout(new[] { T("cam") });
+        var ids = new List<string>(); foreach (var kv in Layout.All()) ids.Add(kv.Key + ":" + kv.Value.Id);
+        Check(string.Join(",", ids) == "Sapphire:cam,Sapphire:hud,Topaz:cam", "targets list in registration order, Ids scoped per owner");
+        Check(changed == 2, "each DescribeLayout raises Changed once");
+        a.DescribeLayout(new[] { T("cam") });
+        ids.Clear(); foreach (var kv in Layout.All()) ids.Add(kv.Key + ":" + kv.Value.Id);
+        Check(string.Join(",", ids) == "Topaz:cam,Sapphire:cam", "a second call replaces the mod's list");
+        a.DescribeLayout(new[] { new LayoutTarget { Id = "x", GetBox = box }, new LayoutTarget { Id = "", GetBox = box, MoveTo = (x, y) => { }, GetScale = () => 1, SetScale = s => { } } });
+        bool none = true; foreach (var kv in Layout.All()) if (kv.Key == "Sapphire") none = false;
+        Check(none, "targets missing Id, GetBox, MoveTo, GetScale or SetScale are skipped");
+        Layout.Unregister("Topaz");
+        bool empty = true; foreach (var kv in Layout.All()) empty = false;
+        Check(empty, "Unregister removes the owner's targets");
+        int opens = 0; Layout.OpenRequested += () => opens++; Layout.RequestOpen();
+        Check(opens == 1, "RequestOpen raises OpenRequested");
+        var lc = a.ClaimState(StateKey.LayoutEditor, "editor");
+        Check(lc != null && b.ClaimState(StateKey.LayoutEditor, "editor") == null, "LayoutEditor is an ordinary first-come claim");
+        lc.Release();
+        Check((int)StateKey.LayoutEditor == (int)StateKey.DebugPanel + 1, "LayoutEditor is appended after DebugPanel");
+
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
     }

@@ -149,6 +149,9 @@ namespace PrismLib
         public KeyBinding BindKey(string id, int keyCode, KeyMods mods, string label) => Keys.Register(this, id, keyCode, mods, label);
         public void DescribeSettings(IEnumerable<SettingEntry> entries) => Settings.Register(this, entries);
 
+        /// Offer this mod's movable elements to the shared layout editor. Replaces the previous list.
+        public void DescribeLayout(IEnumerable<LayoutTarget> targets) => Layout.Register(this, targets);
+
         /// Report whether the pointer is over this mod's own UI, so others can stand down.
         public void ReportPointerOverUi(Func<bool> probe) => Prism.SetPointerOverUi(Id, probe);
 

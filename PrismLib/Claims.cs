@@ -16,6 +16,7 @@ namespace PrismLib
         GameHud,         // the gameplay HUD: no-fail badge, progress, attempt counter
         InputCapture,    // the keyboard itself — held while a mod swallows keys game-wide
         DebugPanel,      // the shared debug window; one owner, or every mod stacks an identical copy
+        LayoutEditor,    // the shared layout editor; one mod hosts it for every mod's targets
     }
 
     /* Who owns a piece of game state right now.
