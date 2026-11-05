@@ -68,6 +68,7 @@
         <Compile Include="Toolkit\EditTarget.cs" />
         <Compile Include="Toolkit\LayoutEditor.cs" />
         <Compile Include="Toolkit\LayoutEditor.Grips.cs" />
+        <Compile Include="Toolkit\LayoutEditor.Inspector.cs" />
         <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
         <Compile Include="Toolkit\SearchIndex.cs" />
