@@ -244,6 +244,24 @@ Setup: the game patched with `tools/mac-camera-patch.sh`; launch options `"<G>/C
 
 **Windows ships untested (user's decision):** there is no Windows machine or tester. Windows isn't in the release criteria, and the README and release notes say it is untested. Keep the keep-camera-running default there.
 
+### v1 verification (2026-11-06, automated while the user slept)
+
+All on the user's Mac (ADOFAI 3.4.0, MelonLoader + UMMBridge, launched from Steam through
+CamDisplayLaunch), by DEBUG-only self-tests that log PASS/FAIL:
+
+- PrismLib layout editor (LayoutProbe autotest, synthetic UI Toolkit events): 36/36, including
+  the final-review fixes (handles on screen after Reload, rotated hit-testing/snapping, field
+  commits, crop edges, Ctrl+Z exempt from the input gate).
+- CamDisplay (SelfTest): 25/25 — ML load, PrismLib wiring, live feed, context rules (level select
+  `gameworld=False`, editor scene), placement/flips/crop reaching the RawImage, JSON save, editor
+  and settings window, restart after a scene change, macOS status/launcher/launch line/clipboard,
+  and the queued undo+apply running after game exit.
+- p99 frame time in the level select: 15.60 ms cam hidden, 15.86 ms shown (budget 0.5 ms).
+
+**Not yet verified:** a dense level (needs a human to play one), the UMM build in-game, ADOFAI
+2.9, Linux, Windows (ships untested by decision), and any visual check of styling (screen capture
+needs the user's permission; the game was also behind a Screen Time limit shield).
+
 ## Testing
 
 - **Offline:** registry rules in `PrismLib.dll` go in `tools/PrismLibTest.cs` (replace-on-second-call, removal by owner, entries with missing delegates skipped).
