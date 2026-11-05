@@ -218,11 +218,23 @@ namespace PrismLib.UI.Toolkit
         // Cmd/Ctrl+Z undoes, with Shift redoes, while the editor is open.
         private void TickUndoKeys()
         {
-            bool mod = Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand)
-                       || Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-            if (!mod || !Input.GetKeyDown(KeyCode.Z)) return;
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) History.Redo();
+            bool mod = false, z = false, shift = false;
+            InputGate.Exempt(() =>
+            {
+                mod = KeyHeld(KeyCode.LeftCommand) || KeyHeld(KeyCode.RightCommand)
+                      || KeyHeld(KeyCode.LeftControl) || KeyHeld(KeyCode.RightControl);
+                z = mod && KeyPressed(KeyCode.Z);
+                shift = z && (KeyHeld(KeyCode.LeftShift) || KeyHeld(KeyCode.RightShift));
+            });
+            if (!z) return;
+            if (shift) History.Redo();
             else History.Undo();
         }
     }
 }
+        // The key reads go through these so LayoutProbe's autotest can drive and observe them.
+        internal static Func<KeyCode, bool> KeyHeld = Input.GetKey;
+        internal static Func<KeyCode, bool> KeyPressed = Input.GetKeyDown;
+
+        // Exempt: the editor's own surface raises the input gate, which would otherwise read
+        // every key as up and leave Ctrl+Z dead.
