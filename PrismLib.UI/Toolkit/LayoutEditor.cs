@@ -20,7 +20,7 @@ namespace PrismLib.UI.Toolkit
     {
         private readonly Func<IEnumerable<EditTarget>> _source;
         private Surface _surface;
-        private VisualElement _layer, _frames;
+        private VisualElement _layer, _under, _frames, _chrome;   // ghost below, frames, handles above
         private Label _empty;
         private readonly List<Frame> _all = new List<Frame>();
         private Frame _selected;
@@ -122,10 +122,10 @@ namespace PrismLib.UI.Toolkit
             _layer.pickingMode = PickingMode.Position;   // the editor owns every click while open
             root.Add(_layer);
 
-            _frames = new VisualElement { pickingMode = PickingMode.Ignore };
-            _frames.style.position = Position.Absolute;
-            _frames.style.left = 0; _frames.style.top = 0; _frames.style.right = 0; _frames.style.bottom = 0;
-            _layer.Add(_frames);
+            // Reload clears _frames only; the handles and the crop ghost live in their own layers.
+            _under = FullLayer();
+            _frames = FullLayer();
+            _chrome = FullLayer();
 
             _empty = Ui.Text("Nothing to arrange yet", _layer, Tokens.FontSize, Tokens.TextMuted);
             _empty.pickingMode = PickingMode.Ignore;
@@ -145,6 +145,15 @@ namespace PrismLib.UI.Toolkit
             _layer.RegisterCallback<PointerMoveEvent>(OnMove);
             _layer.RegisterCallback<PointerUpEvent>(OnUp);
             BuildExtras();
+        }
+
+        private VisualElement FullLayer()
+        {
+            var e = new VisualElement { pickingMode = PickingMode.Ignore };
+            e.style.position = Position.Absolute;
+            e.style.left = 0; e.style.top = 0; e.style.right = 0; e.style.bottom = 0;
+            _layer.Add(e);
+            return e;
         }
 
         private Frame NewFrame(EditTarget t)

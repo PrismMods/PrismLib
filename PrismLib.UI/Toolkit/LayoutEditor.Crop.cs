@@ -95,9 +95,9 @@ namespace PrismLib.UI.Toolkit
             Ui.SetBorderWidth(_ghost, 1f);
             Ui.SetBorderColor(_ghost, new Color(1f, 1f, 1f, 0.35f));
             _ghost.style.display = DisplayStyle.None;
-            _frames.Insert(0, _ghost);   // under every frame
+            _under.Add(_ghost);   // under every frame
             _edges = new VisualElement[4];
-            for (int i = 0; i < 4; i++) _edges[i] = Handle(12f, 3f);
+            for (int i = 0; i < 4; i++) _edges[i] = Handle("layout-crop-edge-" + i, 12f, 3f);
         }
 
         // Midpoints of the visible box's left, bottom, right, top edges (the side order of crop).
