@@ -81,7 +81,7 @@ Cut a release when something is ready to ship, not to try it.
 
 ## The shared debug window
 
-`Alt+D` in every Prism mod — the same chord on purpose, because the window is shared: it
+`Alt+Shift+D` in every Prism mod — the same chord on purpose, because the window is shared: it
 shows every registered mod's log and fields, not just the one whose key you pressed. Both mods poll
 the chord and `StateKey.DebugPanel` decides which one draws, so two mods never stack identical
 copies. With PrismLib absent a mod falls back to showing its own log alone.
@@ -177,7 +177,7 @@ replaced it.
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
 danger, header) and `SettingsPanel`, which renders whatever the mods DESCRIBE through
 `ModHandle.DescribeSettings`. Both mods now declare a real slice of their settings, so the schema
-from stage 1 finally has a renderer and `Search` spans them. **Alt+S** opens it (**Alt+D** for the debug window — not Ctrl+Shift+S, which is the editor's Save); the mods'
+from stage 1 finally has a renderer and `Search` spans them. **Alt+Shift+S** opens it (**Alt+Shift+D** for the debug window — not Ctrl+Shift+S, which is the editor's Save); the mods'
 own uGUI panels are untouched, so this is additive until each screen moves across.
 
 `SettingsPanel` takes its own `SettingRow`, not `PrismLib.SettingEntry`, for the same reason
@@ -231,12 +231,17 @@ without it the window keeps displaying the value the control had before.
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
 `PrismBridge.TickCapture` is the poller.
 
-**Alt+letter does not arrive on macOS; Alt+SHIFT+letter does.** Option+D and Option+S compose a
-character (∂, ß) and Unity never reports the letter's keycode — verified in-game, where Alt+Shift+S
-worked and Alt+S did not, which is also why the first diagnostic saw `LeftAlt` and the letter
-together yet the chord never fired. The chords are **Alt+Shift+D** and **Alt+Shift+S**, with
-Ctrl+Shift+D and Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the
-editor's Save.
+**On macOS Unity's `Input` drops some letters while Option is held, and which depends on the key.**
+In-game on Unity 6 (2026-11-05), `AltDiag` (which scans every `GetKeyDown`) saw D and S arrive under
+Option+Shift, but for Option+Shift+K and Option+Shift+P only `LeftAlt` and `LeftShift`. Plain
+Option+D / Option+S never fired either. So `MacKeys` (PrismLib.UI)
+reads the window server on a Mac (`CGEventSourceKeyState`, focus-gated, InputGate-respecting):
+`Down` is a rising edge and must be polled **every frame**, `Held` ORs in the window server's
+modifier flags so a chord landing in one frame lines up. Never read an Alt chord's letter through
+`Input.GetKeyDown`. The chords are **Alt+Shift+D** and **Alt+Shift+S**, with Ctrl+Shift+D and
+Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the editor's Save.
+`MacKeys` is newer than 0.3.10, so bridges call it behind a NoInlining wrapper and a catch (another
+mod's older PrismLib.UI may be the loaded one), falling back to `Input`.
 
 **`WheelEvent` delivery differs BETWEEN panels, so the question is per-frame, not ever.** The
 settings page receives them and the debug list does not. A single "the host sends wheel events"
@@ -262,8 +267,8 @@ dragger are laid out by the default style sheet, so each has to be placed by han
 container's midline. Fixing only the dragger moves the mismatch instead of removing it — the track
 was not centred either.
 
-**Topaz's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and the
-letter both arriving, so macOS was not swallowing anything. `KeyLimiter.GetKeyDownPostfix` returns
+**Topaz's key block was a separate cause of the same symptom.** The diagnostic showed `LeftAlt` and
+the letter both arriving for D and S (not for every letter; see above). `KeyLimiter.GetKeyDownPostfix` returns
 false for every key but `T` while Topaz's panel is open, *including for Topaz's own poll*, so
 the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
 through the block. `Ctrl+Shift+D` / `Ctrl+Shift+P` remain as fallbacks and `PrismBridge.AltDiag`
