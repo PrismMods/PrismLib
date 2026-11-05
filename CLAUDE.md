@@ -358,6 +358,9 @@ mod runs its own UI update and the bridge tick inside `InputGate.Exempt`, or the
 polls that drive Prism would be blocked too; autoplay is a registered bypass. Verified in-game: with
 a window open, presses neither move the level-select planet nor open the pause menu.
 
+- **A mod's own uGUI menu holds the same gate with `InputGate.Block(id, active)`** (Quartz's menu,
+  for "block inputs while the menu is open"). Same id replaces; `Unblock` removes. It still needs
+  `AddMouseExemption` for its own clicks and `Exempt` around its own key polls.
 - **The key that closes a window is still down for the rest of that frame.** A hiding surface holds
   the gate shut until the frame ends, or Escape closed the window and then paused the game behind it.
 - **Engine calls (icalls) cannot be patched** on the game's Mono + UMM Harmony 2.3.6 ("Invalid IL

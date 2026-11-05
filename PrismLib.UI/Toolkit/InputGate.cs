@@ -51,7 +51,8 @@ namespace PrismLib.UI.Toolkit
             get
             {
                 if (_exempt > 0) return false;
-                if (!Ui.BlocksGameInput && Time.frameCount != _holdFrame) return false;
+                bool held = AnyBlocker();   // first: it also notes a release, which holds this frame
+                if (!Ui.BlocksGameInput && !held && Time.frameCount != _holdFrame) return false;
                 if (Any(_exemptProbes) || Any(_bypass)) return false;
                 return true;
             }
@@ -64,6 +65,37 @@ namespace PrismLib.UI.Toolkit
         private static int _holdFrame = -1;
 
         internal static void HoldThisFrame() => _holdFrame = Time.frameCount;
+
+        /* For UI that is not a Prism Surface — a mod's own uGUI menu. While `active` returns true, game
+           input is withheld exactly as for an open Prism window. The same id replaces (a hot reload
+           re-registers), Unblock removes. The menu still needs AddMouseExemption for its own clicks and
+           Exempt around its own key polls, like any mod's. */
+        public static void Block(string id, Func<bool> active)
+        {
+            if (id == null) return;
+            if (active == null) { _blockers.Remove(id); return; }
+            _blockers[id] = new Blocker { Active = active };
+        }
+
+        public static void Unblock(string id) { if (id != null) _blockers.Remove(id); }
+
+        private sealed class Blocker { public Func<bool> Active; public bool On; }
+        private static readonly Dictionary<string, Blocker> _blockers = new Dictionary<string, Blocker>();
+
+        private static bool AnyBlocker()
+        {
+            bool any = false;
+            foreach (var b in _blockers.Values)
+            {
+                bool on;
+                try { on = b.Active(); } catch { on = false; }
+                // The key that closed the menu is still down for the rest of this frame — see _holdFrame.
+                if (b.On && !on) _holdFrame = Time.frameCount;
+                b.On = on;
+                any |= on;
+            }
+            return any;
+        }
 
         /// Run reads that belong to a mod or to Prism itself — its menu hotkeys, the Escape and
         /// chord polls, the wheel feed — so they still see real input while a window blocks.
