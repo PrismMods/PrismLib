@@ -41,13 +41,13 @@ namespace PrismLib.UI.Toolkit
     {
         private readonly Func<IEnumerable<SettingRow>> _source;
         private Surface _surface;
-        private Theme _theme;
-
-        /// The scheme this panel draws in — the owning mod's. Null draws in Theme.Default, the Tokens a mod pushed.
+        /* The scheme this panel draws in — the owning mod's; null is Theme.Default, the Tokens a mod
+           pushed. The window is built in the constructor, so build it inside `Theme.Use` to colour the
+           chrome too; setting this afterwards reaches only what is built or hovered later. */
         public Theme Theme
         {
-            get { return _theme; }
-            set { _theme = value; if (_surface != null) _surface.Theme = value; }
+            get { return _surface != null ? _surface.Theme : null; }
+            set { if (_surface != null) _surface.Theme = value; }
         }
         private Window _window;
         private Tabs _tabs;
@@ -137,7 +137,6 @@ namespace PrismLib.UI.Toolkit
             // Named from the title, so a mod's own menu and the library's window are distinct
             // GameObjects with distinct saved geometry rather than two things called the same.
             _surface = new Surface(Slug(title) + "Panel", Layer.Window, font);
-            _surface.Theme = _theme;
             if (_surface.Root == null) return;
 
             _window = new Window(_surface.Root, Slug(title), title,

@@ -26,11 +26,15 @@ namespace PrismLib.UI.Toolkit
         private Theme(bool tokens) { _tokens = tokens; }
 
         /// A copy of the current Default, to adjust.
-        public Theme() : this(false)
+        public Theme() : this(false) { CopyFrom(Default); }
+
+        /// Take every colour from `o`, in place, so whatever already holds this scheme sees them.
+        public void CopyFrom(Theme o)
         {
-            Panel = Default.Panel; PanelBorder = Default.PanelBorder; TitleBar = Default.TitleBar;
-            Row = Default.Row; RowAlt = Default.RowAlt; RowHover = Default.RowHover;
-            Text = Default.Text; TextMuted = Default.TextMuted; Accent = Default.Accent; Danger = Default.Danger;
+            if (o == null) return;
+            Panel = o.Panel; PanelBorder = o.PanelBorder; TitleBar = o.TitleBar;
+            Row = o.Row; RowAlt = o.RowAlt; RowHover = o.RowHover;
+            Text = o.Text; TextMuted = o.TextMuted; Accent = o.Accent; Danger = o.Danger;
         }
 
         public Color Panel       { get { return _tokens ? Tokens.Panel : _panel; }             set { if (_tokens) Tokens.Panel = value; else _panel = value; } }
@@ -82,6 +86,7 @@ namespace PrismLib.UI.Toolkit
 
         private static readonly ConditionalWeakTable<VisualElement, Theme> _of = new ConditionalWeakTable<VisualElement, Theme>();
         private static Theme _building;
+        internal static Theme Building { get { return _building; } }
 
         /// Give `e` and everything under it this scheme. Null clears it.
         public static void Set(VisualElement e, Theme t)
@@ -103,6 +108,8 @@ namespace PrismLib.UI.Toolkit
         }
 
         /// For a build that happens before its elements join the tree: `using (Theme.Use(t)) { … }`.
+        /// A Surface created inside the scope keeps the scheme — how a panel built in its constructor
+        /// gets one: `using (Theme.Use(mine)) panel = new SettingsPanel(…);`.
         public static IDisposable Use(Theme t) { return new Scope(t); }
 
         private sealed class Scope : IDisposable

@@ -85,6 +85,8 @@ namespace PrismLib.UI.Toolkit
             var doc = _go.AddComponent<UIDocument>();
             doc.panelSettings = _settings;
             Root = doc.rootVisualElement;
+            // Built inside Theme.Use: keep that scheme, or the panel's later pages fall back to Default.
+            if (Root != null && Theme.Building != null) Theme = Theme.Building;
             /* Null here is the failure that looks like nothing happening: the panel exists, the
                hotkey "works", and not one element is ever drawn. Worth its own line. */
             Ui.Log("Surface '" + name + "': root " + (Root == null ? "NULL — nothing will render" : "ok")

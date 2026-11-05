@@ -32,13 +32,13 @@ namespace PrismLib.UI.Toolkit
     {
         private readonly Func<IEnumerable<DebugTab>> _tabs;
         private Surface _surface;
-        private Theme _theme;
-
-        /// The scheme this panel draws in — the owning mod's. Null draws in Theme.Default, the Tokens a mod pushed.
+        /* The scheme this panel draws in — the owning mod's; null is Theme.Default, the Tokens a mod
+           pushed. The window is built in the constructor, so build it inside `Theme.Use` to colour the
+           chrome too; setting this afterwards reaches only what is built or hovered later. */
         public Theme Theme
         {
-            get { return _theme; }
-            set { _theme = value; if (_surface != null) _surface.Theme = value; }
+            get { return _surface != null ? _surface.Theme : null; }
+            set { if (_surface != null) _surface.Theme = value; }
         }
         private Window _window;
         private Tabs _tabs2;
@@ -126,7 +126,6 @@ namespace PrismLib.UI.Toolkit
                number, and at 200 this sat behind anything the game drew full-screen. Sapphire's
                update toast is at 32700, so stay under that. */
             _surface = new Surface("PrismDebugPanel", Layer.Window, font);
-            _surface.Theme = _theme;
             var root = _surface.Root;
             if (root == null) return;
 
