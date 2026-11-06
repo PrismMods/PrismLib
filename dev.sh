@@ -59,6 +59,13 @@ for dir in "$MODS"/*/; do
     echo "installed  ${dir}PrismLib.UI.dll"
 done
 
+# MelonLoader loads UserLibs before any mod folder and the first copy wins: a stale one there
+# runs instead of everything installed above.
+if [ -f "$GAME/UserLibs/PrismLib.UI.dll" ]; then
+    cp "$UIDLL" lib/Facet.0.1.dll "$GAME/UserLibs/"
+    echo "installed  $GAME/UserLibs/PrismLib.UI.dll"
+fi
+
 # ...and the source trees, so their next build compiles against the same thing.
 for repo in ../Sapphire ../Topaz ../CamDisplay ../sapphire ../topaz; do
     [ -d "$repo/lib" ] || continue
