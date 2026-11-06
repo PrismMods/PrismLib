@@ -199,12 +199,12 @@ namespace PrismLib.UI.Toolkit
             _editor.Clear();
             if (_selected == null)
             {
-                Ui.Muted("Click the strip to add a stop.", _editor);
+                Ui.Muted(Words.Own("Click the strip to add a stop."), _editor);
                 return;
             }
 
             var sel = _selected;
-            new ColourPicker(_editor, "Stop colour", sel.Colour, _hasAlpha, c =>
+            new ColourPicker(_editor, Words.Own("Stop colour"), sel.Colour, _hasAlpha, c =>
             {
                 sel.Colour = c;
                 Bake();
@@ -212,7 +212,7 @@ namespace PrismLib.UI.Toolkit
                 Notify();
             });
 
-            Widgets.Slider(_editor, "Position", sel.Position, 0f, 1f, v =>
+            Widgets.Slider(_editor, Words.Own("Position"), sel.Position, 0f, 1f, v =>
             {
                 sel.Position = v;
                 Bake();
@@ -221,7 +221,7 @@ namespace PrismLib.UI.Toolkit
             }, null, "0.00");
 
             var row = Ui.Row(_editor);
-            Ui.Btn("Add stop", () =>
+            Ui.Btn(Words.Own("Add stop"), () =>
             {
                 float t = Mathf.Clamp01(sel.Position + 0.1f);
                 var stop = new GradientStop { Position = t, Colour = Evaluate(t) };
@@ -234,7 +234,7 @@ namespace PrismLib.UI.Toolkit
             // The last stop stays: a gradient with none evaluates to white and the strip vanishes,
             // which reads as a bug rather than as an empty state.
             if (_stops.Count > 1)
-                Ui.Btn("Remove stop", () =>
+                Ui.Btn(Words.Own("Remove stop"), () =>
                 {
                     _stops.Remove(sel);
                     _selected = _stops.Count > 0 ? _stops[0] : null;

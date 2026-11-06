@@ -59,7 +59,7 @@ namespace PrismLib.UI.Toolkit
             if (!string.IsNullOrEmpty(mod) && !_mods.Contains(mod)) _mods.Add(mod);
             _write = write;
             if (_surface == null && !Build()) return;
-            _body.text = Words.F("{0} updated. Restart the game now to load the new version?", string.Join(Words.T(" and "), _mods.ToArray()));
+            _body.text = Words.OwnF("{0} updated. Restart the game now to load the new version?", string.Join(Words.Own(" and "), _mods.ToArray()));
             _rememberRow.style.display = _write != null ? DisplayStyle.Flex : DisplayStyle.None;
             _surface.Visible = true;
         }
@@ -82,21 +82,21 @@ namespace PrismLib.UI.Toolkit
 
             var card = Ui.Card(dim);
             card.style.width = 440f;
-            Ui.Text("Restart to finish updating", card, Tokens.FontSizeTitle);
+            Ui.Text(Words.Own("Restart to finish updating"), card, Tokens.FontSizeTitle);
             _body = Ui.Text("", card);
             _body.style.whiteSpace = WhiteSpace.Normal;
             _body.style.marginTop = Tokens.Gap;
             _body.style.marginBottom = Tokens.Gap;
 
             _remember = false;
-            _rememberRow = Widgets.Toggle(card, "Remember my choice", false, v => _remember = v,
-                "Change it later in Prism · Settings").parent;
+            _rememberRow = Widgets.Toggle(card, Words.Own("Remember my choice"), false, v => _remember = v,
+                Words.Own("Change it later in Prism · Settings")).parent;
 
             var buttons = Ui.Row(card);
             buttons.style.justifyContent = Justify.FlexEnd;
             buttons.style.marginTop = Tokens.Gap;
-            Ui.Btn("Later", () => Choose(Later), buttons);
-            var restart = Ui.Btn("Restart now", () => Choose(Restart), buttons);
+            Ui.Btn(Words.Own("Later"), () => Choose(Later), buttons);
+            var restart = Ui.Btn(Words.Own("Restart now"), () => Choose(Restart), buttons);
             restart.style.marginRight = 0f;
             Ui.Highlight(restart, true);
             return true;

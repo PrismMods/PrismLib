@@ -91,7 +91,7 @@ namespace PrismLib.UI.Toolkit
 
             _content.Clear();
             var hits = SearchIndex.Find(_filter);
-            if (hits.Count == 0) { Ui.Muted("Nothing matches.", _content); return; }
+            if (hits.Count == 0) { Ui.Muted(Words.Own("Nothing matches."), _content); return; }
 
             foreach (var hit in hits)
             {
@@ -577,7 +577,7 @@ namespace PrismLib.UI.Toolkit
             catch (Exception e)
             {
                 Ui.Log("Nav: page '" + what + "' failed to build: " + e.Message);
-                Ui.Muted("This page failed to build — see the log.", _content);
+                Ui.Muted(Words.Own("This page failed to build — see the log."), _content);
             }
             finally { Active = was; }
         }

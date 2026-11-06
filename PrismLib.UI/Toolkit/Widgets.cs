@@ -311,7 +311,7 @@ namespace PrismLib.UI.Toolkit
                 if (!armed)
                 {
                     armed = true;
-                    b.text = Words.T("Sure?");
+                    b.text = Words.Own("Sure?");
                     b.style.backgroundColor = Theme.For(b).Danger;
                     Anim.Pop(b);
                     return;
@@ -348,15 +348,15 @@ namespace PrismLib.UI.Toolkit
         {
             var host = Row(parent, label, tooltip);
             Button b = null;
-            b = Ui.Btn(string.IsNullOrEmpty(current) ? Words.T("unbound") : current, () =>
+            b = Ui.Btn(string.IsNullOrEmpty(current) ? Words.Own("unbound") : current, () =>
             {
-                b.text = Words.T("press a key…");
+                b.text = Words.Own("press a key…");
                 Ui.Highlight(b, true);
                 try
                 {
                     beginCapture(name =>
                     {
-                        b.text = string.IsNullOrEmpty(name) ? Words.T("unbound") : name;
+                        b.text = string.IsNullOrEmpty(name) ? Words.Own("unbound") : name;
                         Ui.Highlight(b, false);
                         Anim.Pop(b);
                     });
@@ -439,9 +439,9 @@ namespace PrismLib.UI.Toolkit
         }
 
         /// Marks a list entry as the active one, the way a profile list shows which is loaded.
-        public static void MarkActive(VisualElement actions, string label = "Active")
+        public static void MarkActive(VisualElement actions, string label = null)
         {
-            var tag = Ui.Text(label, null, Tokens.FontSizeSmall, Theme.For(actions).Accent);
+            var tag = Ui.Text(label ?? Words.Own("Active"), null, Tokens.FontSizeSmall, Theme.For(actions).Accent);
             tag.style.marginRight = Tokens.Gap;
             actions.Insert(0, tag);
         }
@@ -463,7 +463,7 @@ namespace PrismLib.UI.Toolkit
             bool armed = false;
             b = Ui.Btn(text, () =>
             {
-                if (!armed) { armed = true; b.text = Words.T("Sure?"); b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
+                if (!armed) { armed = true; b.text = Words.Own("Sure?"); b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
                 armed = false;
                 b.text = text;
                 b.style.backgroundColor = Theme.For(b).RowAlt;

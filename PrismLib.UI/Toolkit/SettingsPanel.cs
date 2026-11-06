@@ -148,7 +148,7 @@ namespace PrismLib.UI.Toolkit
             if (_navPages != null)
             {
                 _nav = new Nav(_window.Body, _navPages());
-                _window.ShowSearch("Search settings…", q => _nav.Filter(q));
+                _window.ShowSearch(Words.Own("Search settings…"), q => _nav.Filter(q));
                 _nav.OnInsetChanged = inset => _window.SetContentInset(inset);
                 // Undo writes straight into the mod's settings; the page has to be re-read or it
                 // keeps showing what the control was set to before.
@@ -195,11 +195,11 @@ namespace PrismLib.UI.Toolkit
         {
             if (_nav != null) { _nav.Refresh(); return; }
             _rows = new List<SettingRow>(_source());
-            foreach (var r in _rows) Localise(r);
+            foreach (var r in _rows) As(r.Owner, () => Localise(r));
             _pages.Clear();
             foreach (var r in _rows)
             {
-                string p = string.IsNullOrEmpty(r.Page) ? "General" : r.Page;
+                string p = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : r.Page;
                 if (!_pages.Contains(p)) _pages.Add(p);
             }
             _tabs.Rebuild(_pages);
@@ -219,7 +219,7 @@ namespace PrismLib.UI.Toolkit
 
             foreach (var r in _rows)
             {
-                string rp = string.IsNullOrEmpty(r.Page) ? "General" : r.Page;
+                string rp = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : r.Page;
                 // A search looks everywhere: filtering by the open tab as well would hide the hit
                 // the user is looking for and leave them thinking the setting does not exist.
                 if (q.Length == 0 && rp != page) continue;
@@ -227,20 +227,22 @@ namespace PrismLib.UI.Toolkit
 
                 string g = (q.Length > 0 ? r.Owner + " · " + rp : "") +
                            (string.IsNullOrEmpty(r.Group) ? "" : (q.Length > 0 ? " · " : "") + r.Group);
-                if (g != group)
+                As(r.Owner, () =>
                 {
-                    group = g;
-                    // Searching shows a flat list: folding a section shut would hide a hit.
-                    _section = string.IsNullOrEmpty(g) ? _body
-                             : q.Length > 0 ? Widgets.Header(_body, g).parent
-                             : Widgets.Section(_body, g);
-                }
-
-                Add(r);
+                    if (g != group)
+                    {
+                        group = g;
+                        // Searching shows a flat list: folding a section shut would hide a hit.
+                        _section = string.IsNullOrEmpty(g) ? _body
+                                 : q.Length > 0 ? Widgets.Header(_body, g).parent
+                                 : Widgets.Section(_body, g);
+                    }
+                    Add(r);
+                });
                 shown++;
             }
 
-            if (shown == 0) Ui.Muted(q.Length > 0 ? Words.F("No setting matches '{0}'", q) : "Nothing here yet", _body);
+            if (shown == 0) Ui.Muted(q.Length > 0 ? Words.OwnF("No setting matches '{0}'", q) : Words.Own("Nothing here yet"), _body);
             if (_status != null)
                 _status.text = shown + " of " + _rows.Count + " setting(s)"
                              + (q.Length > 0 ? " matching" : " on " + page);
@@ -285,7 +287,7 @@ namespace PrismLib.UI.Toolkit
                                      v => Write(r, v), r.Tooltip);
                         break;
                     case SettingControl.Action:
-                        Widgets.Action(Target, r.Label, r.ActionLabel ?? "Run",
+                        Widgets.Action(Target, r.Label, r.ActionLabel ?? Words.Own("Run"),
                                        () => Write(r, null), r.Tooltip);
                         break;
                     case SettingControl.Colour:
@@ -295,7 +297,7 @@ namespace PrismLib.UI.Toolkit
                         Widgets.Info(Target, r.Label, Convert.ToString(r.Get()), r.Tooltip);
                         break;
                     case SettingControl.Key:
-                        if (r.Capture == null) { Ui.Muted(Words.F("{0} — not rebindable here", r.Label), Target); break; }
+                        if (r.Capture == null) { Ui.Muted(Words.OwnF("{0} — not rebindable here", r.Label), Target); break; }
                         Widgets.Key(Target, r.Label, Convert.ToString(r.Get()), r.Capture, r.Tooltip);
                         break;
                 }
@@ -305,6 +307,14 @@ namespace PrismLib.UI.Toolkit
                 Ui.Log("SettingsPanel: '" + r.Label + "' failed to build: " + e.Message);
                 Ui.Muted(r.Label + " — unavailable", Target);
             }
+        }
+
+        /// Builds with only the row's own mod translating it (see Words).
+        private static void As(string owner, Action build)
+        {
+            var was = Words.Owner;
+            Words.Owner = owner;
+            try { build(); } finally { Words.Owner = was; }
         }
 
         /* Rows arrive in English (PrismLib's own always do). Translated on the way in rather than when

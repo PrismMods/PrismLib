@@ -210,14 +210,14 @@ namespace PrismLib.UI.Toolkit
             /* Undo and redo in the header, where they apply to whatever the window is showing.
                Text rather than ↶ ↷: the panel draws in an OS font chosen at runtime and there is
                no guarantee it carries those glyphs, whereas a missing glyph is a blank button. */
-            var undo = Glyph("\u21B6", "Undo", () => History.Undo());
-            var redo = Glyph("\u21B7", "Redo", () => History.Redo());
+            var undo = Glyph("\u21B6", Words.Own("Undo"), () => History.Undo());
+            var redo = Glyph("\u21B7", Words.Own("Redo"), () => History.Redo());
             TitleBarRight.Add(undo);
             TitleBarRight.Add(redo);
             Action refreshHistory = () =>
             {
-                Enable(undo, History.CanUndo, History.NextUndo == null ? Words.T("Undo") : Words.F("Undo {0}", Words.T(History.NextUndo)));
-                Enable(redo, History.CanRedo, History.NextRedo == null ? Words.T("Redo") : Words.F("Redo {0}", Words.T(History.NextRedo)));
+                Enable(undo, History.CanUndo, History.NextUndo == null ? Words.Own("Undo") : Words.OwnF("Undo {0}", Words.T(History.NextUndo)));
+                Enable(redo, History.CanRedo, History.NextRedo == null ? Words.Own("Redo") : Words.OwnF("Redo {0}", Words.T(History.NextRedo)));
             };
             History.Changed += refreshHistory;
             refreshHistory();

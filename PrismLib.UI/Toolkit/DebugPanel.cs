@@ -145,7 +145,7 @@ namespace PrismLib.UI.Toolkit
             card.Add(_filter);
 
             // Before the window's own −/+/Close, which the constructor already added.
-            _window.TitleBarRight.Insert(0, Ui.Btn("Refresh", Refresh));
+            _window.TitleBarRight.Insert(0, Ui.Btn(Words.Own("Refresh"), Refresh));
 
             _list = Ui.List(() => _rows, (e, i) =>
             {
@@ -170,9 +170,9 @@ namespace PrismLib.UI.Toolkit
                toggles default on — a debug view that hides things by default sends people looking
                for a bug in the log instead of in the mod. */
             var numbers = Ui.Btn("#", () => { _lineNumbers = !_lineNumbers; RefreshFooter(); Refresh(); }, _window.Footer);
-            numbers.tooltip = Words.T("Line numbers");
+            numbers.tooltip = Words.Own("Line numbers");
             var dbg = Ui.Btn("dbg", () => { _showDebug = !_showDebug; RefreshFooter(); Refresh(); }, _window.Footer);
-            dbg.tooltip = Words.T("Show [dbg] and [perf] lines");
+            dbg.tooltip = Words.Own("Show [dbg] and [perf] lines");
             _numbersBtn = numbers; _debugBtn = dbg;
             _tabActions = Ui.Row(_window.Footer);
             RefreshFooter();
@@ -291,9 +291,9 @@ namespace PrismLib.UI.Toolkit
             if (_active < 0 || _active >= _current.Count) return;
             var tab = _current[_active];
             if (tab.Clear != null)
-                Ui.Btn("Clear", () => { try { tab.Clear(); } catch { } Refresh(); }, _tabActions);
+                Ui.Btn(Words.Own("Clear"), () => { try { tab.Clear(); } catch { } Refresh(); }, _tabActions);
             if (!string.IsNullOrEmpty(tab.Path))
-                Ui.Btn("Open folder", () => Reveal(tab.Path), _tabActions);
+                Ui.Btn(Words.Own("Open folder"), () => Reveal(tab.Path), _tabActions);
         }
 
         /* Application.OpenURL on the containing directory. Deliberately not a per-mod delegate:

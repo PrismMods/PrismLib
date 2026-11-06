@@ -7,9 +7,14 @@ namespace PrismLib.UI.Toolkit
        anything untranslated shows in English. Ui.Text and Ui.Btn look every string up, so page code
        never has to — the convention the mods' uGUI builders already follow.
 
-       Two sources, in order: translators the mods register (each mod's own table, so its labels
-       translate in any Prism window), then PrismLib.UI's table for its own words — buttons, empty
-       states, the restart prompt — so three mods do not each carry a copy. */
+       A string is translated only by the table of whoever wrote it. English keys carry no context,
+       so a lookup in someone else's table finds the same word in another sense: CamDisplay's
+       "Undo" (remove the camera patch) came out as the editor's 실행 취소. So:
+       - PrismLib's own table (below) answers only Own(), which PrismLib's code calls for its own
+         words, and the rows PrismLib registers itself (owner "PrismLib").
+       - A settings row is built with Owner set to its mod's name; then only that mod's
+         translators answer, and a mod with no table shows English.
+       - Elsewhere (a mod's own menu) every registered translator answers, in order. */
     public static class Words
     {
         /// "ko" for Korean; anything else (or null) is English. Each bridge points this at its own
@@ -17,21 +22,37 @@ namespace PrismLib.UI.Toolkit
         public static Func<string> Language;
 
         private static readonly List<Func<string, string>> _translators = new List<Func<string, string>>();
+        private static readonly List<string> _assemblies = new List<string>();
+
+        /// Whose strings are being built: a settings row's mod (its Prism name), or null.
+        internal static string Owner;
+
+        internal const string Self = "PrismLib";
+
+        /// Titles every bridge passes for the shared windows: PrismLib's words whoever builds them.
+        private static readonly HashSet<string> Shared = new HashSet<string> { "Prism · Settings", "Prism · Debug" };
 
         /// A mod's own table: return the translation, or null when it has none.
-        public static void AddTranslator(Func<string, string> t) { if (t != null) _translators.Add(t); }
+        public static void AddTranslator(Func<string, string> t)
+        {
+            if (t == null) return;
+            _translators.Add(t);
+            _assemblies.Add(AssemblyOf(t));
+        }
 
         public static string T(string english)
         {
             if (string.IsNullOrEmpty(english)) return english;
+            string owner = Owner;
+            if (owner == Self || Shared.Contains(english)) return Own(english);
             for (int i = 0; i < _translators.Count; i++)
             {
+                if (owner != null && !Owns(_assemblies[i], owner)) continue;
                 string s = null;
                 try { s = _translators[i](english); } catch { }
                 if (!string.IsNullOrEmpty(s) && s != english) return s;
             }
-            string ko;
-            return IsKorean() && Korean.TryGetValue(english, out ko) ? ko : english;
+            return english;
         }
 
         /// T for a sentence with a value in it: translate the pattern, then fill it.
@@ -41,12 +62,39 @@ namespace PrismLib.UI.Toolkit
             catch (FormatException) { return string.Format(englishFormat, args); }
         }
 
+        /// PrismLib's own words, from its own table only.
+        internal static string Own(string english)
+        {
+            string ko;
+            return !string.IsNullOrEmpty(english) && IsKorean() && Korean.TryGetValue(english, out ko) ? ko : english;
+        }
+
+        internal static string OwnF(string englishFormat, params object[] args)
+        {
+            try { return string.Format(Own(englishFormat), args); }
+            catch (FormatException) { return string.Format(englishFormat, args); }
+        }
+
+        /* A translator belongs to the mod whose code it is: the bridges register a lambda over
+           their own Loc table, compiled into the mod's assembly, and every Prism mod's assembly is
+           named after its Prism name (Topaz, Sapphire, CamDisplay or CamDisplayUmm). This works
+           with mods already released, which register with no owner.
+           ponytail: name match; an AddTranslator(owner, t) overload if a mod's assembly is ever
+           named otherwise. */
+        private static string AssemblyOf(Func<string, string> t)
+        {
+            try { return t.Method.DeclaringType.Assembly.GetName().Name; } catch { return null; }
+        }
+
+        private static bool Owns(string assembly, string owner)
+            => assembly != null && assembly.StartsWith(owner, StringComparison.OrdinalIgnoreCase);
+
         private static bool IsKorean()
         {
             try { return Language != null && Language() == "ko"; } catch { return false; }
         }
 
-        // Terms follow the mods' tables (스톱 for a gradient stop, 실행 취소, 사용 중).
+        // PrismLib's own words, read through Own(). Terms follow the mods' tables (스톱 for a gradient stop, 실행 취소, 사용 중).
         private static readonly Dictionary<string, string> Korean = new Dictionary<string, string>
         {
             { "Prism · Settings", "Prism · 설정" },
