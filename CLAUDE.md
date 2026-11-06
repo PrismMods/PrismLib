@@ -81,7 +81,7 @@ Cut a release when something is ready to ship, not to try it.
 
 ## The shared debug window
 
-`Alt+Shift+D` in every Prism mod — the same chord on purpose, because the window is shared: it
+`Alt+D` in every Prism mod — the same chord on purpose, because the window is shared: it
 shows every registered mod's log and fields, not just the one whose key you pressed. Both mods poll
 the chord and `StateKey.DebugPanel` decides which one draws, so two mods never stack identical
 copies. With PrismLib absent a mod falls back to showing its own log alone.
@@ -206,7 +206,7 @@ replaced it.
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
 danger, header) and `SettingsPanel`, which renders whatever the mods DESCRIBE through
 `ModHandle.DescribeSettings`. Both mods now declare a real slice of their settings, so the schema
-from stage 1 finally has a renderer and `Search` spans them. **Alt+Shift+S** opens it (**Alt+Shift+D** for the debug window — not Ctrl+Shift+S, which is the editor's Save); the mods'
+from stage 1 finally has a renderer and `Search` spans them. **Alt+P** opens it (**Alt+D** for the debug window; Prism chords are Alt+key because the editor owns Ctrl chords — Ctrl+S saves the level); the mods'
 own uGUI panels are untouched, so this is additive until each screen moves across.
 
 `SettingsPanel` takes its own `SettingRow`, not `PrismLib.SettingEntry`, for the same reason
@@ -267,8 +267,9 @@ Option+D / Option+S never fired either. So `MacKeys` (PrismLib.UI)
 reads the window server on a Mac (`CGEventSourceKeyState`, focus-gated, InputGate-respecting):
 `Down` is a rising edge and must be polled **every frame**, `Held` ORs in the window server's
 modifier flags so a chord landing in one frame lines up. Never read an Alt chord's letter through
-`Input.GetKeyDown`. The chords are **Alt+Shift+D** and **Alt+Shift+S**, with Ctrl+Shift+D and
-Ctrl+Shift+P as fallbacks. Ctrl+Shift+S is deliberately not one: that is the editor's Save.
+`Input.GetKeyDown`. The chords (2026-11-06) are plain **Alt+key**: **Alt+D** debug, **Alt+P** Prism
+settings, and each mod's own menu (**Alt+T** Topaz, **Alt+C** CamDisplay). No Ctrl fallbacks: the
+game's editor owns the Ctrl chords (Ctrl+S saves the level).
 `MacKeys` is newer than 0.3.10, so bridges call it behind a NoInlining wrapper and a catch (another
 mod's older PrismLib.UI may be the loaded one), falling back to `Input`.
 
@@ -300,8 +301,8 @@ was not centred either.
 the letter both arriving for D and S (not for every letter; see above). `KeyLimiter.GetKeyDownPostfix` returns
 false for every key but `T` while Topaz's panel is open, *including for Topaz's own poll*, so
 the shared windows were unreachable from the moment that panel was up. An Alt chord now reads
-through the block. `Ctrl+Shift+D` / `Ctrl+Shift+P` remain as fallbacks and `PrismBridge.AltDiag`
-still logs `alt+<key>` for anything that comes up later.
+through the block (Topaz's own Alt+T included). `PrismBridge.AltDiag` still logs `alt+<key>` for
+anything that comes up later.
 
 **`DescribeSettings` REPLACES** everything a mod described; it does not append. Build the list and
 hand it over once.
@@ -448,8 +449,8 @@ Nothing in PrismLib or PrismLib.UI references UMM. The mod's own entry point cal
 
 There is no headless mode. On macOS anything visual is verified by a human reloading in-game (UMM
 Ctrl+F10) and screenshotting. On the Linux/Hyprland machine it can be driven from a shell:
-`steam -applaunch 977950`, wait for the mod's log line, `ydotool key …` for chords (Alt+Shift+D is
-`56:1 42:1 32:1 32:0 42:0 56:0`; needs `ydotoold` running), `hyprctl dispatch 'hl.dsp.cursor.move({x=…, y=…})'`
+`steam -applaunch 977950`, wait for the mod's log line, `ydotool key …` for chords (Alt+D is
+`56:1 32:1 32:0 56:0`; needs `ydotoold` running), `hyprctl dispatch 'hl.dsp.cursor.move({x=…, y=…})'`
 to place the pointer, and `grim -o <output>` to screenshot. Pointer MOVES reach UI Toolkit (hover
 works); `ydotool` button presses reach the GAME (they move the level-select planet) but never
 register as clicks in UI Toolkit, so trigger a widget from code to test it. Either way: put logic that can be checked offline in `PrismLib.dll` and check it in
