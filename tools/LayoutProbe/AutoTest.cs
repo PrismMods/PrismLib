@@ -345,6 +345,9 @@ namespace LayoutProbe
             Tokens.Accent = wasAccent;
 
             yield return SchemaSettings();
+            yield return NavMenu();
+            yield return TopazMenu();
+            yield return GradientSync();
 
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;
@@ -452,6 +455,336 @@ namespace LayoutProbe
                   search == null ? "no search box" : labels());
             Words.Language = wasLanguage;
             sp.Dispose();
+        }
+
+        static Label LabelIn(VisualElement e, string text) => e?.Query<Label>().ToList().FirstOrDefault(l => l.text == text);
+
+        static void Tap(VisualElement e)
+        {
+            if (e == null) return;
+            using (var ev = ClickEvent.GetPooled()) { ev.target = e; e.SendEvent(ev); }
+        }
+
+        static VisualElement PanelRoot(string name) => FindObjectsByType<UIDocument>(FindObjectsSortMode.None)
+            .FirstOrDefault(d => d.gameObject.name == name)?.rootVisualElement;
+
+        // A nav-mode SettingsPanel shaped like Topaz's menu: Widgets and Nav standing on Facet.
+        IEnumerator NavMenu()
+        {
+            var builds = new System.Collections.Generic.Dictionary<string, int>();
+            Action<string> built = p => { int n; builds.TryGetValue(p, out n); builds[p] = n + 1; };
+            Func<string, int> count = p => { int n; builds.TryGetValue(p, out n); return n; };
+            int rev = 0;
+            bool facetActive = false, statOn = false;
+            var pages = new System.Collections.Generic.List<NavItem>
+            {
+                NavItem.Heading("Probe Overlay",
+                    new NavItem("Probe readouts", body =>
+                    {
+                        built("readouts");
+                        facetActive = Nav.Active != null && Facet.Nav.Active != null;
+                        var on = Widgets.ToggleGroup(body, "Probe overlay on", true, _ => { }, "Master switch");
+                        var score = Widgets.Section(on, "Probe score");
+                        Widgets.ToggleSubPage(score, "Probe progress", statOn, v => statOn = v, sub =>
+                        {
+                            built("stat");
+                            Widgets.Colour(sub, "Probe label colour", Color.white, _ => { }, null, true);
+                        }, "Colours and label for Probe progress");
+                        Widgets.Toggle(score, "Probe accuracy", false, _ => { });
+                    }),
+                    new NavItem("Probe style", body => { built("style"); Widgets.Slider(body, "Probe shadow", 0.5f, 0f, 1f, _ => { }); })),
+                NavItem.Heading("Probe Interface",
+                    new NavItem("Probe fonts", body => { built("fonts"); Ui.Muted("revision " + rev, body); }) { Revision = () => rev },
+                    new NavItem("Probe far page", body => { built("far"); Widgets.Toggle(body, "Probe far-away switch", false, _ => { }); })),
+            };
+
+            var wasLanguage = Words.Language;
+            Words.Language = () => "en";
+            var sp = new SettingsPanel("Probe Menu", () => pages);
+            Check(count("readouts") == 1 && count("style") + count("fonts") + count("far") == 0, "a nav panel builds only its first page at construction",
+                  string.Join(", ", builds.Select(kv => kv.Key + "=" + kv.Value).ToArray()));
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var root = PanelRoot("ProbeMenuPanel");
+            var views = root?.Query<ScrollView>().ToList();
+            var rail = views != null && views.Count > 1 ? views[0] : null;
+            var content = views != null && views.Count > 1 ? views[1] : null;
+            Check(facetActive, "a page builds with Facet's Nav.Active set (Widgets.SubPage reaches it)");
+            Check(LabelIn(rail, "PROBE OVERLAY") != null && LabelIn(rail, "PROBE INTERFACE") != null, "both NavItem.Headings head the rail");
+
+            // ToggleGroup: its switch hides the rows it governs
+            var onRow = LabelIn(content, "Probe overlay on")?.parent;
+            var onBody = onRow?.parent?.ElementAt(onRow.parent.IndexOf(onRow) + 1);
+            Check(onBody != null && LabelIn(onBody, "Probe score") != null && LabelIn(onBody, "Probe progress") != null,
+                  "the ToggleGroup's body holds the Section and its rows");
+            Tap(onRow?.Q("control")?.ElementAt(0)); yield return null;
+            Check(onBody != null && onBody.style.display == DisplayStyle.None, "switching the ToggleGroup off hides its rows");
+            Tap(onRow?.Q("control")?.ElementAt(0)); yield return null;
+
+            // ToggleSubPage: the switch switches without navigating; the rest of the row pushes, the back row returns
+            var statRow = LabelIn(content, "Probe progress")?.parent;
+            Tap(statRow?.Q("control")?.ElementAt(0)); yield return null;
+            Check(statOn && LabelIn(content, "Probe label colour") == null, "a ToggleSubPage's switch switches and stays on the page",
+                  "on " + statOn);
+            Tap(statRow); yield return null;
+            var back = content?.Query<Label>().ToList().FirstOrDefault(l => l.text == "‹  Probe readouts");
+            Check(back != null && LabelIn(content, "Probe label colour") != null && count("stat") == 1, "the rest of its row pushes its subpage",
+                  "back row " + (back != null) + ", stat builds " + count("stat"));
+            Tap(back?.parent); yield return null;
+            Check(LabelIn(content, "Probe progress") != null && LabelIn(content, "Probe label colour") == null, "and the back row returns to the page");
+
+            // Search finds a row on a page nobody has opened
+            var search = root?.Query<TextField>().First();
+            int farBefore = count("far");
+            if (search != null) { search.value = "far-away"; yield return null; yield return null; }
+            var hit = LabelIn(content, "Probe far-away switch");
+            Check(search != null && hit != null && farBefore == 0, "search finds a row on a never-visited page",
+                  search == null ? "no search box" : "far builds before " + farBefore + ", labels " + string.Join(" | ", content.Query<Label>().ToList().Select(l => l.text).Take(8).ToArray()));
+            Tap(hit?.parent); yield return null;
+            Check(LabelIn(content, "Probe far-away switch") != null && LabelIn(content, "Probe far page") == null && count("far") >= 1,
+                  "clicking the hit opens its page");
+            if (search != null) { search.value = ""; yield return null; }
+
+            // Revision: a change rebuilds the open page on the next Tick
+            Tap(LabelIn(rail, "Probe fonts")?.parent); yield return null;
+            int fontsBuilt = count("fonts");
+            Check(LabelIn(content, "revision 0") != null, "the Revision page opens");
+            rev = 1;
+            sp.Tick();
+            Check(LabelIn(content, "revision 1") != null && count("fonts") == fontsBuilt + 1, "a Revision change rebuilds the page within one tick",
+                  "fonts builds " + fontsBuilt + " -> " + count("fonts"));
+            sp.Tick();
+            Check(count("fonts") == fontsBuilt + 1, "and an unchanged Revision does not rebuild it again");
+
+            Words.Language = wasLanguage;
+            sp.Dispose();
+        }
+
+        // Topaz's real menu shape (PrismMenu.Build), opened the way Alt+T does: every page builds.
+        // Rows are found by position, not text: the installed Topaz translates its own labels.
+        IEnumerator TopazMenu()
+        {
+            var wasLanguage = Words.Language;
+            var wasLog = Ui.Log;
+            var errors = new System.Collections.Generic.List<string>();
+            var opened = new System.Collections.Generic.List<string>();
+            int stats = 0;
+            var shape = PrismMenuShape(() => stats++);
+            var leaves = shape.SelectMany(h => h.Children).ToList();
+            foreach (var leaf in leaves)
+            {
+                var inner = leaf.Build; var title = leaf.Title;
+                leaf.Build = body => { opened.Add(title); inner(body); };
+            }
+            Words.Language = () => "en";
+            Ui.Log = m => { if (m.Contains("Nav.build") || m.Contains(" threw")) errors.Add(m); wasLog(m); };
+            var sp = new SettingsPanel("Topaz", () => shape);
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var views = PanelRoot("TopazPanel")?.Query<ScrollView>().ToList();
+            var rail = views != null && views.Count > 1 ? views[0] : null;
+            var content = views != null && views.Count > 1 ? views[1] : null;
+            // Re-read every time: opening a page rebuilds the rail.
+            Func<System.Collections.Generic.List<VisualElement>> rows = () => rail == null ? new System.Collections.Generic.List<VisualElement>()
+                : rail.contentContainer.Children().Where(e => !(e is Label)).ToList();
+            int railRows = rows().Count;
+            var bad = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < leaves.Count; i++)
+            {
+                var now = rows();
+                Tap(i < now.Count ? now[i] : null); yield return null;
+                bool failed = content == null || content.Query<Label>().ToList().Any(l => l.text.Contains("failed to build"));
+                if (failed || opened.Count == 0 || opened[opened.Count - 1] != leaves[i].Title) bad.Add(leaves[i].Title);
+                if (i == 0)
+                {
+                    int before = stats;
+                    Tap(content?.Query<Label>("arrow").ToList().FirstOrDefault(l => l.text == "\u203A")?.parent); yield return null;
+                    if (stats != before + 1) bad.Add(leaves[i].Title + " \u203a stat subpage");
+                }
+            }
+            Check(railRows == 13 && bad.Count == 0 && errors.Count == 0, "every page of Topaz's menu shape opens, Stat subpage included",
+                  railRows + " rail rows; not opened: " + string.Join(", ", bad.ToArray()) + "; log: " + string.Join(" | ", errors.ToArray()));
+            Ui.Log = wasLog;
+            Words.Language = wasLanguage;
+            sp.Dispose();
+        }
+
+        // GradientEditor over the caller's own stops: the editor's edits reach them, and theirs reach it.
+        IEnumerator GradientSync()
+        {
+            var wasLanguage = Words.Language;
+            Words.Language = () => "en";
+            var stops = new System.Collections.Generic.List<GradientStop>
+            {
+                new GradientStop { Position = 0f, Colour = Color.black },
+                new GradientStop { Position = 1f, Colour = Color.white },
+            };
+            int changes = 0;
+            var surface = new Surface("ProbeGradient", Layer.Window);
+            surface.Visible = true;
+            var ed = new GradientEditor(surface.Root, "Probe gradient", stops, () => changes++);
+            yield return null; yield return null;
+            var add = ed.Root.Query<Button>().ToList().FirstOrDefault(b => b.text == "Add stop");
+            if (add != null) { Submit(add); yield return null; }
+            Check(stops.Count == 3 && Near(stops[1].Position, 0.1f, 0.001f) && stops[2].Position == 1f && changes == 1,
+                  "the gradient editor's Add stop lands in the caller's list, sorted",
+                  add == null ? "no Add stop button" : string.Join(" ", stops.Select(st => st.Position.ToString("0.00")).ToArray()) + ", changes " + changes);
+            var hex = ed.Root.Query<TextField>().First();
+            if (hex != null)
+            {
+                hex.SetValueWithoutNotify("#FF0000");
+                using (var ke = KeyDownEvent.GetPooled('\n', KeyCode.Return, EventModifiers.None)) { ke.target = hex; hex.SendEvent(ke); }
+                yield return null;
+            }
+            Check(stops.Count == 3 && stops[1].Colour == Color.red, "a colour typed into the selected stop is written to the caller's stop",
+                  stops.Count > 1 ? stops[1].Colour.ToString() : "stops " + stops.Count);
+            stops[2].Colour = Color.blue;
+            Check(ed.Evaluate(1f) == Color.blue, "a colour the caller sets on its own stop is what the editor evaluates", ed.Evaluate(1f).ToString());
+            stops.RemoveAt(1);
+            Check(ed.Evaluate(0.5f) == Color.Lerp(Color.black, Color.blue, 0.5f), "and so is a stop the caller removed", ed.Evaluate(0.5f).ToString());
+            surface.Dispose();
+            Words.Language = wasLanguage;
+        }
+
+        /* Topaz's PrismMenu.Build() as it stands (Topaz 824a8ab..f826cab): the same rail and, page by
+           page, the same Widgets and Ui calls, with local values in place of Topaz's settings. */
+        static System.Collections.Generic.List<NavItem> PrismMenuShape(Action onStat)
+        {
+            Action<bool> b = _ => { };
+            Action<VisualElement, string> stat = (parent, label) => Widgets.ToggleSubPage(parent, label, true, b, body =>
+            {
+                onStat();
+                Ui.Muted("Position and size are set by dragging, under Interface › Positions.", body);
+                Widgets.Colour(body, "Label colour", Color.white, _ => { }, null, true);
+                Widgets.Colour(body, "Value colour", Color.white, _ => { }, null, true);
+            }, "Colours and label for " + label);
+            Action<VisualElement, string[]> toggles = (parent, labels) => { foreach (var l in labels) Widgets.Toggle(parent, l, false, b); };
+            int packs = 2;
+            return new System.Collections.Generic.List<NavItem>
+            {
+                NavItem.Heading("Overlay",
+                    new NavItem("Readouts", body =>
+                    {
+                        var on = Widgets.ToggleGroup(body, "Enable", true, b, "Master switch for every overlay readout");
+                        var score = Widgets.Section(on, "Score");
+                        stat(score, "Progress"); stat(score, "Best progress");
+                        Widgets.Toggle(score, "Progress bar", true, b);
+                        stat(score, "Accuracy"); stat(score, "XAccuracy"); stat(score, "XScore");
+                        var tempo = Widgets.Section(on, "Tempo");
+                        stat(tempo, "BPM"); stat(tempo, "Tile BPM"); stat(tempo, "Keys per second");
+                        var session = Widgets.Section(on, "Session");
+                        Widgets.Toggle(session, "Attempts", true, b);
+                        Widgets.Toggle(session, "Full attempts only", false, b, "Count only attempts that started from the beginning");
+                        toggles(session, new[] { "Song duration", "Level duration" });
+                    }),
+                    new NavItem("Judgement", body => toggles(body, new[] { "Judgements", "Hand viewer", "Foot viewer" })),
+                    new NavItem("Timing", body =>
+                    {
+                        toggles(body, new[] { "Hit error", "Timing scale" });
+                        Widgets.ToggleGroup(body, "Timing graph", false, b, "A histogram of how early or late each hit was");
+                    }),
+                    new NavItem("Style", body =>
+                    {
+                        var shadow = Widgets.ToggleGroup(body, "Text shadow", true, b);
+                        Widgets.Colour(shadow, "Shadow colour", new Color(0f, 0f, 0f, 0.5f), _ => { }, null, true);
+                        Widgets.Toggle(body, "Apply the master font to all overlays", false, b, "Off: each overlay part keeps its own font");
+                        Ui.Muted("Position and size are set by dragging, under Interface › Positions.", body);
+                    })),
+                NavItem.Heading("Interface",
+                    new NavItem("Hide UI", body =>
+                    {
+                        var on = Widgets.ToggleGroup(body, "Enable", true, b, "Master switch for everything on this page");
+                        Widgets.Toggle(on, "Hide all UI", false, b, "RDC.noHud — hides the game's entire HUD");
+                        toggles(Widgets.Section(on, "Elements"), new[] { "Hit error meter", "Autoplay text", "Autoplay icon", "No-fail badge",
+                                                                         "Difficulty", "Level name", "Controls tip", "Beta build label" });
+                        var judging = Widgets.ToggleGroup(Widgets.Section(on, "Judgements"), "Hide judgements", true, b);
+                        toggles(judging, new[] { "All", "Perfect", "Pure perfect", "Early / late perfect", "Early / late", "Miss", "Death" });
+                    }),
+                    new NavItem("Appearance", body =>
+                    {
+                        Widgets.Choice(body, "Language", new[] { "Follow game", "English", "한국어" }, 0, _ => { });
+                        Widgets.Slider(body, "UI scale", 1f, 0.6f, 1.6f, _ => { }, "Size of Topaz's own panels");
+                        Widgets.Toggle(body, "Include system fonts", false, b, "Offer every font installed on this machine, not just the bundled ones");
+                        var accent = Widgets.Section(body, "Accent");
+                        var custom = Widgets.ToggleGroup(accent, "Use a custom colour", true, b);
+                        Widgets.Colour(custom, "Accent colour", new Color(1f, 0.7f, 0.2f, 1f), _ => { });
+                        Widgets.Toggle(accent, "Apply accent as theme colour", false, b, "Tints the panels themselves, not just the highlights");
+                    }),
+                    new NavItem("Fonts", body =>
+                    {
+                        Ui.Muted("Font packs add families Topaz can use for its panels and overlays.", body);
+                        var list = Ui.Box(body);
+                        for (int i = 0; i < packs; i++)
+                        {
+                            var actions = Widgets.Item(list, "Pack " + i, i == 0 ? "Installed" : null);
+                            if (i == 0) { Ui.Btn("Open folder", () => { }, actions); Ui.Btn("Remove", () => { }, actions); }
+                            else Ui.Btn("Install", () => { }, actions);
+                        }
+                        Ui.Btn("Refresh list", () => { }, Ui.Row(body));
+                    }) { Revision = () => packs },
+                    new NavItem("Profiles", body =>
+                    {
+                        var list = Ui.Box(body);
+                        foreach (var n in new[] { "Default", "Mine" })
+                        {
+                            var actions = Widgets.Item(list, n, n == "Default" ? "Built in" : null);
+                            if (n == "Default") Widgets.MarkActive(actions);
+                            Ui.Btn("Load", () => { }, actions);
+                            if (n != "Default") Ui.Btn("Delete", () => { }, actions);
+                        }
+                        Widgets.Text(body, "New profile name", "", _ => { }, "Saves every current setting under this name");
+                        var row = Ui.Row(body);
+                        Ui.Btn("Save current settings", () => { }, row);
+                        Ui.Btn("Open folder", () => { }, row);
+                    }),
+                    new NavItem("Game UI", body =>
+                    {
+                        var text = Widgets.Section(body, "Text");
+                        foreach (var l in new[] { "Game text size", "Line spacing", "Level stats size", "Judgement size" })
+                            Widgets.Slider(text, l, 1f, 0.5f, 2f, _ => { });
+                        Widgets.Toggle(Widgets.Section(body, "Font"), "Use the overlay's font", false, b, "Off: the game's own font is left alone");
+                        var over = Widgets.ToggleGroup(Widgets.Section(body, "Error meter"), "Override the game's meter", true, b);
+                        Widgets.Slider(over, "Scale", 1f, 0.25f, 3f, _ => { });
+                        Ui.Muted("Positions are set by dragging, under Interface › Positions.", body);
+                    }),
+                    new NavItem("Positions", body =>
+                    {
+                        Ui.Muted("Drag elements where you want them, on the real screen.", body);
+                        Widgets.Action(body, "Edit positions", "Open editor", () => { }, "Topaz's overlays and the game's own HUD, in one editor");
+                        Widgets.DangerButton(body, "Reset all positions", () => { }, "Puts every element back where the game or Topaz had it");
+                    })),
+                NavItem.Heading("Gameplay",
+                    new NavItem("Input", body =>
+                    {
+                        Widgets.Toggle(body, "Block game input while the menu is open", true, b, "Keys typed at Topaz do not reach the game. Prism windows are exempt.");
+                        var limiter = Widgets.Section(body, "Key limiter");
+                        Widgets.Toggle(limiter, "Enable", false, b);
+                        Widgets.Toggle(limiter, "Use the key viewer's keys", false, b, "Takes the allowed list from the active key viewer preset");
+                        var chatter = Widgets.Section(body, "Chatter blocker");
+                        Widgets.Toggle(chatter, "Enable", false, b);
+                        Widgets.IntSlider(chatter, "Threshold (ms)", 30, 0, 60, _ => { }, "Repeats of one key closer together than this are dropped");
+                    }),
+                    new NavItem("Tweaks", body =>
+                    {
+                        Widgets.Slider(body, "CLS preview volume", 70f, 0f, 100f, _ => { }, "Volume of the custom level select's song preview", "0");
+                        Widgets.Toggle(Widgets.Section(body, "Gameplay"), "Hide planet orbit rings", false, b, "Hides the dotted circle drawn around each planet");
+                    })),
+                NavItem.Heading("System",
+                    new NavItem("Diagnostics", body =>
+                    {
+                        Widgets.Action(body, "Log and mod state", "Open", () => { }, "The shared Prism window: every mod's log and state");
+                        Widgets.Action(body, "Reload Topaz", "Reload", () => { }, "Rebuilds everything without restarting the game");
+                        var updates = Widgets.Section(body, "Updates");
+                        Widgets.Choice(updates, "Channel", new[] { "Stable", "Beta" }, 0, _ => { }, "Beta offers prereleases as well");
+                        Widgets.Action(updates, "Check for updates", "Check now", () => { });
+                        Widgets.Action(updates, "Releases page", "Open", () => { });
+                        var dev = Widgets.ToggleGroup(body, "Debug mode", true, b, "Extra logging, and the tools below");
+                        Widgets.Toggle(dev, "Trace font sweep", false, b, "Logs every text object the font sweep touches");
+                        Widgets.Text(dev, "Filter", "", _ => { }, "Only dump objects whose name contains this");
+                        var dumps = Widgets.Section(dev, "Dump");
+                        foreach (var l in new[] { "Texts", "Images", "Assets" }) Widgets.Action(dumps, l, "Dump", () => { });
+                    })),
+            };
         }
     }
 }
