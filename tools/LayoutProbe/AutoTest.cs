@@ -297,6 +297,44 @@ namespace LayoutProbe
             yield return null; yield return null;
             Check(!Editor.Visible && _closed, "Done closes the editor and raises Closed");
 
+            // ── PrismLib.UI on Facet ────────────────────────────────────────
+            Editor.Visible = true;
+            for (int i = 0; i < 5; i++) yield return null;
+            Check(Ui.AnyWindowOpen && Facet.Input.AnyWindowOpen, "Facet counts the open editor as a window, as Ui does",
+                  "Ui " + Ui.AnyWindowOpen + ", Facet " + Facet.Input.AnyWindowOpen);
+            Check(Root != null && Facet.Host.For(Root).Name == "PrismLib", "the editor is a Facet surface of the PrismLib host",
+                  Root == null ? "no root" : Facet.Host.For(Root).Name);
+
+            // Escape with a Facet-native window above a Prism one: exactly the topmost closes per press
+            var probeHost = Facet.Host.Create("LayoutProbe");
+            var facetWin = new Facet.Surface(probeHost, "ProbeFacetWindow", Facet.Layer.Modal);
+            new Facet.Window(facetWin.Root, "probe-facet", "Facet window", new Rect(200f, 150f, 420f, 260f));
+            for (int i = 0; i < 3; i++) yield return null;
+            Ui.HandleEscape(); yield return null;
+            Check(!facetWin.Visible && Editor.Visible, "one Escape closes only the Facet window above the editor",
+                  "facet " + facetWin.Visible + ", editor " + Editor.Visible);
+            Ui.HandleEscape(); yield return null;
+            Check(!Editor.Visible, "a second Escape closes the editor under it", "editor " + Editor.Visible);
+            facetWin.Dispose();
+
+            // Tokens pushed after other windows exist reach the next window built (Topaz's PushTokens)
+            var wasAccent = Tokens.Accent;
+            var red = new Color(1f, 0f, 0f, 1f);
+            Tokens.Accent = red;
+            var sp = new SettingsPanel("Probe Accent", () => new SettingRow[0]);
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var spDoc = FindObjectsByType<UIDocument>(FindObjectsSortMode.None).FirstOrDefault(d => d.gameObject.name == "ProbeAccentPanel");
+            var bar = spDoc?.rootVisualElement.Children().FirstOrDefault()?.Children().FirstOrDefault();
+            var undoBtn = bar?.Query<Button>().ToList().FirstOrDefault(b => b.text == "↶");
+            Check(bar != null && Facet.Theme.For(bar)[Facet.Role.Accent] == red, "the title bar of a window built after Tokens.Accent = red wears red",
+                  bar == null ? "no title bar" : Facet.Theme.For(bar)[Facet.Role.Accent].ToString());
+            if (undoBtn != null) Ui.Highlight(undoBtn, true);
+            Check(undoBtn != null && undoBtn.style.backgroundColor.value == red, "a highlighted title-bar button draws in that red",
+                  undoBtn == null ? "no undo button" : undoBtn.style.backgroundColor.value.ToString());
+            sp.Dispose();
+            Tokens.Accent = wasAccent;
+
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;
             Application.Quit();

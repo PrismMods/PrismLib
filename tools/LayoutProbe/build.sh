@@ -12,7 +12,7 @@ for a in mscorlib System System.Core netstandard UnityEngine.CoreModule UnityEng
          UnityEngine.TextCoreFontEngineModule UnityEngine.IMGUIModule; do
     if [ -f "$M/$a.dll" ]; then R+=("-r:$M/$a.dll"); fi
 done
-mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" LayoutProbe.cs AutoTest.cs Perf.cs
+mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" -r:../../lib/Facet.0.1.dll LayoutProbe.cs AutoTest.cs Perf.cs
 mkdir -p "$G/UMMMods/LayoutProbe"
 cp LayoutProbe.dll Info.json "$UI" ../../lib/Facet.0.1.dll "$G/UMMMods/LayoutProbe/"
 rm -f "$G/UMMMods/LayoutProbe/probe.log"
