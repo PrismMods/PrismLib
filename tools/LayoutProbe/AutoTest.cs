@@ -363,7 +363,9 @@ namespace LayoutProbe
             Tokens.Accent = red;
             var sp = new SettingsPanel("Probe Accent", () => new SettingRow[0]);
             sp.Visible = true;
-            for (int i = 0; i < 3; i++) yield return null;
+            // Read in the frame it is built: every Prism window wears the one shared default scheme,
+            // and another mod building its own window pushes its palette into it (Topaz's and
+            // Sapphire's PushTokens), which re-themes this one too a frame or two later.
             var spDoc = FindObjectsByType<UIDocument>(FindObjectsSortMode.None).FirstOrDefault(d => d.gameObject.name == "ProbeAccentPanel");
             var bar = spDoc?.rootVisualElement.Children().FirstOrDefault()?.Children().FirstOrDefault();
             var undoBtn = bar?.Query<Button>().ToList().FirstOrDefault(b => b.text == "↶");
