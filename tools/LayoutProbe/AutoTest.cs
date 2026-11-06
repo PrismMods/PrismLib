@@ -201,6 +201,24 @@ namespace LayoutProbe
             yield return null; yield return null;
             yield return Click(Ctr(A));
 
+            // The inspector's anchor picker is a real 3x3: three rows, three columns
+            {
+                var cells = new Rect[9]; bool all = true;
+                for (int i = 0; i < 9; i++) { var c9 = Root.Q("layout-anchor-" + i); if (c9 == null) { all = false; break; } cells[i] = c9.worldBound; }
+                bool grid = all;
+                for (int row = 0; grid && row < 3; row++)
+                    for (int col = 0; col < 3; col++)
+                    {
+                        var cell = cells[row * 3 + col];
+                        if (Math.Abs(cell.center.y - cells[row * 3].center.y) > 1f) grid = false;           // same row
+                        if (Math.Abs(cell.center.x - cells[col].center.x) > 1f) grid = false;               // same column
+                        if (col > 0 && cell.center.x <= cells[row * 3 + col - 1].center.x) grid = false;    // left to right
+                        if (row > 0 && cell.center.y <= cells[(row - 1) * 3 + col].center.y) grid = false;  // top to bottom
+                    }
+                Check(grid, "the anchor picker lays out as a 3x3 grid",
+                      all ? string.Join(" ", Array.ConvertAll(cells, r9 => "(" + r9.center.x.ToString("0") + "," + r9.center.y.ToString("0") + ")")) : "cells missing");
+            }
+
             // Grips, knob and anchor are on screen, also after a Reload
             for (int round = 0; round < 2; round++)
             {
