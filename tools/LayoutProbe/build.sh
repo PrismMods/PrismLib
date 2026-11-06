@@ -14,6 +14,6 @@ for a in mscorlib System System.Core netstandard UnityEngine.CoreModule UnityEng
 done
 mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" LayoutProbe.cs AutoTest.cs Perf.cs
 mkdir -p "$G/UMMMods/LayoutProbe"
-cp LayoutProbe.dll Info.json "$UI" "$G/UMMMods/LayoutProbe/"
+cp LayoutProbe.dll Info.json "$UI" ../../lib/Facet.0.1.dll "$G/UMMMods/LayoutProbe/"
 rm -f "$G/UMMMods/LayoutProbe/probe.log"
 echo "installed to $G/UMMMods/LayoutProbe"

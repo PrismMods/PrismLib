@@ -52,9 +52,11 @@ echo "installed  $MODS/PrismLib/PrismLib.dll"
 
 # Every mod folder that already has a copy is one that ships it.
 for dir in "$MODS"/*/; do
+    # Facet also lives alone in its own mod folder (UMMMods/Facet): refresh that copy too.
+    [ -f "$dir/Facet.0.1.dll" ] && { cp lib/Facet.0.1.dll "$dir"; echo "installed  ${dir}Facet.0.1.dll"; }
     [ -f "$dir/PrismLib.UI.dll" ] || continue
-    cp "$UIDLL" lib/Facet.0.1.dll "$dir"
-    echo "installed  ${dir}PrismLib.UI.dll + Facet.0.1.dll"
+    cp "$UIDLL" "$dir"
+    echo "installed  ${dir}PrismLib.UI.dll"
 done
 
 # ...and the source trees, so their next build compiles against the same thing.
