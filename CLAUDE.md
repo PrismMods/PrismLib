@@ -334,9 +334,16 @@ misses the chrome. `Theme.FromAccent` is Quartz's derivation. Each mod keeps its
 `Theme` refreshed by `PushTokens` (Topaz amber, Sapphire blue, Quartz red).
 
 **Text goes through `Words.T`** — `Ui.Text`, `Ui.Btn`, row labels and tooltips, setting rows on
-intake — so page code never calls it. English is the key. Mods' translators come first
-(`Words.AddTranslator(Loc.T)`, so their labels translate in any Prism window), then PrismLib.UI's
-own Korean table for its own words. `Words.Language` comes from the bridge's language setting. A
+intake — so page code never calls it. English is the key. **A string is translated only by the
+table of whoever wrote it**: English keys carry no context, so CamDisplay's "Undo" (remove the
+camera patch) once came out as the editor's 실행 취소 from PrismLib's table. PrismLib.UI's own
+Korean table answers only `Words.Own`/`OwnF`, which PrismLib's code calls for its own literals
+(write new ones that way), plus rows PrismLib registers itself and the shared "Prism · Settings"/
+"Prism · Debug" titles. A settings row is built with `Words.Owner` set to its mod, so only that
+mod's translator answers (a translator belongs to the assembly its delegate was compiled in, which
+is named after the mod), and a mod with no table shows English. Outside rows, every mod's
+translator (`Words.AddTranslator(Loc.T)`) answers in order. `Words.Language` comes from the
+bridge's language setting. A
 duplicate key in that table's initializer would throw from the static constructor and take every
 string with it — check with `grep -o '{ "[^"]*",' Toolkit/Words.cs | sort | uniq -d`.
 
