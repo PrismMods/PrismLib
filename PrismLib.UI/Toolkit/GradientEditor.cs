@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,245 +14,127 @@ namespace PrismLib.UI.Toolkit
         public Color Colour = Color.white;
     }
 
-    /* The gradient editor, ported from Topaz's.
+    /* The gradient editor: Facet's, over the caller's own stops.
 
        A baked strip with a draggable marker per stop, and the selected stop's colour and position
-       edited below it. Clicking empty strip adds a stop there; that is the interaction worth
-       keeping, because the alternative — an Add button that drops a stop at some default position
-       you then drag — is two steps for the common case.
-
-       The strip is a generated texture re-baked on every change. 256 pixels, so re-baking is cheap
-       enough to do inline while a marker is being dragged; the alternative of interpolating with
-       elements cannot show a multi-stop ramp at all. */
+       edited below it; clicking empty strip adds a stop there. Facet's editor edits Facet stops in
+       place, so it works on Stops, a list that mirrors the caller's (see there). */
     public sealed class GradientEditor
     {
-        private const int TexWidth = 256;
-        private const float StripHeight = 26f, MarkerWidth = 12f;
-
-        private readonly IList<GradientStop> _stops;
-        private readonly Action _onChange;
-        private readonly bool _hasAlpha;
-
-        private VisualElement _strip, _markerLayer, _editor;
-        private Texture2D _tex;
-        private GradientStop _selected;
+        private readonly Facet.GradientEditor _f;
 
         public VisualElement Root { get; private set; }
 
         public GradientEditor(VisualElement parent, string label, IList<GradientStop> stops,
                               Action onChange, bool hasAlpha = true)
         {
-            _stops = stops ?? new List<GradientStop>();
-            _onChange = onChange;
-            _hasAlpha = hasAlpha;
+            var mirror = new Stops(stops ?? new List<GradientStop>());
+            // Settled once more before the caller hears of a change, whatever Facet read last.
+            Action changed = () => { mirror.Settle(); if (onChange != null) onChange(); };
+            using (PrismHost.Use()) _f = new Facet.GradientEditor(parent, label, mirror, changed, hasAlpha);
+            Root = _f.Root;
+        }
 
-            Root = Ui.Box(parent);
-            if (!string.IsNullOrEmpty(label)) Widgets.Header(Root, label);
+        /// Clamp outside the ends, lerp between the two stops either side.
+        public Color Evaluate(float t) => _f.Evaluate(t);
 
-            _strip = new VisualElement();
-            _strip.style.height = StripHeight;
-            // Inset by half a marker so the end stops do not clip at the edges.
-            _strip.style.marginLeft = MarkerWidth / 2f;
-            _strip.style.marginRight = MarkerWidth / 2f;
-            Ui.SetRadius(_strip, 3f);
-            Ui.SetBorderWidth(_strip, 1f);
-            Ui.SetBorderColor(_strip, Theme.For(_strip).PanelBorder);
-            _strip.pickingMode = PickingMode.Position;
-            Root.Add(_strip);
+        private sealed class Pair
+        {
+            public GradientStop P;
+            public Facet.GradientStop F;
+            public float Pos;       // both sides as of the last settle
+            public Color Col;
+        }
 
-            _markerLayer = new VisualElement();
-            _markerLayer.style.position = Position.Absolute;
-            _markerLayer.style.left = 0f; _markerLayer.style.right = 0f;
-            _markerLayer.style.bottom = -10f; _markerLayer.style.height = 16f;
-            _markerLayer.pickingMode = PickingMode.Ignore;
-            _strip.Add(_markerLayer);
+        /* One Facet stop per caller stop, for the editor's life. Every read settles each pair: a field
+           the editor changed is written to the caller's stop, one the caller changed is read from it
+           (the editor's wins if both moved). Which stops exist and their order is the caller's list's;
+           the editor's adds, removes and re-sorts are made on it as they happen. */
+        private sealed class Stops : IList<Facet.GradientStop>
+        {
+            private readonly IList<GradientStop> _p;
+            private readonly List<Pair> _pairs = new List<Pair>();   // in the caller's order
+            private readonly Dictionary<GradientStop, Pair> _byP = new Dictionary<GradientStop, Pair>();
+            private readonly Dictionary<Facet.GradientStop, Pair> _byF = new Dictionary<Facet.GradientStop, Pair>();
 
-            // Click empty strip to add a stop at that position, coloured as the gradient already
-            // is there — so the ramp does not jump when you add one.
-            _strip.RegisterCallback<ClickEvent>(e =>
+            public Stops(IList<GradientStop> p) { _p = p; Settle(); }
+
+            private Pair Of(GradientStop p)
             {
-                var r = _strip.contentRect;
-                if (r.width <= 0f) return;
-                float t = Mathf.Clamp01(e.localPosition.x / r.width);
-                var stop = new GradientStop { Position = t, Colour = Evaluate(t) };
-                _stops.Add(stop);
-                Sort();
-                _selected = stop;
-                Changed();
-            });
-
-            _editor = Ui.Box(Root);
-            _editor.style.marginTop = 14f;
-
-            if (_stops.Count > 0) _selected = _stops[0];
-            Rebuild();
-        }
-
-        private void Sort()
-        {
-            var list = new List<GradientStop>(_stops);
-            list.Sort((a, b) => a.Position.CompareTo(b.Position));
-            _stops.Clear();
-            foreach (var s in list) _stops.Add(s);
-        }
-
-        /* Same evaluation the host's own gradient does: clamp outside the ends, lerp between the
-           two stops either side. Duplicated rather than delegated because the strip has to be baked
-           before the host has any idea a change happened. */
-        public Color Evaluate(float t)
-        {
-            if (_stops.Count == 0) return Color.white;
-            if (_stops.Count == 1) return _stops[0].Colour;
-            if (t <= _stops[0].Position) return _stops[0].Colour;
-            var last = _stops[_stops.Count - 1];
-            if (t >= last.Position) return last.Colour;
-            for (int i = 0; i < _stops.Count - 1; i++)
-            {
-                var a = _stops[i];
-                var b = _stops[i + 1];
-                if (t < a.Position || t > b.Position) continue;
-                float span = b.Position - a.Position;
-                return span <= 0.0001f ? b.Colour : Color.Lerp(a.Colour, b.Colour, (t - a.Position) / span);
-            }
-            return last.Colour;
-        }
-
-        private void Bake()
-        {
-            if (_tex == null)
-            {
-                _tex = new Texture2D(TexWidth, 1, TextureFormat.RGBA32, false)
-                {
-                    wrapMode = TextureWrapMode.Clamp,
-                    filterMode = FilterMode.Bilinear,
-                    hideFlags = HideFlags.HideAndDontSave,
-                };
-                _strip.style.backgroundImage = new StyleBackground(_tex);
-            }
-            var px = new Color[TexWidth];
-            for (int i = 0; i < TexWidth; i++) px[i] = Evaluate(i / (float)(TexWidth - 1));
-            _tex.SetPixels(px);
-            _tex.Apply(false, false);
-        }
-
-        private void Rebuild()
-        {
-            Bake();
-            RebuildMarkers();
-            RebuildEditor();
-        }
-
-        private void RebuildMarkers()
-        {
-            _markerLayer.Clear();
-            foreach (var stop in _stops)
-            {
-                var s = stop;
-                var m = new VisualElement();
-                m.style.position = Position.Absolute;
-                m.style.width = MarkerWidth;
-                m.style.height = MarkerWidth;
-                m.style.left = Length.Percent(s.Position * 100f);
-                m.style.marginLeft = -MarkerWidth / 2f;
-                Ui.SetRadius(m, MarkerWidth / 2f);
-                m.style.backgroundColor = s.Colour;
-                Ui.SetBorderWidth(m, 2f);
-                Ui.SetBorderColor(m, s == _selected ? Theme.For(m).Accent : Color.white);
-                m.pickingMode = PickingMode.Position;
-                _markerLayer.Add(m);
-
-                m.RegisterCallback<PointerDownEvent>(e =>
-                {
-                    if (e.button != 0) return;
-                    _selected = s;
-                    m.CapturePointer(e.pointerId);
-                    // Stops the strip's own click from adding another stop underneath this one.
-                    e.StopPropagation();
-                    RebuildMarkers();
-                    RebuildEditor();
-                });
-                m.RegisterCallback<PointerMoveEvent>(e =>
-                {
-                    if (!m.HasPointerCapture(e.pointerId)) return;
-                    var r = _strip.contentRect;
-                    if (r.width <= 0f) return;
-                    var local = _strip.WorldToLocal(e.position);
-                    s.Position = Mathf.Clamp01(local.x / r.width);
-                    m.style.left = Length.Percent(s.Position * 100f);
-                    Bake();
-                    Notify();
-                });
-                m.RegisterCallback<PointerUpEvent>(e =>
-                {
-                    if (!m.HasPointerCapture(e.pointerId)) return;
-                    m.ReleasePointer(e.pointerId);
-                    // Sorted only on release: reordering mid-drag swaps the marker under the
-                    // pointer and the drag jumps to a different stop.
-                    Sort();
-                    Rebuild();
-                });
-                m.RegisterCallback<PointerLeaveEvent>(_ => { });
-            }
-        }
-
-        private void RebuildEditor()
-        {
-            _editor.Clear();
-            if (_selected == null)
-            {
-                Ui.Muted(Words.Own("Click the strip to add a stop."), _editor);
-                return;
+                Pair x;
+                if (_byP.TryGetValue(p, out x)) return x;
+                x = new Pair { P = p, F = new Facet.GradientStop { Position = p.Position, Colour = p.Colour }, Pos = p.Position, Col = p.Colour };
+                _byP[p] = x; _byF[x.F] = x;
+                return x;
             }
 
-            var sel = _selected;
-            new ColourPicker(_editor, Words.Own("Stop colour"), sel.Colour, _hasAlpha, c =>
+            private Pair Of(Facet.GradientStop f)
             {
-                sel.Colour = c;
-                Bake();
-                RebuildMarkers();
-                Notify();
-            });
+                Pair x;
+                if (_byF.TryGetValue(f, out x)) return x;
+                x = new Pair { F = f, P = new GradientStop { Position = f.Position, Colour = f.Colour }, Pos = f.Position, Col = f.Colour };
+                _byP[x.P] = x; _byF[f] = x;
+                return x;
+            }
 
-            Widgets.Slider(_editor, Words.Own("Position"), sel.Position, 0f, 1f, v =>
+            internal void Settle()
             {
-                sel.Position = v;
-                Bake();
-                RebuildMarkers();
-                Notify();
-            }, null, "0.00");
-
-            var row = Ui.Row(_editor);
-            Ui.Btn(Words.Own("Add stop"), () =>
-            {
-                float t = Mathf.Clamp01(sel.Position + 0.1f);
-                var stop = new GradientStop { Position = t, Colour = Evaluate(t) };
-                _stops.Add(stop);
-                Sort();
-                _selected = stop;
-                Changed();
-            }, row);
-
-            // The last stop stays: a gradient with none evaluates to white and the strip vanishes,
-            // which reads as a bug rather than as an empty state.
-            if (_stops.Count > 1)
-                Ui.Btn(Words.Own("Remove stop"), () =>
+                bool same = _pairs.Count == _p.Count;
+                for (int i = 0; same && i < _pairs.Count; i++) same = _pairs[i].P == _p[i];
+                if (!same) { _pairs.Clear(); foreach (var p in _p) _pairs.Add(Of(p)); }
+                foreach (var x in _pairs)
                 {
-                    _stops.Remove(sel);
-                    _selected = _stops.Count > 0 ? _stops[0] : null;
-                    Changed();
-                }, row);
-        }
+                    if (x.F.Position != x.Pos || x.F.Colour != x.Col) { x.P.Position = x.F.Position; x.P.Colour = x.F.Colour; }
+                    else if (x.P.Position != x.Pos || x.P.Colour != x.Col) { x.F.Position = x.P.Position; x.F.Colour = x.P.Colour; }
+                    x.Pos = x.F.Position; x.Col = x.F.Colour;
+                }
+            }
 
-        private void Changed()
-        {
-            Rebuild();
-            Notify();
-        }
+            // Every reader asks Count first (Evaluate, the List copy in Sort), so the indexer need not settle.
+            public int Count { get { Settle(); return _pairs.Count; } }
+            public bool IsReadOnly => false;
 
-        private void Notify()
-        {
-            try { if (_onChange != null) _onChange(); }
-            catch (Exception e) { Ui.Log("GradientEditor handler threw: " + e.Message); }
+            public Facet.GradientStop this[int i]
+            {
+                get { return _pairs[i].F; }
+                set { var x = Of(value); _p[i] = x.P; _pairs[i] = x; }
+            }
+
+            public void Add(Facet.GradientStop f) { var x = Of(f); _p.Add(x.P); _pairs.Add(x); }
+            public void Insert(int i, Facet.GradientStop f) { var x = Of(f); _p.Insert(i, x.P); _pairs.Insert(i, x); }
+            public void RemoveAt(int i) { _p.RemoveAt(i); _pairs.RemoveAt(i); }
+            public void Clear() { _p.Clear(); _pairs.Clear(); }
+
+            public bool Remove(Facet.GradientStop f)
+            {
+                int i = IndexOf(f);
+                if (i < 0) return false;
+                RemoveAt(i);
+                return true;
+            }
+
+            public int IndexOf(Facet.GradientStop f)
+            {
+                Settle();
+                for (int i = 0; i < _pairs.Count; i++) if (_pairs[i].F == f) return i;
+                return -1;
+            }
+
+            public bool Contains(Facet.GradientStop f) => IndexOf(f) >= 0;
+
+            public void CopyTo(Facet.GradientStop[] a, int at)
+            {
+                Settle();
+                for (int i = 0; i < _pairs.Count; i++) a[at + i] = _pairs[i].F;
+            }
+
+            public IEnumerator<Facet.GradientStop> GetEnumerator()
+            {
+                Settle();
+                for (int i = 0; i < _pairs.Count; i++) yield return _pairs[i].F;
+            }
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
 }
