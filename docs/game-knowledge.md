@@ -51,6 +51,12 @@ Verified 2026-11-06 (CamDisplay log, real play). Consequences:
 
 ## Unity behaviour in this game
 
+- **The UI font PrismLib.UI picks on macOS has no Hangul.** On Unity 6, PrismLib.UI's OS-family font
+  (Helvetica Neue, with Menlo as its fallback) has no glyphs for 크 or 기, so Korean text in Prism
+  windows has no glyph to draw. Facet fixes it by appending the OS CJK face
+  (`/System/Library/Fonts/AppleSDGothicNeo.ttc`) to the regular and bold fallback tables. Its
+  autotest checks glyph presence, not label width. Verified 2026-11-06 (Facet Task 8, FontAsset
+  HasCharacters in game). PrismLib.UI gets the fix when it moves onto Facet.
 - **ADOFAI 2.9.x builds do not run Unity 2022**, so the "2.9 = Unity 2022" pairing in
   `../CLAUDE.md` is wrong, and Prism's UI Toolkit windows support 3.x (Unity 6) only. Stated by the
   user 2026-11-06; expected, and part of the plan. The Unity 2022 font notes stay, unverified, for
