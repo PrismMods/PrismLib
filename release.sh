@@ -16,6 +16,10 @@ cd "$(dirname "$0")"
 REPO="PrismMods/PrismLib"
 VER="${1:-}"
 NOTES="${2:-}"
+# Anything else (--help, a typo) would be stamped into every version file as if it were a version.
+if [ -n "$VER" ] && ! [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "usage: ./release.sh [X.Y.Z [notes.md]]   (got '$VER')" >&2; exit 2
+fi
 
 # Checked before anything is stamped or built, so a missing DLL leaves no half-stamped tree.
 FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' PrismLib.UI/PrismLib.UI.csproj)
