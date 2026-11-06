@@ -5,7 +5,9 @@ using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
 {
-    public enum SettingControl { Bool, Int, Float, Choice, Text, Action, Colour, Key }
+    /// Info: read-only text that may be long (a status, a path); it wraps instead of running out of
+    /// the window. Append new kinds at the end: mods compiled against an older build pass the numbers.
+    public enum SettingControl { Bool, Int, Float, Choice, Text, Action, Colour, Key, Info }
 
     /* One setting, flattened to what a widget needs.
 
@@ -288,6 +290,9 @@ namespace PrismLib.UI.Toolkit
                         break;
                     case SettingControl.Colour:
                         Widgets.Colour(Target, r.Label, ToColour(r.Get()), v => Write(r, v), r.Tooltip);
+                        break;
+                    case SettingControl.Info:
+                        Widgets.Info(Target, r.Label, Convert.ToString(r.Get()), r.Tooltip);
                         break;
                     case SettingControl.Key:
                         if (r.Capture == null) { Ui.Muted(Words.F("{0} — not rebindable here", r.Label), Target); break; }

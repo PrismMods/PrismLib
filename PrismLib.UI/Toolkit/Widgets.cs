@@ -271,6 +271,20 @@ namespace PrismLib.UI.Toolkit
             return f;
         }
 
+        /// Read-only text beside a label that wraps when long, instead of a TextField that cuts it off.
+        public static Label Info(VisualElement parent, string label, string value, string tooltip = null)
+        {
+            var host = Row(parent, label, tooltip);
+            host.style.flexShrink = 1f;
+            host.style.maxWidth = Length.Percent(65f);
+            var v = Ui.Muted(value ?? "", host);
+            v.style.whiteSpace = WhiteSpace.Normal;
+            v.style.unityTextAlign = TextAnchor.MiddleRight;
+            v.style.flexShrink = 1f;
+            v.style.minWidth = 0f;
+            return v;
+        }
+
         private static void Commit(TextField f, Action<string> onChange)
         {
             try { if (onChange != null) onChange(f.value); }
