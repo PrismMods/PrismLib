@@ -86,6 +86,11 @@ namespace PrismLib.UI.Toolkit
             Scroller(view.verticalScroller);
             Scroller(view.horizontalScroller);
             view.style.backgroundColor = Color.clear;
+            /* The editor theme's stylesheet clips the viewport; a runtime panel has no theme, so
+               without this, scrolled rows draw over whatever sits above the view (a window's title
+               bar, its search box). */
+            view.style.overflow = Overflow.Hidden;
+            if (view.contentViewport != null) view.contentViewport.style.overflow = Overflow.Hidden;
         }
 
         private static void Scroller(Scroller s)
