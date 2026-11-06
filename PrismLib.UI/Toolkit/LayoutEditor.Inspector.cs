@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace PrismLib.UI.Toolkit
 {
     /* The selected target's exact values, and undo/redo. Fields are plain TextFields, not
-       Widgets.Text: that one records History keyed by its label, which would undo into whichever
+       Widgets.Text: that one records History keyed `host/page/label#n`, which would undo into whichever
        target happens to be selected later. Every gesture (drag, grip, knob, crop edge, field
        commit) records exactly one History step, keyed per gesture so two quick gestures on one
        target never coalesce into one. */

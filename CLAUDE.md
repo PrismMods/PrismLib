@@ -81,7 +81,10 @@ Cut a release when something is ready to ship, not to try it.
 - `./release.sh <ver>` also stamps both AssemblyInfos and `Prism.Version`, and regenerates
   `prismlib.json`. Then upload BOTH DLLs to the `v<ver>` GitHub release and push.
 - **Version steps by 0.0.1** unless the change is genuinely major. The user decides versions.
-- Consuming mods refresh with `lib/update-prismlib.sh`; `deploy.sh` calls it when a DLL is missing.
+- `./release.sh <ver>` also uploads `lib/Facet.0.1.dll` as a release asset and writes a `facet` entry
+  (name, url, sha256) into `prismlib.json`.
+- Consuming mods refresh with `lib/update-prismlib.sh` (which fetches `facet` when the feed has one);
+  `deploy.sh` calls it when a DLL is missing, and fails if `lib/Facet.0.1.dll` is still missing.
 
 ## The shared debug window
 
@@ -129,66 +132,63 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
   guard: a target whose mod went away is hidden and reported once, not every frame.
 - History keys are per gesture (`Owner/Id#n`), never per label: `History` coalesces same-key
   entries within 0.9 s, and a label key would undo into whichever target is selected later. For the
-  same reason the inspector does not use `Widgets.Text`/`Choice`.
+  same reason the inspector does not use `Widgets.Text`/`Choice`, whose keys are `host/page/label#n`.
 - **Test rig**: `tools/LayoutProbe` (UMM dev mod; `build.sh` after `./dev.sh`). F9 opens the editor
   over three boxes. An `autotest` file in its mod folder runs `AutoTest.cs` instead: synthetic
   UI Toolkit events against the real panel, PASS/FAIL lines in its `probe.log`, then the game
   quits. A still click must send down and up in the same frame, or the real mouse's own move event
   lands between them and turns it into a drag.
 
+## Facet
+
+`PrismLib.UI` stands on **Facet** (`../Facet`, its own repo; read `../Facet/README.md` and
+`../Facet/CLAUDE.md`), a game-agnostic UI engine, `netstandard2.1`, shipped as `Facet.0.1.dll`.
+
+- **What moved.** Surfaces and windows (`../Facet/Facet/Surface.cs`, `Window.cs`), theme and tokens
+  (`Theme.cs`, `Tokens.cs`), input and key capture (`Input.cs`),
+  `Paint`, popups, the undo history, `Nav`, and the settings `Form` (`Form.cs`) now live in
+  Facet. PrismLib.UI keeps every public type and signature and forwards to it; the Prism-only
+  pieces stay here: `Words`, `Tokens` pushes from mods, `InputGate`, `DebugPanel`, the layout
+  editor, `Toast`, `FpsCounter`, `RestartPrompt`.
+- **Hosts.** `Toolkit/PrismHost.cs` makes the default host, named `PrismLib`, which wires Facet's log,
+  language, geometry persistence and theme to PrismLib.UI's own `Ui.Log`, `Words`, `Window.Read/Write`
+  and `Theme.Default`. A settings row is built under a per-owner host named `PrismLib/<owner>`,
+  whose `Translate` calls `Words.T` with `Words.Owner` pinned to that owner (`Field.Owner` carries
+  the name). One host per owner is what keeps `Surface.Relabel` and undo tooltips translating in the
+  owner's table. `Host.Named` keeps the FIRST host of a name, and `Facet` is reserved.
+- **Colours.** `Look` presets are copies; a literal colour written onto a Facet-built element sticks
+  only after `Paint.Forget(e)`. `Ui.Text(color)` and `Ui.SetBorderColor` do that; do the same for
+  any inline colour write on a Facet-built element.
+- **Shipping.** `Facet.0.1.dll` ships wherever `PrismLib.UI.dll` ships: each UMM mod folder,
+  `UserLibs/` for MelonLoader builds, and each mod's `lib/`. Never name or place it so that
+  `PrismLib.dll`'s shared folder could load it. `./dev.sh` refreshes every copy it finds (the
+  mod folders, the standalone `UMMMods/Facet`, and Sapphire's and Topaz's `lib/`) from PrismLib's
+  `lib/`; CamDisplay's `lib/` is refreshed by hand;
+  `tools/update-facet.sh` rebuilds Facet and refreshes `lib/Facet.0.1.dll` (dev machines; `dev.sh`
+  calls it when the file is missing). `release.sh <ver>` uploads it with the release and lists it
+  in `prismlib.json` as `facet`, so a mod's `lib/update-prismlib.sh` fetches it with a SHA-256 check;
+  until a release carries it, a mod gets it from `tools/update-facet.sh`.
+- **Compatibility (R21).** A Facet patch release adds no public API; any new public member bumps the
+  minor (a new file name). Within one minor the first loaded copy wins, so a Facet copy beside an
+  older PrismLib.UI must be harmless.
+- **Landmines.** The UI Toolkit landmines (SetActive, fonts, shrinking and scrolling containers,
+  theme clipping, cursors, wheel, undo, Escape) now live in `../Facet/CLAUDE.md`, where Facet's
+  rules keep them. Read it before touching a window's layout, fonts, scrolling or input.
+
 ## UI
 
-Unity **6000.3.211**, and the game ships `UnityEngine.UIElementsModule.dll`. Runtime UI Toolkit is
-**verified working in-game** (2026-09-24): `ScriptableObject.CreateInstance<PanelSettings>()` + an
-empty `ThemeStyleSheet` + `UIDocument` gives a live `rootVisualElement`, and the debug panel renders
-with a working `ListView`. The real constraint: **USS and UXML cannot be authored at runtime** (that
-importer is editor-only), so styling is inline C# and theme values are code tokens.
+Runtime UI Toolkit is Unity 6 only (3.x builds; see `docs/game-knowledge.md` for the 2.9 note), and
+styling is inline C#, never USS/UXML. Everything about how Facet-built windows behave is in
+`../Facet/CLAUDE.md`. Landmines specific to PrismLib.UI:
 
-Three landmines, all found by the first panel that opened:
-
-- **Never show/hide a panel with `SetActive`.** `UIDocument` rebuilds its visual tree in `OnEnable`,
-  so the second show hands back a different `rootVisualElement` and everything built into the old
-  one is orphaned — the panel comes back empty with no error. Use `display`.
-- **Before Unity 6 a font does not inherit (ADOFAI 2.9 runs Unity 2022).** A font definition set on
-  the root never reached the labels: each resolved no font and laid out 0px tall, so the window drew
-  shapes and no text. Font loading was fine — set per element, both the SDF asset and a legacy Font
-  draw. `Surface.HandDownFonts` stamps the nearest ancestor's font onto every text element on a 200ms
-  schedule there (rows recycle, popups add elements later). Unity 2022 also has no 5-arg SDF family
-  overload, so on macOS the font comes from files (Arial, Menlo — which also carries the panel icons
-  Arial lacks, hence it is the sans face's fallback).
-- **A panel with no font draws no text.** `TMP_FontAsset.sourceFontFile` is an editor-time reference
-  and is null in a player build, so mods generally cannot supply a `Font`; `Surface` falls back to
-  `Font.CreateDynamicFontFromOSFont` (on demand — not safe at `Time.frameCount == 0`).
-- **A scrolling container's ANCESTORS must be allowed to shrink.** `Window.Body` and `Nav`'s panes
-  set `flexShrink = 1` back on themselves, against the `Ui.Box` default, because they have to become
-  whatever the window is rather than whatever their content is. Left at 0, the body grew to its
-  content and the window merely clipped it: the debug log's viewport came out **2700px tall inside a
-  580px window**, so the list reported that everything fitted and nothing scrolled. `minHeight = 0`
-  alone is not enough — both are needed.
-- **Flex items shrink by default, and `Ui.Box` turns that off.** The CSS default of `flexShrink: 1`
-  assumes a layout that would rather squash than overflow; a settings page wants the opposite —
-  something too tall should SCROLL, not compress until its text prints through the row below. Three
-  separate overlaps came from it (the debug panel's header under its tab bar, a section's rows
-  through the next section's heading, keybind labels through each other), so every `Ui.Box` and
-  everything built on it now defaults to `flexShrink = 0`. Anything that genuinely should absorb
-  slack sets it back to 1 on itself. A `ScrollView`'s `contentContainer` is not a `Box`, so it needs
-  setting by hand.
-- **A flex item's minimum size is its CONTENT, which silently disables scrolling.** A list taller
-  than the window makes its container taller than the window too, so the window just clips it: no
-  scrollbar, no wheel, and nothing in any log. Every scroll container AND every ancestor up to the
-  fixed-height window needs `minHeight = 0` — `Window.Body`, the `ScrollView`, the `ListView`. An absolutely positioned element with only `left`/`top` is sized by its
-  CONTENT — pin all four offsets.
 - **The first Prism window drawn in a session costs ~85 ms more than any after it** — first run of
   the window, widget and UI Toolkit code, not glyphs (with every glyph pre-rasterised it was still
   91 ms; a second settings window took 17). So the first surface schedules
   `SettingsPanel.WarmUp`: one throwaway window drawn off screen for 100 ms, half a second after load.
   The debug window's ListView still pays ~25–40 ms of its own on first open. Measured by
   LayoutProbe's `Perf.cs` ([perf] lines), 2026-11-06.
-- **Nothing clips without the theme.** The default style sheet is what gives a `ScrollView`'s
-  viewport `overflow: hidden`; at runtime, scrolled rows drew over the settings window's search box
-  and title bar. `Skin.Scroll` now sets it on the view and its `contentViewport`, so build every
-  `ScrollView` through it. A single-line `TextField` cuts long text off at its width: long read-only
-  text (a status, a path) goes in a `SettingControl.Info` row, a wrapped label. Verified 2026-11-06.
+- **Long read-only text (a status, a path)** goes in a `SettingControl.Info` row, a wrapped label: a
+  single-line `TextField` cuts text off at its width.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at
 once.
