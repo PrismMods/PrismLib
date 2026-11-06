@@ -4,9 +4,10 @@ using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
 {
-    /* Crop mode: the full, uncropped source is drawn as a dim ghost and the four visible edges get
-       handles. The ghost stays put while an edge moves: after each SetCrop the box is moved so its
-       uncropped source lands where it was, whatever the mod does with its centre when cropped. */
+    /* Crop mode: the full, uncropped source is drawn as a dim ghost and each visible edge is a bar
+       that drags anywhere along its length, the way a window edge resizes. The ghost stays put while
+       an edge moves: after each SetCrop the box is moved so its uncropped source lands where it
+       was, whatever the mod does with its centre when cropped. */
     public sealed partial class LayoutEditor
     {
         private VisualElement _ghost;
@@ -81,9 +82,20 @@ namespace PrismLib.UI.Toolkit
             _ghost.style.left = p.x - g.W * k / 2f; _ghost.style.top = p.y - g.H * k / 2f;
             _ghost.style.width = g.W * k; _ghost.style.height = g.H * k;
             _ghost.style.rotate = new Rotate(new Angle(-g.Rot, AngleUnit.Degree));
+            // Each bar runs the full length of its edge, turned with the box.
             var mids = EdgeMids(f);
-            for (int i = 0; i < 4; i++) Put(_edges[i], mids[i], k);
+            for (int i = 0; i < 4; i++)
+            {
+                bool across = i == 0 || i == 2;   // left and right edges run up and down
+                float w = across ? EdgeBar : f.B[2] * k, h = across ? f.B[3] * k : EdgeBar;
+                var pm = ToPanel(mids[i], k);
+                _edges[i].style.width = w; _edges[i].style.height = h;
+                _edges[i].style.left = pm.x - w / 2f; _edges[i].style.top = pm.y - h / 2f;
+                _edges[i].style.rotate = new Rotate(new Angle(-g.Rot, AngleUnit.Degree));
+            }
         }
+
+        private const float EdgeBar = 4f;   // panel px
 
         private void BuildCropChrome()
         {
@@ -98,6 +110,23 @@ namespace PrismLib.UI.Toolkit
             for (int i = 0; i < 4; i++) _edges[i] = Handle("layout-crop-edge-" + i, 12f, 3f);
         }
 
+        /* The visible edge under a screen point (0 left, 1 bottom, 2 right, 3 top), or -1: anywhere
+           along an edge within HitRadius, the nearest edge where two meet at a corner. */
+        private int EdgeAt(Frame f, Vector2 s)
+        {
+            Vector2 p = Rotate(s - new Vector2(f.B[0], f.B[1]), -RotationOf(f));
+            float hw = f.B[2] / 2f, hh = f.B[3] / 2f, r = HitRadius;
+            float[] gap = { Math.Abs(p.x + hw), Math.Abs(p.y + hh), Math.Abs(p.x - hw), Math.Abs(p.y - hh) };
+            bool alongY = Math.Abs(p.y) <= hh + r, alongX = Math.Abs(p.x) <= hw + r;
+            int best = -1;
+            for (int i = 0; i < 4; i++)
+            {
+                bool along = i == 0 || i == 2 ? alongY : alongX;
+                if (along && gap[i] <= r && (best < 0 || gap[i] < gap[best])) best = i;
+            }
+            return best;
+        }
+
         // Midpoints of the visible box's left, bottom, right, top edges (the side order of crop).
         private Vector2[] EdgeMids(Frame f)
         {
@@ -109,31 +138,29 @@ namespace PrismLib.UI.Toolkit
         {
             var f = _selected;
             if (!_cropMode || f == null || f.Broken || f.B == null || f.T.GetCrop == null) return;
-            var mids = EdgeMids(f);
-            for (int i = 0; i < 4; i++)
+            int side = EdgeAt(f, s);
+            if (side < 0) return;
+            var g = GhostOf(f);    // fixed for the whole drag
+            // The pointer in the ghost's own frame, as a fraction trimmed from that side.
+            Func<Vector2, float> at = p =>
             {
-                if ((s - mids[i]).magnitude > HitRadius) continue;
-                int side = i;
-                var g = GhostOf(f);    // fixed for the whole drag
-                BeginGesture(f);
-                _drag = new Drag
-                {
-                    F = f,
-                    Custom = p =>
-                    {
-                        // The pointer in the ghost's own frame, then as a fraction trimmed from that side.
-                        Vector2 local = Rotate(p - g.C, -g.Rot);
-                        float v = side == 0 ? (local.x + g.W / 2f) / g.W
-                                : side == 2 ? (g.W / 2f - local.x) / g.W
-                                : side == 1 ? (local.y + g.H / 2f) / g.H
-                                : (g.H / 2f - local.y) / g.H;
-                        SetCropSide(f, g, side, v);
-                    },
-                    End = () => EndGesture(f),
-                };
-                handled = true;
-                return;
-            }
+                Vector2 local = Rotate(p - g.C, -g.Rot);
+                return side == 0 ? (local.x + g.W / 2f) / g.W
+                     : side == 2 ? (g.W / 2f - local.x) / g.W
+                     : side == 1 ? (local.y + g.H / 2f) / g.H
+                     : (g.H / 2f - local.y) / g.H;
+            };
+            // Grabbed a little off the edge: the edge keeps that offset instead of jumping to the pointer.
+            var c0 = Guard(f, () => f.T.GetCrop(), null);
+            float grab = c0 != null ? c0[side] - at(s) : 0f;
+            BeginGesture(f);
+            _drag = new Drag
+            {
+                F = f,
+                Custom = p => SetCropSide(f, g, side, at(p) + grab),
+                End = () => EndGesture(f),
+            };
+            handled = true;
         }
     }
 }

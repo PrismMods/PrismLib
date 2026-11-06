@@ -277,6 +277,14 @@ namespace LayoutProbe
             var rm = new Vector2(A.Cx + A.Get()[2] / 2f, A.Cy);
             yield return Drag(rm, new Vector2(A.Cx - A.W * 2f, A.Cy));
             Check(Near(A.Crop[0], 0.1f, 0.001f) && Near(A.Crop[2], 0.85f, 0.01f), "the dragged edge stops; the opposite one stays", "crop=" + string.Join("/", A.Crop));
+            // Anywhere along an edge drags it, not just its middle
+            A.Crop = new float[4];
+            yield return null; yield return null;
+            float bw = A.Get()[2], bh = A.Get()[3];
+            var alongRight = new Vector2(A.Cx + bw / 2f, A.Cy + bh * 0.3f);
+            yield return Drag(alongRight, alongRight - new Vector2(bw * 0.2f, 0f));
+            Check(Near(A.Crop[2], 0.2f, 0.02f) && A.Crop[0] == 0f && A.Crop[3] == 0f, "a crop edge drags from anywhere along it, not only its middle",
+                  "crop=" + string.Join("/", A.Crop));
             if (crop2 != null) { Submit(crop2); yield return null; }
             A.Crop = new float[4];
 
