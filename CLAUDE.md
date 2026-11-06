@@ -45,6 +45,14 @@ management for logs, player data, save data and fields, so the mods feel like on
   ```
   ./tools/check-bridge.sh …/Sapphire.dll Sapphire.PrismBridge Init Shutdown TickDebug TickAnim ToggleDebug DebugTabs
   ```
+
+  **The JIT step alone proves nothing on this Mac's Mono (6.14.1):** `PrepareMethod` defers
+  missing-type failures to run time, so a method that names a `PrismLib.dll` type JITs "ok" and
+  only throws when it runs (found 2026-11-07 by Quartz's bridge task). So check-bridge also scans
+  each named method's IL, resolving every token, parameter and local type with `PrismLib.dll`
+  absent, follows calls into its lambdas and the `<>c`/display classes it touches, and checks those
+  classes' field types. It prints the offending method and the PrismLib member. Keep the JIT step
+  too: other runtimes do fail there.
 - **No caller outside the bridge may mention a PrismLib type** — the CLR resolves a method's types
   when that method is JITted.
 - **Each mod's `release.sh` must copy `lib/PrismLib.UI.dll` into the zip.** Leaving it out breaks

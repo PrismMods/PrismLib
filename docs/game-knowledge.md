@@ -92,6 +92,9 @@ Verified 2026-11-06 (CamDisplay log, real play). Consequences:
 - **UMM's on/off switch calls `OnToggle`; a mod that does not set it keeps running** (camera,
   overlays, registrations) while "off". `OnUpdate` stops while the mod is inactive. Verified
   2026-11-06 by toggling `ModEntry.Active` in CamDisplay's self-test.
+- **UMMBridge loads PrismLib.dll from bytes, so `Assembly.Location` is empty for it**; never
+  derive a path from it. (Its `Assembly.LoadFrom` interceptor logs `[UMMBridge] Patched assembly:
+  PrismLib.dll`.) Verified 2026-11-07 by Quartz's bridge self-test under MelonLoader + UMMBridge.
 - MelonLoader attribute for this game: `[assembly: MelonGame("7th Beat Games", "A Dance of Fire and Ice")]`.
 - `xbuild` silently drops an `EmbeddedResource` whose file has no extension; copy it to a `.bin`
   in a pre-build step and give it a `LogicalName`. Verified 2026-11-06.
