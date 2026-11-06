@@ -312,16 +312,16 @@ namespace PrismLib.UI.Toolkit
                 {
                     armed = true;
                     b.text = Words.Own("Sure?");
-                    b.style.backgroundColor = Theme.For(b).Danger;
+                    Facet.Paint.Select(b, true);   // armed: DangerButton's selected state
                     Anim.Pop(b);
                     return;
                 }
                 armed = false;
                 b.text = buttonText;
-                b.style.backgroundColor = Theme.For(b).RowAlt;
+                Facet.Paint.Select(b, false);
                 try { if (onConfirm != null) onConfirm(); } catch (Exception e) { Ui.Log("Danger handler threw: " + e.Message); }
             }, host);
-            b.style.color = Theme.For(b).Danger;
+            Facet.Paint.Look(b, Facet.Look.DangerButton);
             return b;
         }
 
@@ -389,7 +389,7 @@ namespace PrismLib.UI.Toolkit
             arrow.style.fontSize = Tokens.FontSize + 3f;   // it was a speck at body size
             var l = Ui.Text(title, head, Tokens.FontSize);
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            l.style.color = Theme.For(l).TextMuted;
+            Facet.Paint.Fg(l, Facet.Role.TextMuted);
             l.pickingMode = PickingMode.Ignore;
 
             var body = Ui.Box(parent);
@@ -463,13 +463,13 @@ namespace PrismLib.UI.Toolkit
             bool armed = false;
             b = Ui.Btn(text, () =>
             {
-                if (!armed) { armed = true; b.text = Words.Own("Sure?"); b.style.backgroundColor = Theme.For(b).Danger; Anim.Pop(b); return; }
+                if (!armed) { armed = true; b.text = Words.Own("Sure?"); Facet.Paint.Select(b, true); Anim.Pop(b); return; }
                 armed = false;
                 b.text = text;
-                b.style.backgroundColor = Theme.For(b).RowAlt;
+                Facet.Paint.Select(b, false);
                 try { if (onConfirm != null) onConfirm(); } catch (Exception e) { Ui.Log("Danger handler threw: " + e.Message); }
             }, row);
-            b.style.color = Theme.For(b).Danger;
+            Facet.Paint.Look(b, Facet.Look.DangerButton);
             return b;
         }
 
@@ -534,7 +534,7 @@ namespace PrismLib.UI.Toolkit
         {
             var l = Ui.Text(text, parent, Tokens.FontSize);
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            l.style.color = Theme.For(l).TextMuted;
+            Facet.Paint.Fg(l, Facet.Role.TextMuted);
             l.style.marginTop = Tokens.Pad;
             l.style.marginBottom = Tokens.Gap;
             l.style.flexShrink = 0f;

@@ -4,10 +4,9 @@ namespace PrismLib.UI.Toolkit
 {
     /* Theme values as code, because USS cannot be authored at runtime.
 
-       Mutable and global on purpose: a mod sets these once at startup and every element built
-       afterwards picks them up, which is the closest thing to a stylesheet this environment allows.
-       Accent is the one that changes at runtime (both mods let the user re-skin it), so anything
-       using it re-reads it rather than caching a colour. */
+       Mutable and global on purpose: a mod sets these and every window built afterwards picks them
+       up. The colours ARE Theme.Default (refreshed into its Facet twin when a surface is made); the
+       sizes are copied into Facet.Tokens when PrismLib's host is made, with the first surface. */
     public static class Tokens
     {
         /// Page and section titles. Bigger than body text, and the one place weight is used.

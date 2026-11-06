@@ -5,7 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using PrismLib.UI.Toolkit;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
@@ -14,7 +13,7 @@ namespace LayoutProbe
 {
     static class Perf
     {
-        // A frame at 120 Hz is 8 ms; a first open used to take 90-100 ms before SettingsPanel.WarmUp.
+        // A frame at 120 Hz is 8 ms; a first open used to take 90-100 ms before the warm-up (Facet.WarmUp).
         const float FirstOpenBudgetMs = 50f;
 
         internal static IEnumerator Run(Action<bool, string, string> check)
@@ -88,9 +87,8 @@ namespace LayoutProbe
         static int Glyphs()
         {
             int n = 0;
-            foreach (var name in new[] { "_fallback", "_mono" })
+            foreach (var fa in new[] { Facet.Fonts.Regular(PrismHost.Instance), Facet.Fonts.Mono(PrismHost.Instance) })
             {
-                var fa = typeof(Surface).GetField(name, BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as FontAsset;
                 if (fa == null) continue;
                 n += fa.glyphTable.Count;
                 var t = fa.fontWeightTable;

@@ -153,7 +153,7 @@ namespace PrismLib.UI.Toolkit
                 if (l == null || i < 0 || i >= _rows.Count) return;
                 l.text = _lineNumbers && i < _rowNumbers.Count && _rowNumbers[i] > 0
                     ? _rowNumbers[i].ToString().PadLeft(5) + "  " + _rows[i] : _rows[i];
-                l.style.color = Tint(_rows[i], Theme.For(l));
+                Facet.Paint.Fg(l, Tint(_rows[i]));
             }, card);
             _list.style.overflow = Overflow.Hidden;
             _list.style.minHeight = 0f;
@@ -182,15 +182,15 @@ namespace PrismLib.UI.Toolkit
 
         // Cheap severity colouring. Substring checks, not a parser: every mod formats its log
         // differently and guessing wrong must not cost more than a wrong colour.
-        private static Color Tint(string line, Theme t)
+        private static Facet.Role Tint(string line)
         {
-            if (line == null) return t.Text;
+            if (line == null) return Facet.Role.Text;
             if (line.IndexOf("Exception", StringComparison.OrdinalIgnoreCase) >= 0
                 || line.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0
-                || line.IndexOf("FAIL", StringComparison.Ordinal) >= 0) return t.Danger;
+                || line.IndexOf("FAIL", StringComparison.Ordinal) >= 0) return Facet.Role.Danger;
             if (line.IndexOf("[dbg]", StringComparison.Ordinal) >= 0
-                || line.IndexOf("[perf]", StringComparison.Ordinal) >= 0) return t.TextMuted;
-            return t.Text;
+                || line.IndexOf("[perf]", StringComparison.Ordinal) >= 0) return Facet.Role.TextMuted;
+            return Facet.Role.Text;
         }
 
         private void RebuildTabs()

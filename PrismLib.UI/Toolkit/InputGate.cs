@@ -10,7 +10,7 @@ namespace PrismLib.UI.Toolkit
        A panel only catches what UI Toolkit routes to it; the game reads the keyboard and wheel
        straight from UnityEngine.Input and RDInput, so typing into a search box placed tiles, Escape
        opened the pause menu behind the window, and scrolling a list zoomed the editor. While
-       Ui.BlocksGameInput holds (a visible surface with BlocksGameInput, the default), these read as
+       Facet.Input.BlocksGameInput holds (a visible surface with BlocksGameInput, the default), these read as
        "nothing pressed" / "no scroll":
 
          UnityEngine.Input  GetKey / GetKeyDown / GetKeyUp (KeyCode and string),
@@ -52,7 +52,7 @@ namespace PrismLib.UI.Toolkit
             {
                 if (_exempt > 0) return false;
                 bool held = AnyBlocker();   // first: it also notes a release, which holds this frame
-                if (!Ui.BlocksGameInput && !held && Time.frameCount != _holdFrame) return false;
+                if (!held && !Facet.Input.BlocksGameInput && !Facet.Input.HeldThisFrame) return false;
                 if (Any(_exemptProbes) || Any(_bypass)) return false;
                 return true;
             }
@@ -61,10 +61,9 @@ namespace PrismLib.UI.Toolkit
         /* A blocking window that hides keeps the gate shut for the rest of that frame. The key that
            closed it — Escape, read by a mod's Update — is still "down" for every script that runs
            later in the same frame, and the game read it there and opened the pause menu behind the
-           window it had just closed. */
-        private static int _holdFrame = -1;
-
-        internal static void HoldThisFrame() => _holdFrame = Time.frameCount;
+           window it had just closed. Facet.Input holds it, for its own surfaces and for a released
+           Block here alike. */
+        internal static void HoldThisFrame() => Facet.Input.HoldThisFrame();
 
         /* For UI that is not a Prism Surface — a mod's own uGUI menu. While `active` returns true, game
            input is withheld exactly as for an open Prism window. The same id replaces (a hot reload
@@ -89,8 +88,8 @@ namespace PrismLib.UI.Toolkit
             {
                 bool on;
                 try { on = b.Active(); } catch { on = false; }
-                // The key that closed the menu is still down for the rest of this frame — see _holdFrame.
-                if (b.On && !on) _holdFrame = Time.frameCount;
+                // The key that closed the menu is still down for the rest of this frame — see HoldThisFrame.
+                if (b.On && !on) HoldThisFrame();
                 b.On = on;
                 any |= on;
             }
