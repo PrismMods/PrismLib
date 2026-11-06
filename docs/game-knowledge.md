@@ -127,6 +127,21 @@ Topaz's key limiter lets Alt chords through while its menu is open.
   three labels (F12 among them), so Tab and F1-F11 hit fine there. Same table in the June 2026
   build. Fix: grant the game Input Monitoring again (Privacy & Security); an ad-hoc grant is per
   signature, so every re-sign or game update needs it redone.
+- **A self-signed certificate keeps TCC grants across re-signs; ad-hoc cannot** (tested 2026-11-06
+  on a probe app that opens an IOHIDManager the way SkyHook does). macOS stores a grant with the
+  app's designated requirement: ad-hoc's is `cdhash H"…"`, new on every build, while a cert's is
+  `identifier "…" and certificate leaf = H"…"`, the same for every build signed with it. Granted
+  once, three different builds swapped in at the same path stayed granted; an ad-hoc build there
+  got `NOT_PERMITTED`, and the cert-signed build was granted again after it. The cert needs no
+  trust setting (`CSSMERR_TP_NOT_TRUSTED` signs and runs fine with hardened runtime), but
+  `codesign` only finds an identity in a keychain on the user's search list, even with
+  `--keychain`. **Verified on the game the same day:** CamDisplay's patch signs with a local
+  "CamDisplay Local Signing" cert. Input Monitoring was granted once, then the game was re-signed
+  with a changed Info.plist (new cdhash, same requirement), and it still hooked the keyboard with
+  Tab and F-keys hitting. The Camera grant across a re-sign is still untested (the cam was off in
+  that run), though it is the same mechanism. Re-signing identical content gives the identical
+  cdhash. CamDisplay's DEBUG self-test re-patches (undo + apply) on every run; under ad
+  hoc that silently dropped the grant each time.
 - UMMInstall sets Steam's launch options to `"<game>/setup_helper.sh" %command%` (an arm64
   re-exec plus the MelonLoader `DYLD_INSERT_LIBRARIES`), not MelonLoader's own
   `melonloader-launch.sh`. Anything that wraps the launch goes in front of whichever is there.

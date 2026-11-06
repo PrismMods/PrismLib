@@ -199,7 +199,7 @@ Related behavior:
 
 - **Detection:** on macOS, the mod checks whether the bundle lacks the camera entitlement or the usage key. If so, it offers the action again. That covers Steam updates and "Verify integrity", which both restore the stock signature.
 - **Undo camera patch:** restores the backup. Steam's "Verify integrity" also works.
-- **Re-prompts:** each re-sign changes the code hash, so macOS asks for camera permission again after every re-patch. That's expected.
+- **Re-prompts:** an ad-hoc re-sign changes the code hash, so macOS dropped camera AND Input Monitoring grants after every re-patch (Input Monitoring silently: the game's keyboard hook failed and Tab/F1-F12 stopped hitting). Since 2026-11-06 the patch signs with a per-machine self-signed certificate whose designated requirement survives re-signs; only the first patch needs the grants given again. See `docs/game-knowledge.md`, macOS.
 - **Unverified:** whether re-signing while the game is running is safe. The spike re-signed with the game closed. If it isn't safe, defer the re-sign to a script that runs after the game exits.
 
 **B. Launcher:**
