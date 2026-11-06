@@ -4,7 +4,7 @@
 #                                   offer to publish: commit, tag, GitHub release, then push main
 #
 # prismlib.json is the feed PrismBootstrap reads. Its sha256 is computed from the DLLs built RIGHT
-# HERE, so publish the same files: upload both bin/Release DLLs to the tag's release, then push.
+# HERE, so publish the same files: upload both bin/Release DLLs and lib/Facet.0.1.dll to the tag's release, then push.
 # A mismatch is not a broken install — the bootstrapper discards the download and every mod falls
 # back to running standalone, silently. That is why main (which carries the feed) is pushed LAST,
 # only after the uploaded assets are downloaded back and their hashes checked against the feed.
@@ -49,9 +49,13 @@ echo "bootstrap compiles standalone"
 
 SHA=$(shasum -a 256 "$DLL" | cut -d' ' -f1)
 UISHA=$(shasum -a 256 "$UIDLL" | cut -d' ' -f1)
+FACETDLL="lib/Facet.0.1.dll"
+[ -f "$FACETDLL" ] || { echo "$FACETDLL is missing; run tools/update-facet.sh" >&2; exit 1; }
+FACETNAME=$(basename "$FACETDLL")
+FACETSHA=$(shasum -a 256 "$FACETDLL" | cut -d' ' -f1)
 # The bootstrapper reads version/url/sha256 for the arbitration half, which it installs into a
 # shared folder. The ui block is for lib/update-prismlib.sh: mods SHIP that one, so it is
-# fetched at build time, not at runtime.
+# fetched at build time, not at runtime. The same goes for facet, the engine PrismLib.UI stands on.
 cat > prismlib.json <<JSON
 {
     "version": "$VER",
@@ -60,6 +64,11 @@ cat > prismlib.json <<JSON
     "ui": {
         "url": "https://github.com/$REPO/releases/download/v$VER/PrismLib.UI.dll",
         "sha256": "$UISHA"
+    },
+    "facet": {
+        "name": "$FACETNAME",
+        "url": "https://github.com/$REPO/releases/download/v$VER/$FACETNAME",
+        "sha256": "$FACETSHA"
     }
 }
 JSON
@@ -99,17 +108,18 @@ echo "pushed tag v$VER"
 
 NOTE_ARGS=(--generate-notes)
 [ -n "$NOTES" ] && NOTE_ARGS=(--notes-file "$NOTES")
-gh release create "v$VER" "$DLL" "$UIDLL" --repo "$REPO" --verify-tag \
+gh release create "v$VER" "$DLL" "$UIDLL" "$FACETDLL" --repo "$REPO" --verify-tag \
     --title "PrismLib $VER" "${NOTE_ARGS[@]}"
 
 # Download what GitHub now serves and hold it against the feed before the feed goes live.
 CHECK=$(mktemp -d)
 trap 'rm -rf "$CHECK"' EXIT
-gh release download "v$VER" --repo "$REPO" --dir "$CHECK" --pattern PrismLib.dll --pattern PrismLib.UI.dll
+gh release download "v$VER" --repo "$REPO" --dir "$CHECK" --pattern PrismLib.dll --pattern PrismLib.UI.dll --pattern "$FACETNAME"
 GOT=$(shasum -a 256 "$CHECK/PrismLib.dll" | cut -d' ' -f1)
 UIGOT=$(shasum -a 256 "$CHECK/PrismLib.UI.dll" | cut -d' ' -f1)
-if [ "$GOT" != "$SHA" ] || [ "$UIGOT" != "$UISHA" ]; then
-    die "release assets do not match prismlib.json (want $SHA / $UISHA, got $GOT / $UIGOT).
+FACETGOT=$(shasum -a 256 "$CHECK/$FACETNAME" | cut -d' ' -f1)
+if [ "$GOT" != "$SHA" ] || [ "$UIGOT" != "$UISHA" ] || [ "$FACETGOT" != "$FACETSHA" ]; then
+    die "release assets do not match prismlib.json (want $SHA / $UISHA / $FACETSHA, got $GOT / $UIGOT / $FACETGOT).
 main was NOT pushed, so no client sees v$VER. Fix the release assets, then: git push origin main"
 fi
 echo "release assets match prismlib.json"
