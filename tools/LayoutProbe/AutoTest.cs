@@ -344,6 +344,9 @@ namespace LayoutProbe
             sp.Dispose();
             Tokens.Accent = wasAccent;
 
+            // Every mod folder carries a Facet.0.1.dll; two loaded copies would each keep their own windows.
+            var facets = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.GetName().Name == "Facet.0.1").ToList();
+            Check(facets.Count == 1, "exactly one Facet.0.1 is loaded", string.Join(" | ", facets.Select(x => x.Location).ToArray()));
             var bare = Facet.Host.Create("LayoutProbe/no-language", o => o.Language = () => null);
             Check(bare.Language == "en", "a Facet host whose language gives null reads as English", "'" + bare.Language + "'");
 
