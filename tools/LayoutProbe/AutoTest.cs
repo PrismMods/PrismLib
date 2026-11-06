@@ -556,6 +556,14 @@ namespace LayoutProbe
             sp.Tick();
             Check(count("fonts") == fontsBuilt + 1, "and an unchanged Revision does not rebuild it again");
 
+            // Reload brings the same items up to date in place: a renamed page, and a page added since
+            pages[1].Children[1].Title = "Probe far page renamed";
+            pages[1].Children.Add(new NavItem("Probe late page", body => { built("late"); Widgets.Toggle(body, "Probe late switch", false, _ => { }); }));
+            sp.Reload();
+            Check(LabelIn(rail, "Probe far page renamed") != null && LabelIn(rail, "Probe far page") == null, "Reload renames a page in the rail");
+            Tap(LabelIn(rail, "Probe late page")?.parent); yield return null;
+            Check(count("late") == 1 && LabelIn(content, "Probe late switch") != null, "and a page added since then opens", "late builds " + count("late"));
+
             Words.Language = wasLanguage;
             sp.Dispose();
         }
