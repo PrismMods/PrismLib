@@ -67,7 +67,7 @@ namespace LayoutProbe
             Check(pip != null && Mathf.Approximately(pip.offsetMax.x - pip.offsetMin.x, 2f), "its pip is 2 wide", pip == null ? "no pip" : pip.offsetMin + " / " + pip.offsetMax);
             toast.Dispose();
 
-            // a mod that sets its own colour keeps it (S15)
+            // a mod that sets its own colour keeps it
             var own = new PrismLib.UI.ToastTheme(); own.Background = new Color(1f, 0f, 1f, 1f);
             var toast2 = new PrismLib.UI.Toast("Probe2", own);
             toast2.Set(new PrismLib.UI.ToastContent { Key = "probe", Title = "Own toast" });

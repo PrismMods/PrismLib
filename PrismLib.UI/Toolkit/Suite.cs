@@ -58,7 +58,7 @@ namespace PrismLib.UI.Toolkit
             k.Chrome = new Look { Bg = Role.TitleBar };
             k.Card = new Look { Bg = Role.Panel, Border = Role.PanelBorder };
             k.Group = new Look { Bg = Role.Row, Border = Role.Line };
-            // The preview stage's look (ruling S21).
+            // The preview stage's look.
             k.Stage = new Look { Bg = Role.Row, Border = Role.Line };
             k.Switch = new Look { Bg = Role.Off, SelectedBg = Role.Accent, FocusBorder = Role.Focus };
             k.Knob = new Look { Bg = Role.Text };

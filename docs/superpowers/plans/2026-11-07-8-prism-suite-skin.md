@@ -47,7 +47,7 @@
   - Every new bridge call into PrismLib, or into PrismLib.UI API newer than 0.3.12, is a `NoInlining` method behind a catch.
 - **The look** (spec "The suite look"): the neutrals in Task 4's table, 2px corners, 1px lines, the accent only on state, and fades and slides only. A literal colour on a Facet-built element goes through `Paint.Forget` first; `Ui.Text(color)` and `Ui.SetBorderColor` already do that.
 - **Motion.** `anim.duration` is in ms, 0–400, default 120. Facet's shared speed is `ms / 120`. It governs Facet-built windows only (decision 8): not the uGUI toast and not any uGUI menu.
-- **Text.** Every new user-facing string is an English key with a Korean entry in `PrismLib.UI/Toolkit/Words.cs`. `grep -o '{ "[^"]*",' PrismLib.UI/Toolkit/Words.cs | sort | uniq -d` must print nothing.
+- **Text.** Every new user-facing string is an English key with a Korean entry in `PrismLib.UI/Toolkit/Words.cs`. `sed -n '/Korean = new/,$p' PrismLib.UI/Toolkit/Words.cs | grep -o '{ "[^"]*",' | sort | uniq -d` must print nothing.
 - **Performance.**
   - Perf.cs's check (`[perf] settings A first open`) stays under 50 ms.
   - Closed windows cost nothing per frame beyond the bridges' existing ticks.

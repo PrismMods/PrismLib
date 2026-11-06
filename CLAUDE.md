@@ -43,7 +43,7 @@ management for logs, player data, save data and fields, so the mods feel like on
   checking `Available`:
 
   ```
-  ./tools/check-bridge.sh …/Sapphire.dll Sapphire.PrismBridge Init Shutdown TickDebug ToggleDebug DebugTabs
+  ./tools/check-bridge.sh …/Sapphire.dll Sapphire.PrismBridge Init Shutdown TickDebug TickAnim ToggleDebug DebugTabs
   ```
 - **No caller outside the bridge may mention a PrismLib type** — the CLR resolves a method's types
   when that method is JITted.
@@ -64,9 +64,13 @@ management for logs, player data, save data and fields, so the mods feel like on
 ## Dev loop
 
 `./dev.sh` — build both assemblies, run the offline test, and install straight into the game:
-`PrismLib.dll` where the bootstrapper would have put it, `PrismLib.UI.dll` into every mod folder
-that already has a copy, and both into `../Sapphire/lib` and `../Topaz/lib`. Then reload in-game
-(Ctrl+F10).
+`PrismLib.dll` where the bootstrapper would have put it, `PrismLib.UI.dll` (with the Facet copy it
+references) into every mod folder that already has one. It also copies them into each repo's `lib/`
+named by `REPOS`, a space-separated list of sibling paths; unset, it is `../Sapphire ../Topaz
+../CamDisplay`, and `REPOS=""` opts out. It prints every target it will touch (`game`, `mods`,
+`repo`) and each copy as it makes it. A run from a worktree MUST pass `REPOS` (for example
+`REPOS="../Topaz-suite ../Sapphire-suite ../CamDisplay-suite" ./dev.sh`), or it refreshes the main
+checkouts instead. Then reload in-game (Ctrl+F10).
 
 **No release for a test.** The release path exists so end users get the library; it has no business
 in the edit-test loop. Leave the version alone while iterating — the bootstrapper only replaces its
@@ -225,7 +229,7 @@ Order for the rest, each step leaving both mods building:
    in their mods, built on the shared widgets.
 
 Done: step 1 (both Themes push their palette into `Tokens`, so a shared window wears the accent of
-the mod that opened it, X6); Topaz's `LogViewer` (268 lines) deleted — the shared debug window
+the mod that opened it; only the accent crosses); Topaz's `LogViewer` (268 lines) deleted — the shared debug window
 replaced it.
 
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
@@ -368,7 +372,7 @@ is named after the mod), and a mod with no table shows English. Outside rows, ev
 translator (`Words.AddTranslator(Loc.T)`) answers in order. `Words.Language` comes from the
 bridge's language setting. A
 duplicate key in that table's initializer would throw from the static constructor and take every
-string with it — check with `grep -o '{ "[^"]*",' Toolkit/Words.cs | sort | uniq -d`.
+string with it — check with `sed -n '/Korean = new/,$p' PrismLib.UI/Toolkit/Words.cs | grep -o '{ "[^"]*",' | sort | uniq -d` (the Korean table only: the `Shared` set above it would print a false hit).
 
 `Theme` and `Words` are newer than 0.3.10: bridges reach them behind NoInlining + catch and hold
 a scheme as `object`, or an older copy loaded by another mod would stop the class loading.
