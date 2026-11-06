@@ -178,6 +178,12 @@ Three landmines, all found by the first panel that opened:
   scrollbar, no wheel, and nothing in any log. Every scroll container AND every ancestor up to the
   fixed-height window needs `minHeight = 0` — `Window.Body`, the `ScrollView`, the `ListView`. An absolutely positioned element with only `left`/`top` is sized by its
   CONTENT — pin all four offsets.
+- **The first Prism window drawn in a session costs ~85 ms more than any after it** — first run of
+  the window, widget and UI Toolkit code, not glyphs (with every glyph pre-rasterised it was still
+  91 ms; a second settings window took 17). So the first surface schedules
+  `SettingsPanel.WarmUp`: one throwaway window drawn off screen for 100 ms, half a second after load.
+  The debug window's ListView still pays ~25–40 ms of its own on first open. Measured by
+  LayoutProbe's `Perf.cs` ([perf] lines), 2026-11-06.
 - **Nothing clips without the theme.** The default style sheet is what gives a `ScrollView`'s
   viewport `overflow: hidden`; at runtime, scrolled rows drew over the settings window's search box
   and title bar. `Skin.Scroll` now sets it on the view and its `contentViewport`, so build every
