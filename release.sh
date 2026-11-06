@@ -48,6 +48,7 @@ mono /tmp/prismlibtest.exe
 # The bootstrapper drops it into a mod, so it must keep compiling on its own.
 mcs -target:library -r:System.dll -out:/tmp/prismbootcheck.dll bootstrap/PrismBootstrap.cs
 echo "bootstrap compiles standalone"
+tools/check-bootstrap.sh
 
 [ -n "$VER" ] || exit 0
 

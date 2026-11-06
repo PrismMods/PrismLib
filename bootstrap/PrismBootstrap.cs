@@ -142,7 +142,13 @@ namespace PrismLib.Bootstrap
            are left alone). Call it first thing in the mod's entry point, before any code that names
            a PrismLib.UI type is JITted — afterwards it can only fix the files for next launch, and
            says so. Writing into a sibling mod's folder is deliberate: it is the same library, only
-           ever newer, and the mod's own update simply re-runs this. */
+           ever newer, and the mod's own update simply re-runs this.
+
+           PrismLib.UI stands on Facet (Facet.<major>.<minor>.dll), which ships beside it: a copy
+           without one throws FileNotFoundException for every Prism window. So each copy's folder
+           also gets every Facet beside the newest copy that it lacks or has older — an upgraded
+           copy, and one that came with a mod built before Facet. Never the shared PrismLib folder:
+           it holds PrismLib.dll alone. */
         public static void SyncUi()
         {
             if (_uiSynced) return;
@@ -155,16 +161,17 @@ namespace PrismLib.Bootstrap
                     foreach (var d in Directory.GetDirectories(root))
                     {
                         string p = Path.Combine(d, UiDll);
-                        if (File.Exists(p)) copies.Add(p);
+                        if (!IsShared(d) && File.Exists(p)) copies.Add(p);
                     }
                 string ul = UserLibs();
                 if (ul != null && File.Exists(Path.Combine(ul, UiDll))) copies.Add(Path.Combine(ul, UiDll));
 
+                // Of equal versions, one with Facet beside it: the others may be what needs it.
                 string best = null; Version bestV = null;
                 foreach (var p in copies)
                 {
                     var v = VersionOf(p);
-                    if (v != null && (bestV == null || v > bestV)) { best = p; bestV = v; }
+                    if (v != null && (bestV == null || v > bestV || (v == bestV && Facets(best).Count == 0))) { best = p; bestV = v; }
                 }
                 if (best == null) return;
 
@@ -172,46 +179,96 @@ namespace PrismLib.Bootstrap
                     if (a.GetName().Name == "PrismLib.UI" && a.GetName().Version < bestV)
                         Say("PrismLib.UI " + a.GetName().Version + " already loaded this session; " + bestV + " takes over next launch");
 
-                // Per copy: on Windows a copy another mod already loaded is locked, and that must not
-                // stop the rest. It gets replaced on a later launch, when this runs first.
                 foreach (var p in copies)
                 {
                     var v = VersionOf(p);
-                    if (v == null || v >= bestV) continue;
-                    string tmp = p + ".new";
-                    try
+                    if (v != null && v < bestV)
+                        CopyOver(best, p, "PrismLib.UI " + v + " -> " + bestV + " in " + Path.GetFileName(Path.GetDirectoryName(p)));
+                }
+
+                foreach (var f in Facets(best))
+                {
+                    string name = Path.GetFileName(f);
+                    Version fv = VersionOf(f);
+                    if (fv == null) continue;
+                    foreach (var p in copies)
                     {
-                        File.Copy(best, tmp, true);
-                        File.Delete(p);
-                        File.Move(tmp, p);
-                        Say("PrismLib.UI " + v + " -> " + bestV + " in " + Path.GetFileName(Path.GetDirectoryName(p)));
-                    }
-                    catch (Exception e)
-                    {
-                        try { File.Delete(tmp); } catch { }
-                        Say("PrismLib.UI in " + Path.GetFileName(Path.GetDirectoryName(p)) + " in use, next launch: " + e.Message);
+                        string to = Path.Combine(Path.GetDirectoryName(p), name);
+                        Version have = VersionOf(to);
+                        if (have == null || have < fv)
+                            CopyOver(f, to, name + " " + fv + " -> " + Path.GetFileName(Path.GetDirectoryName(p)));
                     }
                 }
             }
             catch (Exception e) { Say("PrismLib.UI sync failed: " + e.Message); }
         }
 
+        // Per file: on Windows a copy another mod already loaded is locked, and that must not stop
+        // the rest. It gets replaced on a later launch, when this runs first.
+        private static void CopyOver(string from, string to, string done)
+        {
+            string tmp = to + ".new";
+            try
+            {
+                File.Copy(from, tmp, true);
+                if (File.Exists(to)) File.Delete(to);
+                File.Move(tmp, to);
+                Say(done);
+            }
+            catch (Exception e)
+            {
+                try { File.Delete(tmp); } catch { }
+                Say(Path.GetFileName(to) + " in " + Path.GetFileName(Path.GetDirectoryName(to)) + " in use, next launch: " + e.Message);
+            }
+        }
+
         private const string UiDll = "PrismLib.UI.dll";
         private static bool _uiSynced;
+
+        // Facet.<major>.<minor>: the engine itself, not a Facet-named mod (Facet.Mod).
+        private static bool IsFacet(string name)
+        {
+            return Regex.IsMatch(name, @"^Facet\.[0-9]+\.[0-9]+$");
+        }
+
+        // The Facet DLLs beside a PrismLib.UI copy.
+        private static List<string> Facets(string uiCopy)
+        {
+            var outp = new List<string>();
+            foreach (var f in Directory.GetFiles(Path.GetDirectoryName(uiCopy), "Facet.*.dll"))
+                if (IsFacet(Path.GetFileNameWithoutExtension(f))) outp.Add(f);
+            return outp;
+        }
+
+        // The shared folder (SharedDir) holds PrismLib.dll alone; nothing else is read from or put there.
+        private static bool IsShared(string dir)
+        {
+            return string.Equals(Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar)), "PrismLib", StringComparison.OrdinalIgnoreCase);
+        }
 
         private static Assembly Resolve(object sender, ResolveEventArgs args)
         {
             try
             {
                 string want = new AssemblyName(args.Name).Name;
-                if (!want.StartsWith("PrismLib", StringComparison.OrdinalIgnoreCase)) return null;
+                bool facet = IsFacet(want);
+                if (!facet && !want.StartsWith("PrismLib", StringComparison.OrdinalIgnoreCase)) return null;
 
                 foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
                     if (string.Equals(a.GetName().Name, want, StringComparison.OrdinalIgnoreCase)) return a;
 
                 // Beside the mod first (a shipped PrismLib.UI), then the shared folder (the
                 // installed PrismLib), then UserLibs (where a MelonLoader build puts them).
-                foreach (var dir in new[] { SelfDir(), _dir, UserLibs() })
+                // Facet: beside the mod, UserLibs, then any sibling mod's folder — whichever mod's
+                // PrismLib.UI loaded may have come without one (SyncUi, a mod built before Facet).
+                var dirs = new List<string> { SelfDir() };
+                if (!facet) dirs.Add(_dir);
+                dirs.Add(UserLibs());
+                string root = facet ? ModsRoot() : null;
+                if (root != null)
+                    foreach (var d in Directory.GetDirectories(root))
+                        if (!IsShared(d)) dirs.Add(d);
+                foreach (var dir in dirs)
                 {
                     if (dir == null) continue;
                     string p = Path.Combine(dir, want + ".dll");
