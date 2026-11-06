@@ -182,6 +182,12 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
   it lacks or has older, and `Resolve` answers `Facet.<major>.<minor>` from the mod's own folder,
   `UserLibs/`, then any sibling mod folder. Neither reads from or writes to the shared PrismLib
   folder. `tools/check-bootstrap.sh` (run by `release.sh`) pins both against a throwaway mods root.
+  Runtime stores count as copy folders too, in both layouts (`<mods>/<Mod>/Runtime/versions/<ver>/` and
+  `<game>/UserData/<Mod>/Runtime/versions/<ver>/`, under both `Mods` and `UMMMods`), and `Resolve` finds
+  Facet there. Quartz ships `PrismLib.bundle`, `PrismLib.UI.dll` and `Facet.0.2.dll` only in its store
+  and refreshes its gitignored `lib/` with `tools/update-prismlib.sh`; `dev.sh` refreshes any store
+  copy that already holds a `PrismLib.UI.dll`. Topaz, Sapphire and CamDisplay see stores once they next
+  release; until then Quartz's own sync converges every copy one launch later.
 - **Compatibility (R21).** A Facet patch release adds no public API; any new public member bumps the
   minor (a new file name). Within one minor the first loaded copy wins, so a Facet copy beside an
   older PrismLib.UI must be harmless.
@@ -488,6 +494,11 @@ A mod whose code does not run from its own folder passes the root: `Ensure(log, 
 Quartz loads from a versioned runtime store (`…/Runtime/versions/<ver>/`), where the guess put
 PrismLib at `…/Runtime/versions/PrismLib` — reproduced, and fixed by the anchor, in the same kind of
 layout check (2026-11-05). `UserLibs` is `<modsRoot>/../UserLibs` either way.
+
+`SyncUi` and `Resolve` look at both mods roots (`Mods`, `UMMMods` and `Plugins`, whichever exist beside each
+other) and at every runtime store: `<root>/<Mod>/Runtime/versions/<ver>/` and
+`<game>/UserData/<Mod>/Runtime/versions/<ver>/`. The layout is Quartz's, the rule is generic: a
+version folder with a `PrismLib.UI.dll` is a copy, one without is left alone.
 
 The resolver searches beside the mod, then the shared folder, then `<game>/UserLibs`. A MelonLoader
 build should ship `PrismLib.UI.dll` in **UserLibs**, not `Mods` — MelonLoader scans `Mods/*.dll` for

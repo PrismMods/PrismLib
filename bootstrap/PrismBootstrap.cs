@@ -148,7 +148,10 @@ namespace PrismLib.Bootstrap
            without one throws FileNotFoundException for every Prism window. So each copy's folder
            also gets every Facet beside the newest copy that it lacks or has older — an upgraded
            copy, and one that came with a mod built before Facet. Never the shared PrismLib folder:
-           it holds PrismLib.dll alone. */
+           it holds PrismLib.dll alone.
+
+           Every mods root counts (Mods, UMMMods and Plugins, whichever exist beside each other), so a
+           MelonLoader mod's copies and a UMM mod's meet. So do runtime stores, see StoreCopies. */
         public static void SyncUi()
         {
             if (_uiSynced) return;
@@ -156,13 +159,13 @@ namespace PrismLib.Bootstrap
             try
             {
                 var copies = new List<string>();
-                string root = ModsRoot();
-                if (root != null)
-                    foreach (var d in Directory.GetDirectories(root))
+                foreach (var root in Roots())
+                    foreach (var d in Subdirs(root))
                     {
                         string p = Path.Combine(d, UiDll);
                         if (!IsShared(d) && File.Exists(p)) copies.Add(p);
                     }
+                foreach (var p in StoreCopies()) if (!copies.Contains(p)) copies.Add(p);
                 string ul = UserLibs();
                 if (ul != null && File.Exists(Path.Combine(ul, UiDll))) copies.Add(Path.Combine(ul, UiDll));
 
@@ -183,7 +186,7 @@ namespace PrismLib.Bootstrap
                 {
                     var v = VersionOf(p);
                     if (v != null && v < bestV)
-                        CopyOver(best, p, "PrismLib.UI " + v + " -> " + bestV + " in " + Path.GetFileName(Path.GetDirectoryName(p)));
+                        CopyOver(best, p, "PrismLib.UI " + v + " -> " + bestV + " in " + Where(p));
                 }
 
                 foreach (var f in Facets(best))
@@ -196,11 +199,88 @@ namespace PrismLib.Bootstrap
                         string to = Path.Combine(Path.GetDirectoryName(p), name);
                         Version have = VersionOf(to);
                         if (have == null || have < fv)
-                            CopyOver(f, to, name + " " + fv + " -> " + Path.GetFileName(Path.GetDirectoryName(p)));
+                            CopyOver(f, to, name + " " + fv + " -> " + Where(p));
                     }
                 }
             }
             catch (Exception e) { Say("PrismLib.UI sync failed: " + e.Message); }
+        }
+
+        /* Quartz loads its code from a versioned runtime store instead of a mod folder:
+           <mods>/<Mod>/Runtime/versions/<ver>/ under UMM, <game>/UserData/<Mod>/Runtime/versions/<ver>/
+           under MelonLoader, and PrismLib.UI ships inside it. A copy there is loaded like any other,
+           so it must agree with the rest or "first loaded wins" picks a stale one. The layout is
+           Quartz's but the rule is generic: any mod that keeps a store gets the same treatment.
+           A version folder without PrismLib.UI.dll is not a copy and is left alone. */
+        private static List<string> StoreCopies()
+        {
+            var outp = new List<string>();
+            try
+            {
+                var parents = Roots();
+                if (parents.Count == 0) return outp;
+                string game = Path.GetDirectoryName(parents[0]);
+                if (game == null) return outp;
+                string ud = Path.Combine(game, "UserData");
+                if (Directory.Exists(ud)) parents.Add(ud);
+                foreach (var parent in parents)
+                    foreach (var mod in Subdirs(parent))
+                    {
+                        string versions = Path.Combine(mod, "Runtime", "versions");
+                        if (IsShared(mod) || !Directory.Exists(versions)) continue;
+                        foreach (var ver in Subdirs(versions))
+                        {
+                            if (IsShared(ver)) continue;   // the old Runtime/versions/PrismLib guess
+                            string p = Path.Combine(ver, UiDll);
+                            if (File.Exists(p) && !outp.Contains(p)) outp.Add(p);
+                        }
+                    }
+            }
+            catch (Exception e) { Say("runtime store scan failed: " + e.Message); }
+            return outp;
+        }
+
+        // A root that cannot be listed (permissions) is skipped and logged once; the others still count.
+        private static readonly HashSet<string> _badDirs = new HashSet<string>();
+        private static string[] Subdirs(string dir)
+        {
+            try { return Directory.GetDirectories(dir); }
+            catch (Exception e)
+            {
+                if (_badDirs.Add(dir)) Say("cannot list " + dir + ", skipped: " + e.Message);
+                return new string[0];
+            }
+        }
+
+        // Folder name for logs; a runtime-store version folder is named with its mod (Q/1.0.0).
+        private static string Where(string file)
+        {
+            string dir = Path.GetDirectoryName(file);
+            string name = Path.GetFileName(dir);
+            string versions = Path.GetDirectoryName(dir);
+            if (versions != null && Path.GetFileName(versions) == "versions")
+            {
+                string mod = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(versions)) ?? "");
+                if (mod.Length > 0) return mod + "/" + name;
+            }
+            return name;
+        }
+
+        // The mods root, then its sibling (Mods beside UMMMods) when both exist: one game, two loaders.
+        private static List<string> Roots()
+        {
+            var outp = new List<string>();
+            string root = ModsRoot();
+            if (root == null) return outp;
+            outp.Add(root);
+            string game = Path.GetDirectoryName(root);
+            if (game != null)
+                foreach (var n in ModRootNames)
+                {
+                    string d = Path.Combine(game, n);
+                    if (Directory.Exists(d) && !string.Equals(Path.GetFullPath(d), root, StringComparison.OrdinalIgnoreCase)) outp.Add(d);
+                }
+            return outp;
         }
 
         // Per file: on Windows a copy another mod already loaded is locked, and that must not stop
@@ -218,7 +298,7 @@ namespace PrismLib.Bootstrap
             catch (Exception e)
             {
                 try { File.Delete(tmp); } catch { }
-                Say(Path.GetFileName(to) + " in " + Path.GetFileName(Path.GetDirectoryName(to)) + " in use, next launch: " + e.Message);
+                Say(Path.GetFileName(to) + " in " + Where(to) + " in use, next launch: " + e.Message);
             }
         }
 
@@ -259,26 +339,36 @@ namespace PrismLib.Bootstrap
 
                 // Beside the mod first (a shipped PrismLib.UI), then the shared folder (the
                 // installed PrismLib), then UserLibs (where a MelonLoader build puts them).
-                // Facet: beside the mod, UserLibs, then any sibling mod's folder — whichever mod's
+                // Facet: beside the mod, UserLibs, then any sibling mod's folder or runtime store — whichever mod's
                 // PrismLib.UI loaded may have come without one (SyncUi, a mod built before Facet).
+                // The cheap places first, so a lookup never pays for a scan (or fails on a bad root) when
+                // they have it.
                 var dirs = new List<string> { SelfDir() };
                 if (!facet) dirs.Add(_dir);
                 dirs.Add(UserLibs());
-                string root = facet ? ModsRoot() : null;
-                if (root != null)
-                    foreach (var d in Directory.GetDirectories(root))
+                Assembly found = LoadFirst(dirs, want);
+                if (found != null || !facet) return found;
+
+                dirs.Clear();
+                foreach (var root in Roots())
+                    foreach (var d in Subdirs(root))
                         if (!IsShared(d)) dirs.Add(d);
-                foreach (var dir in dirs)
-                {
-                    if (dir == null) continue;
-                    string p = Path.Combine(dir, want + ".dll");
-                    if (File.Exists(p)) return Assembly.LoadFrom(p);
-                }
-                return null;
+                foreach (var c in StoreCopies()) dirs.Add(Path.GetDirectoryName(c));
+                return LoadFirst(dirs, want);
             }
             catch { return null; }
         }
 
+        private static Assembly LoadFirst(List<string> dirs, string want)
+        {
+            foreach (var dir in dirs)
+            {
+                if (dir == null) continue;
+                string p = Path.Combine(dir, want + ".dll");
+                if (File.Exists(p)) return Assembly.LoadFrom(p);
+            }
+            return null;
+        }
         private static string SelfDir()
         {
             try { return Path.GetDirectoryName(new Uri(Assembly.GetExecutingAssembly().CodeBase).LocalPath); }

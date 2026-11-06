@@ -77,6 +77,14 @@ for dir in "$MODS"/*/; do
     echo "installed  ${dir}PrismLib.UI.dll + $FACET.dll"
 done
 
+# A runtime store (Quartz) is a copy folder too: <mods>/<Mod>/Runtime/versions/<ver>/ under either mods
+# root, and <game>/UserData/<Mod>/Runtime/versions/<ver>/. Only where PrismLib.UI already is.
+for store in "$GAME"/UMMMods/*/Runtime/versions/*/ "$GAME"/Mods/*/Runtime/versions/*/ "$GAME"/UserData/*/Runtime/versions/*/; do
+    [ -f "${store}PrismLib.UI.dll" ] || continue
+    cp "$UIDLL" "lib/$FACET.dll" "$store"
+    echo "installed  ${store}PrismLib.UI.dll + $FACET.dll"
+done
+
 # MelonLoader loads UserLibs before any mod folder and the first copy wins: a stale one there
 # runs instead of everything installed above.
 if [ -f "$GAME/UserLibs/PrismLib.UI.dll" ]; then
