@@ -51,6 +51,10 @@ Verified 2026-11-06 (CamDisplay log, real play). Consequences:
 
 ## Unity behaviour in this game
 
+- **ADOFAI 2.9.x builds do not run Unity 2022**, so the "2.9 = Unity 2022" pairing in
+  `../CLAUDE.md` is wrong, and Prism's UI Toolkit windows support 3.x (Unity 6) only. Stated by the
+  user 2026-11-06; expected, and part of the plan. The Unity 2022 font notes stay, unverified, for
+  other games.
 - **Unity stops a `WebCamTexture` on every scene change** (`AVCaptureSession stopRunning` called
   from `UnityPlayer` on the main thread). Marking it `HideFlags.DontUnloadUnusedAsset` does not
   prevent it. `Play()` is synchronous on the main thread: about 0.9–1.2 s for the first start,
