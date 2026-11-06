@@ -81,10 +81,10 @@ Cut a release when something is ready to ship, not to try it.
 - `./release.sh <ver>` also stamps both AssemblyInfos and `Prism.Version`, and regenerates
   `prismlib.json`. Then upload BOTH DLLs to the `v<ver>` GitHub release and push.
 - **Version steps by 0.0.1** unless the change is genuinely major. The user decides versions.
-- `./release.sh <ver>` also uploads `lib/Facet.0.1.dll` as a release asset and writes a `facet` entry
+- `./release.sh <ver>` also uploads `lib/Facet.0.2.dll` as a release asset and writes a `facet` entry
   (name, url, sha256) into `prismlib.json`.
 - Consuming mods refresh with `lib/update-prismlib.sh` (which fetches `facet` when the feed has one);
-  `deploy.sh` calls it when a DLL is missing, and fails if `lib/Facet.0.1.dll` is still missing.
+  `deploy.sh` calls it when a DLL is missing, and fails if `lib/Facet.0.2.dll` is still missing.
 
 ## The shared debug window
 
@@ -142,7 +142,7 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
 ## Facet
 
 `PrismLib.UI` stands on **Facet** (`../Facet`, its own repo; read `../Facet/README.md` and
-`../Facet/CLAUDE.md`), a game-agnostic UI engine, `netstandard2.1`, shipped as `Facet.0.1.dll`.
+`../Facet/CLAUDE.md`), a game-agnostic UI engine, `netstandard2.1`, shipped as `Facet.0.2.dll`.
 
 - **What moved.** Surfaces and windows (`../Facet/Facet/Surface.cs`, `Window.cs`), theme and tokens
   (`Theme.cs`, `Tokens.cs`), input (`Input.cs`), key capture (`Core/KeyCapture.cs`),
@@ -159,12 +159,16 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
 - **Colours.** `Look` presets are copies; a literal colour written onto a Facet-built element sticks
   only after `Paint.Forget(e)`. `Ui.Text(color)` and `Ui.SetBorderColor` do that; do the same for
   any inline colour write on a Facet-built element.
-- **Shipping.** `Facet.0.1.dll` ships wherever `PrismLib.UI.dll` ships: each UMM mod folder,
+- **Shipping.** `Facet.0.2.dll` ships wherever `PrismLib.UI.dll` ships: each UMM mod folder,
   `UserLibs/` for MelonLoader builds, and each mod's `lib/`. Never name or place it so that
   `PrismLib.dll`'s shared folder could load it. `./dev.sh` refreshes every copy it finds (the
-  mod folders, the standalone `UMMMods/Facet`, and Sapphire's, Topaz's and CamDisplay's `lib/`) from
-  PrismLib's `lib/`; `UserLibs/` gets it from CamDisplay's `deploy.sh ML`.
-  `tools/update-facet.sh` rebuilds Facet and refreshes PrismLib's own `lib/Facet.0.1.dll` only (dev
+  mod folders, `UserLibs/`, the standalone `UMMMods/Facet`, and each repo in `REPOS`, default Sapphire,
+  Topaz and CamDisplay, space-separated, e.g. `REPOS="../Topaz-suite" ./dev.sh`; `REPOS=""` skips them all; a run from a worktree must pass REPOS explicitly) from PrismLib's
+  `lib/`. It also puts `PrismLib.dll` into both shared folders that exist: `UMMMods/PrismLib/` and
+  MelonLoader's `Mods/PrismLib/`. **The csproj alone names the Facet minor** (its `Reference Include`);
+  every script reads it from there, so a new minor is a csproj edit plus `tools/update-facet.sh`.
+  A stale `Facet.0.2.dll` elsewhere in the game folder loads first, so after `dev.sh` compare md5s.
+  `tools/update-facet.sh` (`FACET_ROOT` names the tree, default `../Facet`) rebuilds Facet and refreshes PrismLib's own `lib/Facet.0.2.dll` only (dev
   machines; `dev.sh` calls it when the file is missing; it refuses a Facet tree with uncommitted
   changes unless `FORCE=1`). `release.sh <ver>` uploads it with the release and lists it
   in `prismlib.json` as `facet`, so a mod's `lib/update-prismlib.sh` fetches it with a SHA-256 check;

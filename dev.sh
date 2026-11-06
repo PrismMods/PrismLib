@@ -37,7 +37,9 @@ fi
 # AdofaiRoot is the matching MSBuild property the csproj reads for its own default — xbuild does
 # not see the shell's ADOFAI_ROOT on its own, so without this a Linux build silently fell back to
 # the csproj's hardcoded macOS path and failed to resolve every UnityEngine.* reference.
-[ -f lib/Facet.0.1.dll ] || tools/update-facet.sh
+FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' PrismLib.UI/PrismLib.UI.csproj)
+[ -n "$FACET" ] || { echo "no Facet reference in PrismLib.UI/PrismLib.UI.csproj" >&2; exit 1; }
+[ -f "lib/$FACET.dll" ] || tools/update-facet.sh
 xbuild /p:Configuration=Release /p:AdofaiRoot="$GAME" /verbosity:quiet PrismLib/PrismLib.csproj
 xbuild /p:Configuration=Release /p:AdofaiRoot="$GAME" /verbosity:quiet PrismLib.UI/PrismLib.UI.csproj
 DLL="PrismLib/bin/Release/PrismLib.dll"
@@ -46,30 +48,47 @@ UIDLL="PrismLib.UI/bin/Release/PrismLib.UI.dll"
 mcs -r:"$DLL" -out:/tmp/prismlibtest.exe tools/PrismLibTest.cs PrismLib.UI/Toolkit/LayoutMath.cs PrismLib.UI/Toolkit/Words.cs
 cp "$DLL" /tmp/ && mono /tmp/prismlibtest.exe | tail -1
 
+# REPOS (space-separated) picks the repos; REPOS="" opts out of all. Unset = the default list, right on a
+# dev machine with the mods checked out beside PrismLib. A worktree run must name its own.
+REPO_LIST="${REPOS-../Sapphire ../Topaz ../CamDisplay ../sapphire ../topaz}"
+echo "game       $GAME"
+echo "mods       $MODS"
+for repo in $REPO_LIST; do [ -d "$repo/lib" ] && echo "repo       $repo/lib"; done
+[ -n "$REPO_LIST" ] || echo "repo       (none)"
+
+# The shared PrismLib.dll lives in each loader's folder (UMM's, and MelonLoader's Mods/PrismLib that
+# CamDisplay's ML build reads): refresh every one that exists, and always the one chosen above.
 mkdir -p "$MODS/PrismLib"
-cp "$DLL" "$MODS/PrismLib/"
-echo "installed  $MODS/PrismLib/PrismLib.dll"
+DONE=""
+for d in "$MODS/PrismLib" "$GAME/UMMMods/PrismLib" "$GAME/Mods/PrismLib"; do
+    [ -d "$d" ] || continue
+    case "$DONE" in *"|$d|"*) continue ;; esac
+    DONE="$DONE|$d|"
+    cp "$DLL" "$d/"
+    echo "installed  $d/PrismLib.dll"
+done
 
 # Every mod folder that already has a copy is one that ships it.
 for dir in "$MODS"/*/; do
     # Facet also lives alone in its own mod folder (UMMMods/Facet): refresh that copy too.
-    [ -f "$dir/Facet.0.1.dll" ] && { cp lib/Facet.0.1.dll "$dir"; echo "installed  ${dir}Facet.0.1.dll"; }
+    [ -f "$dir/$FACET.dll" ] && { cp "lib/$FACET.dll" "$dir"; echo "installed  ${dir}$FACET.dll"; }
     [ -f "$dir/PrismLib.UI.dll" ] || continue
-    cp "$UIDLL" "$dir"
-    echo "installed  ${dir}PrismLib.UI.dll"
+    cp "$UIDLL" "lib/$FACET.dll" "$dir"
+    echo "installed  ${dir}PrismLib.UI.dll + $FACET.dll"
 done
 
 # MelonLoader loads UserLibs before any mod folder and the first copy wins: a stale one there
 # runs instead of everything installed above.
 if [ -f "$GAME/UserLibs/PrismLib.UI.dll" ]; then
-    cp "$UIDLL" lib/Facet.0.1.dll "$GAME/UserLibs/"
+    cp "$UIDLL" "lib/$FACET.dll" "$GAME/UserLibs/"
     echo "installed  $GAME/UserLibs/PrismLib.UI.dll"
 fi
 
 # ...and the source trees, so their next build compiles against the same thing.
-for repo in ../Sapphire ../Topaz ../CamDisplay ../sapphire ../topaz; do
+# REPOS (space-separated) picks the repos: a worktree run names its own, e.g. REPOS="../Topaz-suite".
+for repo in $REPO_LIST; do
     [ -d "$repo/lib" ] || continue
-    cp "$DLL" "$UIDLL" lib/Facet.0.1.dll "$repo/lib/"
+    cp "$DLL" "$UIDLL" "lib/$FACET.dll" "$repo/lib/"
     echo "refreshed  $repo/lib"
 done
 

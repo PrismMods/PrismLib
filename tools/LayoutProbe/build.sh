@@ -5,6 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 G=${ADOFAI_ROOT:-"$HOME/Library/Application Support/Steam/steamapps/common/A Dance of Fire and Ice"}
 M="$G/ADanceOfFireAndIce.app/Contents/Resources/Data/Managed"
+FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' ../../PrismLib.UI/PrismLib.UI.csproj)
+[ -n "$FACET" ] || { echo "no Facet reference in ../../PrismLib.UI/PrismLib.UI.csproj" >&2; exit 1; }
 UI=../../PrismLib.UI/bin/Release/PrismLib.UI.dll
 R=()   # an array: the game path has spaces
 for a in mscorlib System System.Core netstandard UnityEngine.CoreModule UnityEngine.UIModule UnityEngine.UI \
@@ -12,8 +14,8 @@ for a in mscorlib System System.Core netstandard UnityEngine.CoreModule UnityEng
          UnityEngine.TextCoreFontEngineModule UnityEngine.IMGUIModule; do
     if [ -f "$M/$a.dll" ]; then R+=("-r:$M/$a.dll"); fi
 done
-mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" -r:../../lib/Facet.0.1.dll LayoutProbe.cs AutoTest.cs Perf.cs
+mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" -r:"../../lib/$FACET.dll" LayoutProbe.cs AutoTest.cs Perf.cs
 mkdir -p "$G/UMMMods/LayoutProbe"
-cp LayoutProbe.dll Info.json "$UI" ../../lib/Facet.0.1.dll "$G/UMMMods/LayoutProbe/"
+cp LayoutProbe.dll Info.json "$UI" "../../lib/$FACET.dll" "$G/UMMMods/LayoutProbe/"
 rm -f "$G/UMMMods/LayoutProbe/probe.log"
 echo "installed to $G/UMMMods/LayoutProbe"

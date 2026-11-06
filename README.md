@@ -132,7 +132,7 @@ into it do not need the `Available` check. `lib/update-prismlib.sh` fetches both
 mod's build.
 
 `PrismLib.UI.dll` is built on Facet, a game-agnostic UI engine (its own repo). It depends on
-`Facet.0.1.dll`, which ships beside it in each mod folder (and is fetched into `lib/` with the
+`Facet.0.2.dll`, which ships beside it in each mod folder (and is fetched into `lib/` with the
 other assemblies once a release carries it).
 
 It contains:

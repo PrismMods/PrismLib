@@ -48,9 +48,10 @@ static class Probe {
     static int Main(string[] a) {
         try {
             // Facet SHIPS beside the mod like PrismLib.UI.dll: it must load by name from there.
-            var fa = Assembly.Load("Facet.0.1");
+            var fn = Environment.GetEnvironmentVariable("FACET");
+            var fa = Assembly.Load(fn);
             fa.GetType("Facet.Theme", true);
-            Console.WriteLine("  ok   Facet.0.1 loads from " + System.IO.Path.GetDirectoryName(fa.Location));
+            Console.WriteLine("  ok   " + fn + " loads from " + System.IO.Path.GetDirectoryName(fa.Location));
             var t = Assembly.LoadFrom(a[0]).GetType(a[1], true);
             var p = t.GetProperty("Available", Any);
             object v = p != null ? p.GetValue(null, null) : "<none>";
@@ -93,8 +94,10 @@ cp "$DLL" "$WORK/mod.dll"
 for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
     [ -f "$sib" ] && cp "$sib" "$WORK/"
 done
-# Facet.*.dll: the mod folder's copy if the build left one, else the one tools/update-facet.sh made.
-for f in "$(dirname "$DLL")"/Facet.*.dll lib/Facet.*.dll; do
+# The Facet minor PrismLib.UI is built on: the mod folder's copy if it has one, else lib/'s.
+FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' PrismLib.UI/PrismLib.UI.csproj)
+[ -n "$FACET" ] || { echo "no Facet reference in PrismLib.UI/PrismLib.UI.csproj" >&2; exit 1; }
+for f in "$(dirname "$DLL")/$FACET.dll" "lib/$FACET.dll"; do
     [ -f "$f" ] && { cp "$f" "$WORK/"; break; }
 done
-MONO_PATH="$WORK/refs" mono "$WORK/probe.exe" "$WORK/mod.dll" "$TYPE" $UNGATED
+FACET="$FACET" MONO_PATH="$WORK/refs" mono "$WORK/probe.exe" "$WORK/mod.dll" "$TYPE" $UNGATED

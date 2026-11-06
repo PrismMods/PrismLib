@@ -377,9 +377,14 @@ namespace LayoutProbe
             sp.Dispose();
             Tokens.Accent = wasAccent;
 
-            // Every mod folder carries a Facet.0.1.dll; two loaded copies would each keep their own windows.
-            var facets = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.GetName().Name == "Facet.0.1").ToList();
-            Check(facets.Count == 1, "exactly one Facet.0.1 is loaded", string.Join(" | ", facets.Select(x => x.Location).ToArray()));
+            // Every mod folder carries its Facet minor; two loaded copies of one would each keep their own
+            // windows. Quartz's Facet 0.1 page and the Gallery may load the other minor beside it.
+            string want = typeof(Ui).Assembly.GetReferencedAssemblies().First(n => n.Name.StartsWith("Facet.")).Name;
+            var loaded = AppDomain.CurrentDomain.GetAssemblies().Where(x => System.Text.RegularExpressions.Regex.IsMatch(x.GetName().Name, @"^Facet\.\d+\.\d+$")).ToList();
+            Check(want == "Facet.0.2", "PrismLib.UI stands on Facet.0.2", want);
+            Check(loaded.GroupBy(x => x.GetName().Name).All(g => g.Count() == 1) && loaded.Any(x => x.GetName().Name == want),
+                  "one copy of each loaded Facet minor, PrismLib.UI's among them",
+                  string.Join(" | ", loaded.Select(x => x.GetName().Name + "@" + x.Location).ToArray()));
             var bare = Facet.Host.Create("LayoutProbe/no-language", o => o.Language = () => null);
             Check(bare.Language == "en", "a Facet host whose language gives null reads as English", "'" + bare.Language + "'");
 

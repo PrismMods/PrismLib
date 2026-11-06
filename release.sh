@@ -4,7 +4,7 @@
 #                                   offer to publish: commit, tag, GitHub release, then push main
 #
 # prismlib.json is the feed PrismBootstrap reads. Its sha256 is computed from the DLLs built RIGHT
-# HERE, so publish the same files: upload both bin/Release DLLs and lib/Facet.0.1.dll to the tag's release, then push.
+# HERE, so publish the same files: upload both bin/Release DLLs and lib/Facet.<minor>.dll to the tag's release, then push.
 # A mismatch is not a broken install — the bootstrapper discards the download and every mod falls
 # back to running standalone, silently. That is why main (which carries the feed) is pushed LAST,
 # only after the uploaded assets are downloaded back and their hashes checked against the feed.
@@ -18,7 +18,9 @@ VER="${1:-}"
 NOTES="${2:-}"
 
 # Checked before anything is stamped or built, so a missing DLL leaves no half-stamped tree.
-FACETDLL="lib/Facet.0.1.dll"
+FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' PrismLib.UI/PrismLib.UI.csproj)
+[ -n "$FACET" ] || { echo "no Facet reference in PrismLib.UI/PrismLib.UI.csproj" >&2; exit 1; }
+FACETDLL="lib/$FACET.dll"
 [ -z "$VER" ] || [ -f "$FACETDLL" ] || { echo "$FACETDLL is missing; run tools/update-facet.sh" >&2; exit 1; }
 
 # Taken before stamping: publishing commits with `git add -A`, so anything already uncommitted

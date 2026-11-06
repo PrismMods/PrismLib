@@ -4,8 +4,7 @@ namespace PrismLib.UI.Toolkit
 {
     /* PrismLib's own Facet host: every Prism window is a Facet surface made for it. Log, language
        and geometry go through Ui.Log, Words.Language and Window.Read/Write, fields the mods' bridges
-       set at any time, so each is read at use rather than captured. Made with the first surface,
-       which is also when Tokens' sizes are copied into Facet's (sizes stay global, as before). */
+       set at any time, so each is read at use rather than captured. Made with the first surface. */
     internal static class PrismHost
     {
         private static Facet.Host _instance;
@@ -15,13 +14,6 @@ namespace PrismLib.UI.Toolkit
             get
             {
                 if (_instance != null) return _instance;
-                Facet.Tokens.FontSizeTitle = Tokens.FontSizeTitle;
-                Facet.Tokens.Radius = Tokens.Radius;
-                Facet.Tokens.Pad = Tokens.Pad;
-                Facet.Tokens.Gap = Tokens.Gap;
-                Facet.Tokens.FontSize = Tokens.FontSize;
-                Facet.Tokens.FontSizeSmall = Tokens.FontSizeSmall;
-                Facet.Tokens.RowHeight = Tokens.RowHeight;
                 _instance = Make(Words.Self, Words.T);
                 return _instance;
             }

@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace PrismLib.UI.Toolkit
 {
     /* A mod's colour scheme over a Facet.Theme (Twin): Facet paints by role, so recolouring a
-       scheme re-themes what is already on screen — see Facet.Theme. Sizes stay global in Tokens.
+       scheme re-themes what is already on screen — see Facet.Theme. Sizes come from Facet's Theme.Sizes (the Suite skin sets them); Tokens' size fields only serve Prism-only elements.
 
        Default IS the Tokens fields, so a mod that pushes its palette into Tokens keeps working: its
        twin is the PrismLib host's own theme (never Facet's frozen Dark), refreshed from Tokens when a
