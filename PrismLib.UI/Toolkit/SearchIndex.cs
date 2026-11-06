@@ -54,8 +54,7 @@ namespace PrismLib.UI.Toolkit
             _all.Add(new Hit { Label = label, Page = CurrentPageName, PageRef = CurrentPage, Group = CurrentGroup });
         }
 
-        /// Ranked matches. The matcher is injected for the same reason DebugPanel's is: PrismLib.UI
-        /// must not reference PrismLib.dll, where the shared scorer lives.
+        /// Ignored: matching is Facet.Search's now. Kept because bridges built before it set this.
         public static Func<string, string, int> Scorer;
 
         public static List<Hit> Find(string query, int limit = 40)
@@ -79,10 +78,6 @@ namespace PrismLib.UI.Toolkit
         }
 
         private static int Score(string text, string query)
-        {
-            if (string.IsNullOrEmpty(text)) return -1;
-            if (Scorer != null) return Scorer(text, query);
-            return text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ? 0 : -1;
-        }
+            => string.IsNullOrEmpty(text) ? -1 : Facet.Search.Score(text, query);
     }
 }

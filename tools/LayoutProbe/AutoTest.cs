@@ -344,9 +344,83 @@ namespace LayoutProbe
             sp.Dispose();
             Tokens.Accent = wasAccent;
 
+            yield return SchemaSettings();
+
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;
             Application.Quit();
+        }
+
+        // Prism · Settings in schema mode: rows described as data, drawn as Facet forms, searched by Facet.
+        IEnumerator SchemaSettings()
+        {
+            string live = "before";
+            System.Func<string, SettingControl, SettingRow> row = (label, kind) => new SettingRow
+                { Owner = "LayoutProbe", Page = "Probe", Group = "Kinds", Label = label, Kind = kind, Set = _ => { } };
+            var rows = new[]
+            {
+                row("Probe bool", SettingControl.Bool), row("Probe int", SettingControl.Int), row("Probe float", SettingControl.Float),
+                row("Probe choice", SettingControl.Choice), row("Probe text", SettingControl.Text), row("Probe action", SettingControl.Action),
+                row("Probe colour", SettingControl.Colour), row("Probe key", SettingControl.Key), row("Probe info", SettingControl.Info),
+                row("Probe broken", SettingControl.Bool), row("Probe after", SettingControl.Bool),
+                new SettingRow { Owner = "PrismLib", Page = "Display", Group = "Display", Label = "Show FPS", Kind = SettingControl.Bool,
+                                 Tooltip = "Frame rate in the bottom-right corner, for every Prism mod", Get = () => false, Set = _ => { } },
+            };
+            rows[0].Get = () => true;
+            rows[1].Get = () => 3; rows[1].Max = 10f;
+            rows[2].Get = () => 0.5f; rows[2].Max = 1f;
+            rows[3].Get = () => 1; rows[3].Options = new[] { "One", "Two" };
+            rows[4].Get = () => live; rows[4].Set = v => live = (string)v;
+            rows[5].ActionLabel = "Go";
+            rows[6].Get = () => "#ff8000";
+            rows[7].Get = () => "F9"; rows[7].Capture = done => done("F9");
+            rows[8].Get = () => "some information";
+            rows[9].Get = () => { throw new ObjectDisposedException("Probe broken"); };
+            rows[10].Get = () => false;
+
+            // The installed mods point Words.Language at the game's language; English first, Korean below.
+            var wasLanguage = Words.Language;
+            Words.Language = () => "en";
+            var sp = new SettingsPanel("Probe Schema", () => rows);
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var root = FindObjectsByType<UIDocument>(FindObjectsSortMode.None).FirstOrDefault(d => d.gameObject.name == "ProbeSchemaPanel")?.rootVisualElement;
+            var missing = rows.Take(9).Where(r => root?.Q(r.Label) == null).Select(r => r.Label).ToArray();
+            Check(root != null && missing.Length == 0, "every kind of settings row is a control found by Id = its label", "missing " + string.Join(", ", missing));
+            var broken = root?.Q("Probe broken");
+            Check(broken != null && !broken.enabledSelf && broken.tooltip == "unavailable, see the log",
+                  "a row whose getter throws is a dimmed control pointing at the log",
+                  broken == null ? "no control" : "enabled " + broken.enabledSelf + ", tooltip '" + broken.tooltip + "'");
+            Check(root?.Q("Probe after") != null, "and the row after it still builds");
+
+            // Changed behind the panel: the open page shows it on its own, no Reload
+            live = "after";
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 0.15f) yield return null;
+            var tf = root?.Q("Probe text")?.Q<TextField>();
+            Check(tf != null && tf.value == "after", "a value changed behind the panel shows within 150 ms without Reload",
+                  tf == null ? "no field" : "'" + tf.value + "'");
+
+            // Search: the box sits beside the tabs and the scrolling rows
+            var sv = root?.Q<ScrollView>();
+            var search = root?.Query<TextField>().ToList().FirstOrDefault(f => sv != null && f.parent == sv.parent);
+            Func<string, bool> shows = text => root.Query<Label>().ToList().Any(l => l.text == text);
+            Func<string> labels = () => string.Join(" | ", root.Query<Label>().ToList().Select(l => l.text).Where(s => !string.IsNullOrEmpty(s)).Take(12));
+            if (search != null) { search.value = "fps"; yield return null; }
+            Check(search != null && shows("Show FPS") && !shows("Probe bool"), "searching 'fps' lists Show FPS and nothing else",
+                  search == null ? "no search box" : labels());
+            Check(search != null && root.Query<Label>().ToList().Any(l => l.text.StartsWith("PrismLib · ")), "under an owner · page · group header");
+            var fps = root?.Q("Show FPS");
+            Check(fps != null && Facet.Host.For(fps).Name == "PrismLib/PrismLib", "a row is built under its owner's host",
+                  fps == null ? "no control" : Facet.Host.For(fps).Name);
+
+            Words.Language = () => "ko";
+            sp.Reload();
+            if (search != null) { search.value = "ㅍ"; yield return null; }
+            Check(search != null && shows("FPS 표시"), "in Korean, searching 'ㅍ' finds FPS 표시",
+                  search == null ? "no search box" : labels());
+            Words.Language = wasLanguage;
+            sp.Dispose();
         }
     }
 }

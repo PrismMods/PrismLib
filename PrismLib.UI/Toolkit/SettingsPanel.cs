@@ -56,14 +56,26 @@ namespace PrismLib.UI.Toolkit
         private ScrollView _body;
         private TextField _search;
         private Label _status;
-        private List<SettingRow> _rows = new List<SettingRow>();
-        private List<string> _pages = new List<string>();
-        private VisualElement _section;
+        private readonly List<Entry> _rows = new List<Entry>();
+        private readonly List<string> _pages = new List<string>();
 
-        /// Swapped for PrismLib's ranked matcher when the host has it. Same reason as DebugPanel.
-        public Func<SettingRow, string, bool> Matcher =
+        /* A row as the search sees it: as the player reads it (translated by its owner) and in
+           English, so a query in either language finds it. Built once per Reload, not per keystroke. */
+        private sealed class Entry
+        {
+            public SettingRow Row, Shown;
+            public string Page;
+            public Facet.Search.Text[] Label, Context;
+            public Facet.Search.Text Tip;
+        }
+
+        private static readonly Func<SettingRow, string, bool> Contains =
             (r, q) => (r.Label ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
                    || (r.Group ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        /// Left alone, search is Facet's (label, group, page and tooltip in both languages, Korean
+        /// initials). A host that sets its own is asked instead, with the row as the player reads it.
+        public Func<SettingRow, string, bool> Matcher = Contains;
 
         private Func<IEnumerable<NavItem>> _navPages;
         private Nav _nav;
@@ -118,8 +130,8 @@ namespace PrismLib.UI.Toolkit
             if (_window != null) _window.SetFooter(hint, right);
         }
 
-        /// Called every frame by the host. Nothing to do yet — settings change when the user
-        /// changes them — but the call site exists so adding a live refresh later is one method.
+        /// Called every frame by the host. Schema rows need nothing: Facet re-reads them while the
+        /// window is open, so a value changed behind it shows in place.
         public void Tick()
         {
             if (Visible && _nav != null) _nav.Tick();
@@ -194,13 +206,19 @@ namespace PrismLib.UI.Toolkit
         public void Reload()
         {
             if (_nav != null) { _nav.Refresh(); return; }
-            _rows = new List<SettingRow>(_source());
-            foreach (var r in _rows) As(r.Owner, () => Localise(r));
+            _rows.Clear();
             _pages.Clear();
-            foreach (var r in _rows)
+            foreach (var r in _source())
             {
-                string p = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : r.Page;
-                if (!_pages.Contains(p)) _pages.Add(p);
+                if (r == null) continue;
+                var e = new Entry { Row = r };
+                As(r.Owner, () => e.Shown = Localised(r));
+                e.Page = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : e.Shown.Page;
+                e.Label = Texts(r.Label, e.Shown.Label);
+                e.Context = Texts(r.Group, e.Shown.Group, r.Page, e.Page, r.Owner);
+                e.Tip = new Facet.Search.Text(r.Tooltip + " " + e.Shown.Tooltip);
+                _rows.Add(e);
+                if (!_pages.Contains(e.Page)) _pages.Add(e.Page);
             }
             _tabs.Rebuild(_pages);
             Paint();
@@ -210,103 +228,77 @@ namespace PrismLib.UI.Toolkit
         {
             if (_body == null) return;
             _body.Clear();
-            _section = _body;
 
             string q = (_search.value ?? "").Trim();
             string page = _tabs.SelectedName;
-            string group = null;
-            int shown = 0;
+            // A search looks everywhere: filtering by the open tab as well would hide the hit the
+            // user is looking for and leave them thinking the setting does not exist.
+            var shown = q.Length > 0 ? Find(q) : _rows.FindAll(e => e.Page == page);
 
-            foreach (var r in _rows)
+            /* One form per run of rows with one owner: the run builds under that owner's words, so
+               its section titles come from its own table too. A search is a flat list under
+               "owner · page · group" headers, because folding a section shut would hide a hit. */
+            for (int i = 0; i < shown.Count;)
             {
-                string rp = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : r.Page;
-                // A search looks everywhere: filtering by the open tab as well would hide the hit
-                // the user is looking for and leave them thinking the setting does not exist.
-                if (q.Length == 0 && rp != page) continue;
-                if (q.Length > 0 && !Match(r, q)) continue;
-
-                string g = (q.Length > 0 ? r.Owner + " · " + rp : "") +
-                           (string.IsNullOrEmpty(r.Group) ? "" : (q.Length > 0 ? " · " : "") + r.Group);
-                As(r.Owner, () =>
+                var first = shown[i];
+                string head = q.Length > 0 ? Head(first) : null;
+                var run = new List<Facet.Field>();
+                for (; i < shown.Count && shown[i].Row.Owner == first.Row.Owner && (head == null || Head(shown[i]) == head); i++)
+                    run.Add(Field(shown[i].Row, head == null));
+                As(first.Row.Owner, () =>
                 {
-                    if (g != group)
-                    {
-                        group = g;
-                        // Searching shows a flat list: folding a section shut would hide a hit.
-                        _section = string.IsNullOrEmpty(g) ? _body
-                                 : q.Length > 0 ? Widgets.Header(_body, g).parent
-                                 : Widgets.Section(_body, g);
-                    }
-                    Add(r);
+                    if (head != null) Widgets.Header(_body, head);
+                    Facet.Form.Build(_body, run);
                 });
-                shown++;
             }
 
-            if (shown == 0) Ui.Muted(q.Length > 0 ? Words.OwnF("No setting matches '{0}'", q) : Words.Own("Nothing here yet"), _body);
+            if (shown.Count == 0) Ui.Muted(q.Length > 0 ? Words.OwnF("No setting matches '{0}'", q) : Words.Own("Nothing here yet"), _body);
             if (_status != null)
-                _status.text = shown + " of " + _rows.Count + " setting(s)"
+                _status.text = shown.Count + " of " + _rows.Count + " setting(s)"
                              + (q.Length > 0 ? " matching" : " on " + page);
+        }
+
+        private static string Head(Entry e)
+            => e.Row.Owner + " · " + e.Page + (string.IsNullOrEmpty(e.Shown.Group) ? "" : " · " + e.Shown.Group);
+
+        private List<Entry> Find(string q)
+        {
+            if (Matcher != null && Matcher != Contains) return _rows.FindAll(e => Match(e.Shown, q));
+            var query = new Facet.Search.Query(q);
+            var hits = new List<Entry>();
+            // Typos only when nothing matches exactly, so a near miss never sits among real hits.
+            for (int pass = 0; pass < 2 && hits.Count == 0; pass++)
+                foreach (var e in _rows)
+                    if (Facet.Search.Rate(query, e.Label, e.Context, e.Tip, pass == 1) > 0) hits.Add(e);
+            return hits;
         }
 
         private bool Match(SettingRow r, string q)
         {
-            try { return Matcher != null && Matcher(r, q); }
+            try { return Matcher(r, q); }
             catch { return false; }
         }
 
-        /* One row per setting. Every Get is somebody else's delegate into a live mod, so a throw
-           here must cost that row and not the window. */
-        /// Rows go into the open section when there is one, and straight into the page when a
-        /// search has flattened it.
-        private VisualElement Target => _section ?? _body;
+        private static Facet.Search.Text[] Texts(params string[] s) => Array.ConvertAll(s, x => new Facet.Search.Text(x));
 
-        private void Add(SettingRow r)
+        /* SettingControl's nine members are FieldKind's first nine, in order. English goes in: the
+           row's owner host translates it, now and on any relabel. Every Get is somebody else's
+           delegate into a live mod; Facet turns one that throws into a dimmed row, not a dead window. */
+        private static Facet.Field Field(SettingRow r, bool grouped)
         {
-            try
+            var get = r.Get;
+            bool text = r.Kind == SettingControl.Text || r.Kind == SettingControl.Key || r.Kind == SettingControl.Info;
+            return new Facet.Field
             {
-                switch (r.Kind)
-                {
-                    case SettingControl.Bool:
-                        Widgets.Toggle(Target, r.Label, Convert.ToBoolean(r.Get()),
-                                       v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Int:
-                        Widgets.IntSlider(Target, r.Label, Convert.ToInt32(r.Get()),
-                                          (int)r.Min, (int)r.Max, v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Float:
-                        Widgets.Slider(Target, r.Label, Convert.ToSingle(r.Get()),
-                                       r.Min, r.Max, v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Choice:
-                        Widgets.Choice(Target, r.Label, r.Options, Convert.ToInt32(r.Get()),
-                                       v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Text:
-                        Widgets.Text(Target, r.Label, Convert.ToString(r.Get()),
-                                     v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Action:
-                        Widgets.Action(Target, r.Label, r.ActionLabel ?? Words.Own("Run"),
-                                       () => Write(r, null), r.Tooltip);
-                        break;
-                    case SettingControl.Colour:
-                        Widgets.Colour(Target, r.Label, ToColour(r.Get()), v => Write(r, v), r.Tooltip);
-                        break;
-                    case SettingControl.Info:
-                        Widgets.Info(Target, r.Label, Convert.ToString(r.Get()), r.Tooltip);
-                        break;
-                    case SettingControl.Key:
-                        if (r.Capture == null) { Ui.Muted(Words.OwnF("{0} — not rebindable here", r.Label), Target); break; }
-                        Widgets.Key(Target, r.Label, Convert.ToString(r.Get()), r.Capture, r.Tooltip);
-                        break;
-                }
-            }
-            catch (Exception e)
-            {
-                Ui.Log("SettingsPanel: '" + r.Label + "' failed to build: " + e.Message);
-                Ui.Muted(r.Label + " — unavailable", Target);
-            }
+                Owner = PrismHost.Owner(r.Owner), Page = r.Page, Group = grouped ? r.Group : null,
+                Label = r.Label, Tooltip = r.Tooltip, Kind = (Facet.FieldKind)r.Kind,
+                // Facet reads null as a broken getter; text with nothing in it is only empty.
+                Get = text && get != null ? () => get() ?? "" : get,
+                // A key's Capture sets the binding itself and calls back only with what to show.
+                Set = r.Kind == SettingControl.Key ? null : r.Set,
+                Min = r.Min, Max = r.Max, Options = r.Options,
+                ActionLabel = r.ActionLabel ?? Words.Own("Run"), Capture = r.Capture,
+            };
         }
 
         /// Builds with only the row's own mod translating it (see Words).
@@ -317,34 +309,15 @@ namespace PrismLib.UI.Toolkit
             try { build(); } finally { Words.Owner = was; }
         }
 
-        /* Rows arrive in English (PrismLib's own always do). Translated on the way in rather than when
-           drawn, so the search box matches what the player reads. */
-        private static void Localise(SettingRow r)
+        /* Rows arrive in English (PrismLib's own always do). Translated on the way in, into a copy,
+           so the search matches what the player reads and the English stays searchable too. */
+        private static SettingRow Localised(SettingRow r) => new SettingRow
         {
-            r.Page = Words.T(r.Page); r.Group = Words.T(r.Group);
-            r.Label = Words.T(r.Label); r.Tooltip = Words.T(r.Tooltip); r.ActionLabel = Words.T(r.ActionLabel);
-            if (r.Options == null) return;
-            var o = new string[r.Options.Length];
-            for (int i = 0; i < o.Length; i++) o[i] = Words.T(r.Options[i]);
-            r.Options = o;
-        }
-
-        /* A mod may hand a colour over as a Color or as the "#rrggbb" it serialises. Accept both:
-           this is a schema filled in by three codebases, and refusing one form means a row that
-           silently says "unavailable". */
-        private static Color ToColour(object v)
-        {
-            if (v is Color) return (Color)v;
-            Color c;
-            if (v != null && ColorUtility.TryParseHtmlString(Convert.ToString(v), out c)) return c;
-            return Tokens.Accent;
-        }
-
-        private void Write(SettingRow r, object v)
-        {
-            try { if (r.Set != null) r.Set(v); }
-            catch (Exception e) { Ui.Log("SettingsPanel: '" + r.Label + "' setter threw: " + e.Message); }
-        }
+            Owner = r.Owner, Page = Words.T(r.Page), Group = Words.T(r.Group), Label = Words.T(r.Label),
+            Tooltip = Words.T(r.Tooltip), ActionLabel = Words.T(r.ActionLabel),
+            Options = r.Options == null ? null : Array.ConvertAll(r.Options, Words.T),
+            Kind = r.Kind, Get = r.Get, Set = r.Set, Min = r.Min, Max = r.Max, Capture = r.Capture,
+        };
 
         /* The first window drawn in a session costs ~85 ms more than any after it, so the first
            surface draws a throwaway one off screen at load — see Facet.WarmUp. */
