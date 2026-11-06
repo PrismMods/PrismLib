@@ -93,6 +93,7 @@ namespace LayoutProbe
             var fx = Root.Q<TextField>("layout-x");
             Check(fx != null && Near(float.Parse(fx.value, System.Globalization.CultureInfo.InvariantCulture), A.Cx), "first click selects A (inspector shows its X)", fx == null ? "no field" : fx.value);
             Check(Ctr(A) == a0, "the selecting click does not move it");
+            yield return SuiteChrome();
 
             // Drag the selected box
             yield return Drag(a0, a0 + new Vector2(90, -55));

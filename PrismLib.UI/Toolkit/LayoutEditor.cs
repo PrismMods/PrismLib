@@ -22,6 +22,8 @@ namespace PrismLib.UI.Toolkit
         private Surface _surface;
         private VisualElement _layer, _under, _frames, _chrome;   // ghost below, frames, handles above
         private Label _empty;
+        private Theme _th;                                     // the surface's scheme
+        private float _radius, _gap, _body, _small, _tagH;   // its Sizes, read once at build: Tick runs every frame
         private readonly List<Frame> _all = new List<Frame>();
         private Frame _selected;
         private bool _visible;
@@ -44,6 +46,9 @@ namespace PrismLib.UI.Toolkit
             _source = source ?? (() => new EditTarget[0]);
             _surface = new Surface("PrismLayoutEditor", Layer.Modal, font);
             _surface.Hidden += OnSurfaceHidden;     // Escape hides the surface directly
+            _th = _surface.Theme;
+            var sz = _th.Twin.Sizes;
+            _radius = sz.Radius; _gap = sz.Gap; _body = sz.Body; _small = sz.Small; _tagH = sz.Small + 6f;
             Build();
             _surface.Visible = false;
         }
@@ -130,7 +135,7 @@ namespace PrismLib.UI.Toolkit
             _frames = FullLayer();
             _chrome = FullLayer();
 
-            _empty = Ui.Text("Nothing to arrange yet", _layer, Tokens.FontSize, Tokens.TextMuted);
+            _empty = Ui.Text("Nothing to arrange yet", _layer, _body, _th.TextMuted);
             _empty.pickingMode = PickingMode.Ignore;
             _empty.style.position = Position.Absolute;
             _empty.style.left = 0; _empty.style.right = 0; _empty.style.top = Length.Percent(46);
@@ -142,7 +147,6 @@ namespace PrismLib.UI.Toolkit
             done.style.bottom = 28; done.style.left = Length.Percent(50);
             done.style.translate = new Translate(Length.Percent(-50), 0);
             done.style.paddingLeft = 22; done.style.paddingRight = 22;
-            Ui.SetRadius(done, 16f);
 
             _layer.RegisterCallback<PointerDownEvent>(OnDown);
             _layer.RegisterCallback<PointerMoveEvent>(OnMove);
@@ -162,16 +166,16 @@ namespace PrismLib.UI.Toolkit
         private Frame NewFrame(EditTarget t)
         {
             var f = new Frame { T = t };
-            f.Box = new VisualElement { pickingMode = PickingMode.Ignore };
+            f.Box = new VisualElement { name = "layout-frame", pickingMode = PickingMode.Ignore };
             f.Box.style.position = Position.Absolute;
             Ui.SetBorderWidth(f.Box, 1f);
-            f.Tag = Ui.Text(string.IsNullOrEmpty(t.Label) ? t.Id : t.Label, null, Tokens.FontSizeSmall, Tokens.Text);
+            f.Tag = Ui.Text(string.IsNullOrEmpty(t.Label) ? t.Id : t.Label, null, _small, _th.Text);
             f.Tag.pickingMode = PickingMode.Ignore;
             f.Tag.style.position = Position.Absolute;
-            f.Tag.style.backgroundColor = Tokens.Panel;
+            f.Tag.style.backgroundColor = _th.Panel;
             f.Tag.style.paddingLeft = 6; f.Tag.style.paddingRight = 6;
             f.Tag.style.paddingTop = 1; f.Tag.style.paddingBottom = 1;
-            Ui.SetRadius(f.Tag, Tokens.Radius);
+            Ui.SetRadius(f.Tag, _radius);
             _frames.Add(f.Box);
             _frames.Add(f.Tag);   // outside the outline, so it never rotates or crops with it
             return f;
@@ -208,10 +212,12 @@ namespace PrismLib.UI.Toolkit
             f.Box.style.rotate = new Rotate(new Angle(-rot, AngleUnit.Degree));   // ours is CCW, UI Toolkit's CW
             bool sel = f == _selected;
             Ui.SetBorderWidth(f.Box, sel ? 2f : 1f);
-            Ui.SetBorderColor(f.Box, sel ? Tokens.Accent : new Color(Tokens.Accent.r, Tokens.Accent.g, Tokens.Accent.b, 0.45f));
-            f.Box.style.backgroundColor = sel ? new Color(Tokens.Accent.r, Tokens.Accent.g, Tokens.Accent.b, 0.08f) : new Color(0, 0, 0, 0);
+            // The accent marks the selection only; the rest are outlined in the muted text colour.
+            var acc = _th.Accent;
+            Ui.SetBorderColor(f.Box, sel ? acc : _th.TextMuted);
+            f.Box.style.backgroundColor = sel ? new Color(acc.r, acc.g, acc.b, 0.08f) : new Color(0, 0, 0, 0);
             // Tag above the box, or under it when the box is pinned to the top edge.
-            float tagH = Tokens.FontSizeSmall + 6f;
+            float tagH = _tagH;
             f.Tag.style.display = DisplayStyle.Flex;
             f.Tag.style.left = left;
             f.Tag.style.top = top - tagH - 3f < 0f ? top + b[3] * k + 3f : top - tagH - 3f;

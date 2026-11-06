@@ -9,14 +9,17 @@ namespace PrismLib.UI
     /// Colours and font for a toast. Mutable: change Accent at runtime and the card follows.
     public sealed class ToastTheme
     {
-        public Color Background     = new Color(0.10f, 0.10f, 0.13f, 0.96f);
-        public Color BackgroundHover = new Color(0.16f, 0.16f, 0.19f, 0.98f);
-        public Color Border         = new Color(1f, 1f, 1f, 0.14f);
-        public Color Text           = Color.white;
-        public Color TextMuted      = new Color(1f, 1f, 1f, 0.55f);
+        // The suite's window, lines and text (Suite); a mod that sets its own colours keeps them.
+        public Color Background     = Alpha(Toolkit.Suite.Window, 0.96f);
+        public Color BackgroundHover = Alpha(Toolkit.Ui.Lighten(Toolkit.Suite.Window, 0.045f), 0.98f);
+        public Color Border         = Toolkit.Suite.Border;
+        public Color Text           = Toolkit.Suite.Text;
+        public Color TextMuted      = Toolkit.Suite.Muted;
         public Color Accent         = new Color(0.604f, 0.706f, 1f, 1f);
         public Color CloseHover     = new Color(0.910f, 0.067f, 0.137f, 1f);
         public TMP_FontAsset Font;      // null = TMP's default
+
+        private static Color Alpha(Color c, float a) { c.a = a; return c; }
     }
 
     /// What the card should say right now. The host rebuilds this every tick; it is a
@@ -230,7 +233,7 @@ namespace PrismLib.UI
             _group = _cardGo.AddComponent<CanvasGroup>();
             _group.alpha = 0f;
             _bg = _cardGo.AddComponent<RoundedRectGraphic>();
-            _bg.Radius = 10f;
+            _bg.Radius = 2f;
             _bg.color = _theme.Background;
             _bg.BorderWidth = 1f;
             _bg.BorderColor = _theme.Border;
@@ -246,14 +249,14 @@ namespace PrismLib.UI
             var pr = (RectTransform)pipGo.transform;
             pr.anchorMin = new Vector2(0f, 0f); pr.anchorMax = new Vector2(0f, 1f);
             pr.pivot = new Vector2(0f, 0.5f);
-            pr.offsetMin = new Vector2(10f, 12f); pr.offsetMax = new Vector2(14f, -12f);
+            pr.offsetMin = new Vector2(10f, 12f); pr.offsetMax = new Vector2(12f, -12f);
             _pip = pipGo.AddComponent<RoundedRectGraphic>();
-            _pip.Radius = 2f;
+            _pip.Radius = 0f;
             _pip.color = _theme.Accent;
             _pip.raycastTarget = false;
 
-            _title = Label(-32f, -10f, 15f, _theme.Text);
-            _hint = Label(-52f, -32f, 12.5f, _theme.TextMuted);
+            _title = Label(-32f, -10f, 13f, _theme.Text);
+            _hint = Label(-52f, -32f, 12f, _theme.TextMuted);
 
             BuildProgressBar();
             BuildClose();
@@ -288,7 +291,7 @@ namespace PrismLib.UI
             br.pivot = new Vector2(0.5f, 0f);
             br.offsetMin = new Vector2(26f, 8f); br.offsetMax = new Vector2(-16f, 11f);
             var track = _barGo.AddComponent<RoundedRectGraphic>();
-            track.Radius = 1.5f;
+            track.Radius = 0f;
             track.color = new Color(1f, 1f, 1f, 0.10f);
             track.raycastTarget = false;
 
@@ -299,7 +302,7 @@ namespace PrismLib.UI
             _barFillRect.pivot = new Vector2(0f, 0.5f);
             _barFillRect.offsetMin = Vector2.zero; _barFillRect.offsetMax = Vector2.zero;
             _barFill = fillGo.AddComponent<RoundedRectGraphic>();
-            _barFill.Radius = 1.5f;
+            _barFill.Radius = 0f;
             _barFill.color = _theme.Accent;
             _barFill.raycastTarget = false;
             _barGo.SetActive(false);
@@ -318,7 +321,7 @@ namespace PrismLib.UI
             _closeGroup.alpha = 0f;
             _closeGroup.blocksRaycasts = false;
             var bg = go.AddComponent<RoundedRectGraphic>();
-            bg.Radius = 4f;
+            bg.Radius = 2f;
             bg.color = new Color(1f, 1f, 1f, 0f);
             bg.raycastTarget = true;
 
@@ -333,7 +336,7 @@ namespace PrismLib.UI
             _closeX = labelGo.AddComponent<TextMeshProUGUI>();
             if (_theme.Font != null) _closeX.font = _theme.Font;
             _closeX.text = "×";
-            _closeX.fontSize = 16f;
+            _closeX.fontSize = 14f;
             _closeX.alignment = TextAlignmentOptions.Center;
             _closeX.color = _theme.TextMuted;
             _closeX.raycastTarget = false;

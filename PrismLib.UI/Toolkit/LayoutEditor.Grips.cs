@@ -22,27 +22,27 @@ namespace PrismLib.UI.Toolkit
         partial void BuildExtras()
         {
             _grips = new VisualElement[4];
-            for (int i = 0; i < 4; i++) _grips[i] = Handle("layout-grip-" + i, 10f, 2f);
-            _knob = Handle("layout-knob", 12f, 6f);
+            for (int i = 0; i < 4; i++) _grips[i] = Handle("layout-grip-" + i, 10f);
+            _knob = Handle("layout-knob", 12f);
             _anchorLine = new VisualElement { pickingMode = PickingMode.Ignore };
             _anchorLine.style.position = Position.Absolute;
             _anchorLine.style.height = 1f;
-            _anchorLine.style.backgroundColor = new Color(Tokens.Accent.r, Tokens.Accent.g, Tokens.Accent.b, 0.7f);
+            _anchorLine.style.backgroundColor = new Color(_th.Accent.r, _th.Accent.g, _th.Accent.b, 0.7f);
             _anchorLine.style.transformOrigin = new TransformOrigin(0, Length.Percent(50));
             _chrome.Add(_anchorLine);
-            _anchorDot = Handle("layout-anchor-dot", 8f, 4f);
+            _anchorDot = Handle("layout-anchor-dot", 8f);
             BuildInspector();
         }
 
-        private VisualElement Handle(string name, float size, float radius)
+        private VisualElement Handle(string name, float size)
         {
             var h = new VisualElement { name = name, pickingMode = PickingMode.Ignore };
             h.style.position = Position.Absolute;
             h.style.width = size; h.style.height = size;
-            h.style.backgroundColor = Tokens.Accent;
-            Ui.SetRadius(h, radius);
+            h.style.backgroundColor = _th.Accent;
+            Ui.SetRadius(h, _radius);
             Ui.SetBorderWidth(h, 1f);
-            Ui.SetBorderColor(h, Tokens.Panel);
+            Ui.SetBorderColor(h, _th.Panel);
             h.style.display = DisplayStyle.None;
             _chrome.Add(h);
             return h;

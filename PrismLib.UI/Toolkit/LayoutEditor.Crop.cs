@@ -107,7 +107,7 @@ namespace PrismLib.UI.Toolkit
             _ghost.style.display = DisplayStyle.None;
             _under.Add(_ghost);   // under every frame
             _edges = new VisualElement[4];
-            for (int i = 0; i < 4; i++) _edges[i] = Handle("layout-crop-edge-" + i, 12f, 3f);
+            for (int i = 0; i < 4; i++) _edges[i] = Handle("layout-crop-edge-" + i, 12f);
         }
 
         /* The visible edge under a screen point (0 left, 1 bottom, 2 right, 3 top), or -1: anywhere

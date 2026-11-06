@@ -32,6 +32,37 @@ namespace LayoutProbe
 
         static float Radius(VisualElement e) => e == null ? -1f : e.resolvedStyle.borderTopLeftRadius;
 
+        // The layout editor's chrome and the update toast in the suite look (A is selected; B and C are not).
+        // Widths are read from the inline style: layout snaps resolved ones to device pixels.
+        IEnumerator SuiteChrome()
+        {
+            var th = Theme.For(Root);
+            foreach (var n in new[] { "layout-done", "layout-grip-0", "layout-knob", "layout-anchor-dot" })
+                Check(Radius(Root.Q(n)) == 2f, n + " has the suite's 2px corner", n + " radius " + Radius(Root.Q(n)));
+            var frames = Root.Query("layout-frame").ToList();
+            var sel = frames.Where(f => f.style.borderTopWidth.value == 2f && Same(f.resolvedStyle.borderTopColor, th.Accent)).ToList();
+            var rest = frames.Except(sel).ToList();
+            Check(frames.Count >= 3 && sel.Count == 1 && rest.All(f => f.style.borderTopWidth.value == 1f && Same(f.resolvedStyle.borderTopColor, th.TextMuted)),
+                  "one frame wears the accent at 2px, the rest the muted text colour at 1px",
+                  frames.Count + " frames, " + sel.Count + " selected; others " + string.Join(",", rest.Select(f => f.style.borderTopWidth.value + "/" + f.resolvedStyle.borderTopColor).ToArray()));
+            var tags = Root.Query<Label>().ToList().Where(l => frames.Count > 0 && l.parent == frames[0].parent && l.text.StartsWith("Probe ")).ToList();
+            Check(tags.Count >= 3 && tags.All(t => Radius(t) == 2f && Same(t.resolvedStyle.backgroundColor, th.Panel)),
+                  "every frame tag has a 2px corner and the theme's panel colour", tags.Count + " tags; " + string.Join(",", tags.Select(t => Radius(t) + "/" + t.resolvedStyle.backgroundColor).ToArray()));
+
+            var toast = new PrismLib.UI.Toast("Probe");
+            toast.Set(new PrismLib.UI.ToastContent { Key = "probe", Title = "Probe toast", Hint = "hint" });
+            toast.Tick();
+            var cv = GameObject.Find("ProbeUpdateToastCanvas");
+            var card = cv != null ? cv.transform.Find("UpdateToast") : null;
+            var bg = card != null ? card.GetComponent<PrismLib.UI.RoundedRectGraphic>() : null;
+            var pip = card != null ? card.Find("Pip") as RectTransform : null;
+            Check(bg != null && bg.Radius == 2f && Same(bg.color, new Color(0.102f, 0.102f, 0.122f, 0.96f)), "the toast card is 2px round on the suite's window colour",
+                  bg == null ? "no card" : bg.Radius + " / " + bg.color);
+            Check(pip != null && Mathf.Approximately(pip.offsetMax.x - pip.offsetMin.x, 2f), "its pip is 2 wide", pip == null ? "no pip" : pip.offsetMin + " / " + pip.offsetMax);
+            toast.Dispose();
+            yield return null;
+        }
+
         IEnumerator SuiteSkin()
         {
             Color red = Color.red, green = Color.green, magenta = new Color(1f, 0f, 1f, 1f);

@@ -90,7 +90,7 @@ namespace PrismLib.UI.Toolkit
             _inspectorBody = Ui.Box(_inspector);
 
             var undoRow = Ui.Row(_inspector);
-            undoRow.style.marginTop = Tokens.Gap;
+            undoRow.style.marginTop = _gap;
             Ui.Btn(Words.Own("Undo"), () => History.Undo(), undoRow).name = "layout-undo";
             Ui.Btn(Words.Own("Redo"), () => History.Redo(), undoRow).name = "layout-redo";
         }
@@ -106,7 +106,7 @@ namespace PrismLib.UI.Toolkit
             _inspector.style.display = f == null ? DisplayStyle.None : DisplayStyle.Flex;
             if (f == null) return;
 
-            Ui.Text(string.IsNullOrEmpty(f.T.Label) ? f.T.Id : f.T.Label, _inspectorBody, Tokens.FontSize, Tokens.Text);
+            Ui.Text(string.IsNullOrEmpty(f.T.Label) ? f.T.Id : f.T.Label, _inspectorBody, _body, _th.Text);
             if (!string.IsNullOrEmpty(f.T.Owner)) Ui.Muted(f.T.Owner, _inspectorBody);
             _fx = Field("X", v => { var s = Snap(f); if (s != null) f.T.MoveTo(v, s.Cy); });
             _fy = Field("Y", v => { var s = Snap(f); if (s != null) f.T.MoveTo(s.Cx, v); });
@@ -127,7 +127,7 @@ namespace PrismLib.UI.Toolkit
             var tf = new TextField { name = "layout-" + label.ToLowerInvariant().Replace(' ', '-').Replace("%", "pct") };
             tf.style.width = 90f;
             Skin.When<TextField>(tf, Skin.Field);
-            tf.style.fontSize = Tokens.FontSizeSmall;
+            tf.style.fontSize = _small;
             // Commit only what was typed: the shown text is rounded, so committing it on every blur
             // would nudge the value and add an undo step for nothing. Escape puts the text back.
             string shown = null;
@@ -222,7 +222,7 @@ namespace PrismLib.UI.Toolkit
             if (_anchorCells != null)
             {
                 int a = Guard(f, () => f.T.GetAnchor(), 4);
-                for (int i = 0; i < 9; i++) _anchorCells[i].style.backgroundColor = i == a ? Tokens.Accent : Tokens.RowHover;
+                for (int i = 0; i < 9; i++) _anchorCells[i].style.backgroundColor = i == a ? _th.Accent : _th.RowHover;
             }
             if (_closestBtn != null) Ui.Highlight(_closestBtn, Guard(f, () => f.T.GetAnchorClosest(), false));
         }
