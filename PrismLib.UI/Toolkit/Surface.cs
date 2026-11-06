@@ -108,8 +108,16 @@ namespace PrismLib.UI.Toolkit
                 }
                 else SetFont(null);   // never leave a panel fontless; see Fallback
                 if (!FontsInherit) Root.schedule.Execute(() => HandDownFonts(Root, default(StyleFontDefinition))).Every(200);
+                if (!WarmUpStarted)
+                {
+                    WarmUpStarted = true;   // before scheduling: the warm-up window is a surface too
+                    Root.schedule.Execute(SettingsPanel.WarmUp).StartingIn(500);
+                }
             }
         }
+
+        /// Set by the first surface, which schedules SettingsPanel.WarmUp.
+        internal static bool WarmUpStarted;
 
         /* Fallback for hosts that only have a legacy Font. Passing null is fine and normal: a mod
            holding a TMP_FontAsset usually CANNOT produce one, because TMP_FontAsset.sourceFontFile

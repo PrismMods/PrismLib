@@ -346,6 +346,56 @@ namespace PrismLib.UI.Toolkit
             catch (Exception e) { Ui.Log("SettingsPanel: '" + r.Label + "' setter threw: " + e.Message); }
         }
 
+        /* The first Prism window drawn in a session cost about 85 ms more than any after it: the
+           first run of the window, widget and UI Toolkit code (JIT) and its first glyphs, all in the
+           frame it opened — a visible hitch on Alt+P. Drawing one throwaway window off screen for a
+           moment, half a second after the first surface exists (at load, in practice), moves that
+           cost there; the next window opened in 18 ms (LayoutProbe [perf], 2026-11-06). */
+        internal static bool WarmedUp;
+
+        internal static void WarmUp()
+        {
+            var write = Window.Write;
+            Window.Write = null;   // its geometry is not worth a saved key
+            SettingsPanel p = null;
+            Action done = () =>
+            {
+                try { if (p != null) p.Dispose(); } catch { }
+                Window.Write = write;
+                WarmedUp = true;
+            };
+            try
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                p = new SettingsPanel("Prism warm-up", WarmRows);
+                if (p._surface == null || p._surface.Root == null) { done(); return; }
+                p.BlocksGameInput = false;
+                p._surface.Root.style.translate = new Translate(-10000f, 0f);
+                p.Visible = true;
+                Ui.Log("[perf] warm-up window built in " + sw.ElapsedMilliseconds + " ms");
+                p._surface.Root.schedule.Execute(done).StartingIn(100);   // after it has been drawn
+            }
+            catch (Exception e) { Ui.Log("SettingsPanel: warm-up failed: " + e.Message); done(); }
+        }
+
+        // One of each row kind, with every printable ASCII character between them.
+        private static IEnumerable<SettingRow> WarmRows()
+        {
+            string[] text = { "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789 !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" };
+            int i = 0;
+            foreach (SettingControl k in Enum.GetValues(typeof(SettingControl)))
+            {
+                string t = text[i++ % text.Length];
+                yield return new SettingRow
+                {
+                    Owner = Words.Self, Page = "Warm-up", Group = t, Label = t, Kind = k,
+                    Get = () => k == SettingControl.Bool ? (object)true : k == SettingControl.Choice || k == SettingControl.Int ? (object)1
+                              : k == SettingControl.Float ? (object)0.5f : t,
+                    Set = _ => { }, Min = 0f, Max = 2f, Options = new[] { "One", "Two" }, ActionLabel = "Run",
+                };
+            }
+        }
+
         public void Dispose()
         {
             if (_surface != null) _surface.Dispose();
