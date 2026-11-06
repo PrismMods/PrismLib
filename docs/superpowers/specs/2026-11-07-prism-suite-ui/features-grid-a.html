@@ -1,0 +1,109 @@
+<style>
+  .qm { --bg:#141417; --rail:#0e0e11; --card:#1b1b20; --line:rgba(255,255,255,.07); --text:#e8e8ec; --muted:#8d8d96;
+        --acc:#e06a6a; --accSoft:rgba(224,106,106,.14); --r:2px; --field:#232329;
+        font-family:-apple-system,"Segoe UI",sans-serif; color:var(--text); background:var(--bg);
+        border:1px solid rgba(255,255,255,.10); border-radius:var(--r); overflow:hidden; font-size:13px; margin-top:8px; }
+  .qm .top { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .qm .logo { width:18px; height:18px; background:var(--acc); border-radius:var(--r); }
+  .qm .brand { letter-spacing:.14em; font-size:12px; font-weight:600; }
+  .qm .search { margin-left:auto; width:260px; background:var(--field); border-radius:var(--r); padding:5px 10px; color:var(--muted); }
+  .qm .body { display:flex; }
+  .qm .rail { width:132px; background:var(--rail); padding:8px 0; border-right:1px solid var(--line); }
+  .qm .rail div { padding:6px 14px; color:var(--muted); border-left:2px solid transparent; }
+  .qm .rail .on { color:var(--text); border-left-color:var(--acc); background:rgba(255,255,255,.04); }
+  .qm .rail .sep { height:1px; padding:0; margin:6px 12px; background:var(--line); }
+  .qm .main { flex:1; padding:14px; min-width:0; }
+  .qm .head { display:flex; align-items:baseline; gap:10px; }
+  .qm .head h4 { margin:0; font-size:17px; font-weight:600; }
+  .qm .head span { color:var(--muted); font-size:12px; }
+  .qm .bar { display:flex; gap:8px; margin:10px 0 12px; }
+  .qm .filter { flex:1; background:var(--field); border-radius:var(--r); padding:5px 10px; color:var(--muted); }
+  .qm .chip { padding:5px 9px; border:1px solid var(--line); border-radius:var(--r); color:var(--muted); }
+  .qm .chip.on { color:var(--text); border-color:var(--acc); }
+  .qm .cat { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:12px 0 6px; display:flex; }
+  .qm .cat span { margin-left:auto; text-transform:none; letter-spacing:0; }
+  .qm .g { display:grid; gap:6px; }
+  .qm .g.five { grid-template-columns:repeat(5,1fr); }
+  .qm .g.three { grid-template-columns:repeat(3,1fr); }
+  .qm .sw { width:26px; height:14px; background:rgba(255,255,255,.18); border-radius:3px; position:relative; flex:none; }
+  .qm .sw::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; background:#fff; border-radius:2px; }
+  .qm .sw.on { background:var(--acc); } .qm .sw.on::after { left:14px; }
+  /* A: compact tiles */
+  .qm .t { display:flex; align-items:center; gap:8px; padding:8px 9px; background:var(--card); border:1px solid var(--line); border-radius:var(--r); color:var(--muted); }
+  .qm .t .n { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .qm .t.on { color:var(--text); border-left:2px solid var(--acc); }
+  /* B: descriptive cards */
+  .qm .c { padding:9px 10px; background:var(--card); border:1px solid var(--line); border-radius:var(--r); color:var(--muted); }
+  .qm .c .h { display:flex; align-items:center; gap:8px; } .qm .c .h b { flex:1; font-weight:600; }
+  .qm .c p { margin:4px 0 6px; font-size:11.5px; line-height:1.35; }
+  .qm .c .go { font-size:11.5px; color:var(--acc); }
+  .qm .c.on { color:var(--text); border-left:2px solid var(--acc); } .qm .c.on p { color:var(--muted); }
+</style>
+
+<h2>Features menu as a grid</h2>
+<p class="subtitle">This replaces today's list of six folding categories. You can see every feature at once with its on/off state, filter by typing, or jump to a category. Click a tile to open its settings; the switch only turns it on or off. Look A throughout.</p>
+
+<div class="options">
+<div class="option" data-choice="a" onclick="toggleSelect(this)" style="display:block">
+<div class="letter">A</div>
+<div class="content"><h3>Compact tiles: name and switch, five across</h3><p>The whole suite fits on one screen. Descriptions appear on hover and in search.</p></div>
+<div class="qm">
+  <div class="top"><div class="logo"></div><div class="brand">QUARTZ</div><div class="search">Search settings…</div></div>
+  <div class="body">
+    <div class="rail"><div>Home</div><div class="on">Features</div><div class="sep"></div><div>Overlay</div><div>Gameplay</div><div>Visuals</div><div>Tweaks</div><div>Editor</div><div>TUF</div><div class="sep"></div><div>Profiles</div><div>Import</div><div>Settings</div></div>
+    <div class="main">
+      <div class="head"><h4>Features</h4><span>23 of 27 on · a feature that's off is fully unloaded</span></div>
+      <div class="bar"><div class="filter">Filter features…</div><div class="chip on">All</div><div class="chip">On</div><div class="chip">Off</div></div>
+      <div class="cat">Overlay<span>8 / 8</span></div>
+      <div class="g five">
+        <div class="t on"><span class="n">Key Viewer</span><span class="sw on"></span></div><div class="t on"><span class="n">Progress Bar</span><span class="sw on"></span></div><div class="t on"><span class="n">Combo</span><span class="sw on"></span></div><div class="t on"><span class="n">Judgement</span><span class="sw on"></span></div><div class="t on"><span class="n">Song Title</span><span class="sw on"></span></div>
+        <div class="t on"><span class="n">Panels</span><span class="sw on"></span></div><div class="t on"><span class="n">Calibration</span><span class="sw on"></span></div><div class="t on"><span class="n">General</span><span class="sw on"></span></div>
+      </div>
+      <div class="cat">Gameplay<span>4 / 6</span></div>
+      <div class="g five">
+        <div class="t on"><span class="n">Key Limiter</span><span class="sw on"></span></div><div class="t on"><span class="n">Chatter Blocker</span><span class="sw on"></span></div><div class="t on"><span class="n">Judgement Restriction</span><span class="sw on"></span></div><div class="t on"><span class="n">Countdown</span><span class="sw on"></span></div><div class="t"><span class="n">Auto Deafen</span><span class="sw"></span></div>
+        <div class="t"><span class="n">Practice Difficulty</span><span class="sw"></span></div>
+      </div>
+      <div class="cat">Visuals<span>5 / 7</span></div>
+      <div class="g five">
+        <div class="t on"><span class="n">Effect Remover</span><span class="sw on"></span></div><div class="t on"><span class="n">Hide Judgements</span><span class="sw on"></span></div><div class="t"><span class="n">Tile Arc</span><span class="sw"></span></div><div class="t on"><span class="n">Visual Tweaks</span><span class="sw on"></span></div><div class="t on"><span class="n">Planet Colors</span><span class="sw on"></span></div>
+        <div class="t on"><span class="n">Otto Icon</span><span class="sw on"></span></div><div class="t"><span class="n">UI Hiding</span><span class="sw"></span></div>
+      </div>
+      <div class="cat">Tweaks · Editor · Others<span>6 / 6</span></div>
+      <div class="g five">
+        <div class="t on"><span class="n">Special Days</span><span class="sw on"></span></div><div class="t on"><span class="n">Optimizer</span><span class="sw on"></span></div><div class="t on"><span class="n">Main Menu</span><span class="sw on"></span></div><div class="t on"><span class="n">Editor Tools</span><span class="sw on"></span></div><div class="t on"><span class="n">TUF</span><span class="sw on"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="option" data-choice="b" onclick="toggleSelect(this)" style="display:block">
+<div class="letter">B</div>
+<div class="content"><h3>Descriptive cards: name, one line on what it does, switch, three across</h3><p>Friendlier for someone new, but takes about two screens for the whole suite.</p></div>
+<div class="qm">
+  <div class="top"><div class="logo"></div><div class="brand">QUARTZ</div><div class="search">Search settings…</div></div>
+  <div class="body">
+    <div class="rail"><div>Home</div><div class="on">Features</div><div class="sep"></div><div>Overlay</div><div>Gameplay</div><div>Visuals</div><div>Tweaks</div><div>Editor</div><div>TUF</div><div class="sep"></div><div>Profiles</div><div>Import</div><div>Settings</div></div>
+    <div class="main">
+      <div class="head"><h4>Features</h4><span>23 of 27 on · a feature that's off is fully unloaded</span></div>
+      <div class="bar"><div class="filter">Filter features…</div><div class="chip on">All</div><div class="chip">On</div><div class="chip">Off</div></div>
+      <div class="cat">Overlay<span>8 / 8</span></div>
+      <div class="g three">
+        <div class="c on"><div class="h"><b>Key Viewer</b><span class="sw on"></span></div><p>Shows the keys you press and how often, live.</p><span class="go">Settings →</span></div>
+        <div class="c on"><div class="h"><b>Progress Bar</b><span class="sw on"></span></div><p>A bar across the top showing how far into the level you are.</p><span class="go">Settings →</span></div>
+        <div class="c on"><div class="h"><b>Combo</b><span class="sw on"></span></div><p>Your current combo, counted on screen.</p><span class="go">Settings →</span></div>
+      </div>
+      <div class="cat">Gameplay<span>4 / 6</span></div>
+      <div class="g three">
+        <div class="c on"><div class="h"><b>Key Limiter</b><span class="sw on"></span></div><p>Only the keys you choose count as hits.</p><span class="go">Settings →</span></div>
+        <div class="c"><div class="h"><b>Auto Deafen</b><span class="sw"></span></div><p>Deafens you on Discord while a level plays.</p><span class="go">Settings →</span></div>
+        <div class="c"><div class="h"><b>Practice Difficulty</b><span class="sw"></span></div><p>Practise a level with looser timing.</p><span class="go">Settings →</span></div>
+      </div>
+      <div class="cat" style="opacity:.6">… 21 more cards</div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+<p class="subtitle" style="margin-top:12px">Today's per-category Use-this-tab switches (hiding a whole category from the sidebar) would move to a small menu on each category header. Feature descriptions are my placeholders.</p>
