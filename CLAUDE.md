@@ -4,6 +4,10 @@ Shared library under QuartzTeam's ADOFAI mods — Topaz, Sapphire, and Quartz la
 `PrismMods/PrismLib`, MIT (the mods that link it are GPL-3.0). Split out of Sapphire's workspace on
 2026-09-24; the conversation history that produced it is in this project's transcript.
 
+**Game facts** (scenes, state flags, Unity quirks, loader order, macOS signing and camera, how to
+test unattended) live in `docs/game-knowledge.md`, shared by every Prism mod. Add to it whenever a
+session verifies something about the game; say where and when it was verified.
+
 ## Why it exists
 
 The three mods write the same globals (`RDC.auto`, no-fail, the editor camera, the path lock, HUD
