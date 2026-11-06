@@ -365,6 +365,8 @@ namespace LayoutProbe
                 row("Probe broken", SettingControl.Bool), row("Probe after", SettingControl.Bool),
                 new SettingRow { Owner = "PrismLib", Page = "Display", Group = "Display", Label = "Show FPS", Kind = SettingControl.Bool,
                                  Tooltip = "Frame rate in the bottom-right corner, for every Prism mod", Get = () => false, Set = _ => { } },
+                row("Probe colour string", SettingControl.Colour), row("Probe fixed key", SettingControl.Key),
+                row("Effective BPM", SettingControl.Bool), row("Arrow -> target", SettingControl.Bool),
             };
             rows[0].Get = () => true;
             rows[1].Get = () => 3; rows[1].Max = 10f;
@@ -377,6 +379,10 @@ namespace LayoutProbe
             rows[8].Get = () => "some information";
             rows[9].Get = () => { throw new ObjectDisposedException("Probe broken"); };
             rows[10].Get = () => false;
+            object colourSet = null;
+            rows[12].Get = () => "#336699"; rows[12].Set = v => colourSet = (Color)v;   // a mod that stores hex and casts on the way back
+            rows[13].Get = () => "F10";   // no Capture
+            rows[14].Get = () => false; rows[15].Get = () => false;
 
             // The installed mods point Words.Language at the game's language; English first, Korean below.
             var wasLanguage = Words.Language;
@@ -401,6 +407,25 @@ namespace LayoutProbe
             Check(tf != null && tf.value == "after", "a value changed behind the panel shows within 150 ms without Reload",
                   tf == null ? "no field" : "'" + tf.value + "'");
 
+            // A colour read as "#rrggbb" still reaches its setter as a Color, and offers no alpha
+            var cs = root?.Q("Probe colour string");
+            var hex = cs?.Q<TextField>();
+            if (hex != null)
+            {
+                hex.SetValueWithoutNotify("#00ff00");
+                using (var ke = KeyDownEvent.GetPooled('\n', KeyCode.Return, EventModifiers.None)) { ke.target = hex; hex.SendEvent(ke); }
+                yield return null;
+            }
+            Check(colourSet is Color && (Color)colourSet == Color.green, "editing a colour whose getter gives \"#rrggbb\" hands the setter a Color",
+                  hex == null ? "no hex field" : colourSet == null ? "setter not reached or threw" : colourSet.ToString());
+            Check(cs != null && cs.Query<Label>().ToList().Any(l => l.text == "R") && !cs.Query<Label>().ToList().Any(l => l.text == "A"),
+                  "and the picker offers no alpha channel");
+
+            // A key with no Capture: the old explanation in a read-only row, not a button that ignores clicks
+            var fixedKey = root?.Q("Probe fixed key — not rebindable here");
+            Check(fixedKey != null && fixedKey.Q<Button>() == null, "a key nothing can capture says it is not rebindable here",
+                  fixedKey == null ? "no row" : "has a button");
+
             // Search: the box sits beside the tabs and the scrolling rows
             var sv = root?.Q<ScrollView>();
             var search = root?.Query<TextField>().ToList().FirstOrDefault(f => sv != null && f.parent == sv.parent);
@@ -410,6 +435,12 @@ namespace LayoutProbe
             Check(search != null && shows("Show FPS") && !shows("Probe bool"), "searching 'fps' lists Show FPS and nothing else",
                   search == null ? "no search box" : labels());
             Check(search != null && root.Query<Label>().ToList().Any(l => l.text.StartsWith("PrismLib · ")), "under an owner · page · group header");
+            // What the old matcher also found: letters in order, and punctuation as a plain substring
+            if (search != null) { search.value = "efctbpm"; yield return null; }
+            Check(search != null && shows("Effective BPM"), "an abbreviation ('efctbpm') finds Effective BPM", search == null ? "no search box" : labels());
+            if (search != null) { search.value = "->"; yield return null; }
+            Check(search != null && shows("Arrow -> target"), "a query of punctuation alone ('->') finds the label holding it", search == null ? "no search box" : labels());
+            if (search != null) { search.value = "fps"; yield return null; }
             var fps = root?.Q("Show FPS");
             Check(fps != null && Facet.Host.For(fps).Name == "PrismLib/PrismLib", "a row is built under its owner's host",
                   fps == null ? "no control" : Facet.Host.For(fps).Name);

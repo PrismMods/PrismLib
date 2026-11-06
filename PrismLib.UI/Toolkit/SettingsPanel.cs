@@ -67,6 +67,7 @@ namespace PrismLib.UI.Toolkit
             public string Page;
             public Facet.Search.Text[] Label, Context;
             public Facet.Search.Text Tip;
+            public string[] Raw;      // every field above, for the last-resort pass
         }
 
         private static readonly Func<SettingRow, string, bool> Contains =
@@ -217,6 +218,7 @@ namespace PrismLib.UI.Toolkit
                 e.Label = Texts(r.Label, e.Shown.Label);
                 e.Context = Texts(r.Group, e.Shown.Group, r.Page, e.Page, r.Owner);
                 e.Tip = new Facet.Search.Text(r.Tooltip + " " + e.Shown.Tooltip);
+                e.Raw = new[] { r.Label, e.Shown.Label, r.Group, e.Shown.Group, r.Page, e.Page, r.Owner, r.Tooltip, e.Shown.Tooltip };
                 _rows.Add(e);
                 if (!_pages.Contains(e.Page)) _pages.Add(e.Page);
             }
@@ -244,7 +246,7 @@ namespace PrismLib.UI.Toolkit
                 string head = q.Length > 0 ? Head(first) : null;
                 var run = new List<Facet.Field>();
                 for (; i < shown.Count && shown[i].Row.Owner == first.Row.Owner && (head == null || Head(shown[i]) == head); i++)
-                    run.Add(Field(shown[i].Row, head == null));
+                    run.Add(Field(shown[i], head == null));
                 As(first.Row.Owner, () =>
                 {
                     if (head != null) Widgets.Header(_body, head);
@@ -266,10 +268,14 @@ namespace PrismLib.UI.Toolkit
             if (Matcher != null && Matcher != Contains) return _rows.FindAll(e => Match(e.Shown, q));
             var query = new Facet.Search.Query(q);
             var hits = new List<Entry>();
-            // Typos only when nothing matches exactly, so a near miss never sits among real hits.
-            for (int pass = 0; pass < 2 && hits.Count == 0; pass++)
+            /* Typos only when nothing matches exactly, so a near miss never sits among real hits. Last,
+               what PrismLib.Search.ScoreAny also found: letters in order ("efbpm" for Effective BPM)
+               and a query of punctuation alone ("->") as a plain substring. */
+            for (int pass = 0; pass < 3 && hits.Count == 0; pass++)
                 foreach (var e in _rows)
-                    if (Facet.Search.Rate(query, e.Label, e.Context, e.Tip, pass == 1) > 0) hits.Add(e);
+                    if (pass < 2 ? Facet.Search.Rate(query, e.Label, e.Context, e.Tip, pass == 1) > 0
+                                 : Array.Exists(e.Raw, f => Facet.Search.Score(f, q) != Facet.Search.NoMatch))
+                        hits.Add(e);
             return hits;
         }
 
@@ -284,21 +290,47 @@ namespace PrismLib.UI.Toolkit
         /* SettingControl's nine members are FieldKind's first nine, in order. English goes in: the
            row's owner host translates it, now and on any relabel. Every Get is somebody else's
            delegate into a live mod; Facet turns one that throws into a dimmed row, not a dead window. */
-        private static Facet.Field Field(SettingRow r, bool grouped)
+        private static Facet.Field Field(Entry e, bool grouped)
         {
+            var r = e.Row;
             var get = r.Get;
-            bool text = r.Kind == SettingControl.Text || r.Kind == SettingControl.Key || r.Kind == SettingControl.Info;
-            return new Facet.Field
+            var set = r.Set;
+            var f = new Facet.Field
             {
                 Owner = PrismHost.Owner(r.Owner), Page = r.Page, Group = grouped ? r.Group : null,
-                Label = r.Label, Tooltip = r.Tooltip, Kind = (Facet.FieldKind)r.Kind,
-                // Facet reads null as a broken getter; text with nothing in it is only empty.
-                Get = text && get != null ? () => get() ?? "" : get,
-                // A key's Capture sets the binding itself and calls back only with what to show.
-                Set = r.Kind == SettingControl.Key ? null : r.Set,
+                Label = r.Label, Tooltip = r.Tooltip, Kind = (Facet.FieldKind)r.Kind, Get = get, Set = set,
                 Min = r.Min, Max = r.Max, Options = r.Options,
                 ActionLabel = r.ActionLabel ?? Words.Own("Run"), Capture = r.Capture,
             };
+            // Facet reads null as a broken getter; text with nothing in it is only empty.
+            if (get != null && (r.Kind == SettingControl.Text || r.Kind == SettingControl.Key || r.Kind == SettingControl.Info))
+                f.Get = () => get() ?? "";
+            if (r.Kind == SettingControl.Key)
+            {
+                // The host's Capture sets the binding itself and calls back only with what to show.
+                f.Set = null;
+                // With no Capture nothing can start one: say so, rather than show a key that ignores clicks.
+                if (r.Capture == null) { f.Kind = Facet.FieldKind.Info; f.Label = Words.OwnF("{0} — not rebindable here", e.Shown.Label); }
+            }
+            else if (r.Kind == SettingControl.Colour)
+            {
+                /* Form writes back in the form Get gave and offers alpha for a Color. Hand it opaque
+                   "#rrggbb" and turn every write back into a Color: setters see what they always did. */
+                if (get != null) f.Get = () => "#" + ColorUtility.ToHtmlStringRGB(ToColour(get()));
+                if (set != null) f.Set = v => set(ToColour(v));
+            }
+            return f;
+        }
+
+        /* A mod may hand a colour over as a Color or as the "#rrggbb" it serialises. Accept both:
+           this is a schema filled in by three codebases, and refusing one form means a row that
+           silently says "unavailable". */
+        private static Color ToColour(object v)
+        {
+            if (v is Color) return (Color)v;
+            Color c;
+            if (v != null && ColorUtility.TryParseHtmlString(Convert.ToString(v), out c)) return c;
+            return Tokens.Accent;
         }
 
         /// Builds with only the row's own mod translating it (see Words).
