@@ -45,6 +45,10 @@ Spec `2026-11-07-prism-suite-ui-design.md`, approved 2026-11-07.
 
 ## Open items carried over
 
+- [ ] **Per-script CJK face sets in Facet.** Today the first CJK font loaded in a process supplies the shared Han
+  characters for every language: ko-first draws zh/ja Han in Korean forms, zh-first draws ja in Chinese forms.
+  Plan 7 Task 4 documented this limit (`Facet/CLAUDE.md`, `Fonts.cs`).
+
 - [ ] **Quartz-only first open is 70.6 ms** against a 50 ms target: one noisy sample, plan 6 residual P27.
   The idea is to pre-build the window hidden after warm-up.
 - [ ] **PrismLib's next release ships Facet in its feed** before any mod release that needs it.
