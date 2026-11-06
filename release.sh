@@ -17,6 +17,10 @@ REPO="PrismMods/PrismLib"
 VER="${1:-}"
 NOTES="${2:-}"
 
+# Checked before anything is stamped or built, so a missing DLL leaves no half-stamped tree.
+FACETDLL="lib/Facet.0.1.dll"
+[ -z "$VER" ] || [ -f "$FACETDLL" ] || { echo "$FACETDLL is missing; run tools/update-facet.sh" >&2; exit 1; }
+
 # Taken before stamping: publishing commits with `git add -A`, so anything already uncommitted
 # would ride into the release commit unseen.
 DIRTY=""
@@ -49,8 +53,6 @@ echo "bootstrap compiles standalone"
 
 SHA=$(shasum -a 256 "$DLL" | cut -d' ' -f1)
 UISHA=$(shasum -a 256 "$UIDLL" | cut -d' ' -f1)
-FACETDLL="lib/Facet.0.1.dll"
-[ -f "$FACETDLL" ] || { echo "$FACETDLL is missing; run tools/update-facet.sh" >&2; exit 1; }
 FACETNAME=$(basename "$FACETDLL")
 FACETSHA=$(shasum -a 256 "$FACETDLL" | cut -d' ' -f1)
 # The bootstrapper reads version/url/sha256 for the arbitration half, which it installs into a
