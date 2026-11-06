@@ -6,6 +6,7 @@ using PrismLib.UI.Toolkit;
 // Offline check for the arbitration rules. The game cannot be scripted, so this is where the
 // claim/key/search logic is allowed to fail loudly.
 //   mcs -r:PrismLib/bin/Release/PrismLib.dll -out:/tmp/t.exe tools/PrismLibTest.cs && mono /tmp/t.exe
+#pragma warning disable 618   // PrismLib.Search is obsolete for callers, still pinned here for the bridges that use it
 static class PrismLibTest
 {
     static int _fail;

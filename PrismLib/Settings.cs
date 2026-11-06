@@ -97,7 +97,9 @@ namespace PrismLib
             lock (_lock) pool = new List<Owned>(_all);
             pool.Sort((a, b) => a.Entry.Order.CompareTo(b.Entry.Order));
 
+#pragma warning disable 618   // the registry has no Facet (BCL only), so it keeps ranking with this
             var hits = PrismLib.Search.Rank(pool, query, o => Fields(o.Entry));
+#pragma warning restore 618
             var res = new List<KeyValuePair<string, SettingEntry>>(hits.Count);
             foreach (var o in hits) res.Add(new KeyValuePair<string, SettingEntry>(o.Owner, o.Entry));
             return res;

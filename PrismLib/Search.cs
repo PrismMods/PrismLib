@@ -26,6 +26,7 @@ namespace PrismLib
        The older per-string API keeps its contract — lower is better, `NoMatch` is -1, an exact
        label is 0 — and keeps the subsequence fallback it had, so an abbreviation like "efbpm"
        still finds "Effective BPM" when nothing matches properly. */
+    [Obsolete("Facet.Search replaces this; kept for API compatibility")]
     public static class Search
     {
         public const int NoMatch = -1;
