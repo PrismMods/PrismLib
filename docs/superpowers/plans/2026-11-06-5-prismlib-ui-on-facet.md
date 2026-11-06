@@ -18,7 +18,7 @@
 - Per-mod hosts arrive when a mod builds pages on Facet directly (milestone 3 for Quartz).
 
 **Tech Stack:**
-- xbuild (.NET Framework 4.8) for PrismLib, referencing `netstandard2.0` Facet through the game's `netstandard.dll` facade, which is already referenced;
+- xbuild (.NET Framework 4.8) for PrismLib, referencing **`netstandard2.1`** Facet (ruling R8 in milestone 1: the Unity 2022.3 reference assemblies need 2.1) through the game's `netstandard.dll` facade, which is already referenced. Task 1 must prove xbuild accepts that reference (CS1705 risk) before anything else;
 - `mcs`/`mono` offline test; LayoutProbe and CamDisplay in-game suites.
 
 **Spec:** `PrismLib/docs/superpowers/specs/2026-11-06-facet-ui-engine-design.md` § "Milestone 2 in more detail". It depends on `2026-11-06-4-facet-engine.md` being done: Facet 0.1 builds and its autotest passes.
@@ -188,3 +188,21 @@
 
 - [ ] **Step 1: Check.** `grep -n "2.9 runs Unity 2022" CLAUDE.md` prints nothing, and every Facet file named in the new section exists in `../Facet`.
 - [ ] **Step 2: Commit** as `docs: record that PrismLib.UI stands on Facet`.
+
+## Notes from the Facet milestone 1 final review (2026-11-06) — read before Task 1
+
+Facet 0.1 as built differs from what this plan assumed in these places. Each task's implementer must apply the matching note.
+
+- **Target framework** (Task 1): Facet is `netstandard2.1`. Prove the xbuild/net48 reference first.
+- **Renamed or reshaped Facet API** (Tasks 2 and 4 map these):
+  - `Window`'s `onClose` constructor argument is gone: subscribe to `Window.CloseRequested` (no subscriber = close hides).
+  - `Surface.Mono()` is gone: `Fonts.Mono(host)`.
+  - `Theme.Default` is gone: `Theme.Dark` is frozen (its indexer and `Recolour` throw). PrismLib's `Theme.Default` twin must be a `new Facet.Theme()` owned by the PrismLib host, refreshed from `Tokens`. Indexer writes raise no `Changed`; only `Recolour` re-themes live.
+  - `SearchIndex` is per-Nav (`nav.Index`, null until the first `Filter`); `Hit.Group` is `Hit.Section`. PrismLib.UI's public `SearchIndex.BeginPage/EndPage/Note` and `Scorer` become no-ops kept for API compatibility (ruling R18).
+  - Facet's `Words` statics (`Language`, `AddTranslator`, `Owner`) are gone; PrismLib.UI keeps its own `Words`.
+  - `Look` presets are copies; a consumer's literal colour on a Facet-built element sticks only after `Paint.Forget(e)`. PrismLib's `Ui.Text(Color? color)` and `Ui.SetBorderColor` forwarders must call `Paint.Forget` before writing the colour. Audit DebugPanel, LayoutEditor*, FpsCounter and RestartPrompt for inline colour writes on Facet-built elements.
+- **Per-owner translation** (Task 2 and 3, a design change to "one PrismLib host"): with one host, `Form.Build`'s `Host.Named(field.Owner)` finds nothing for mod names and a later `Surface.Relabel` translates with no owner context — the CamDisplay "Undo" class of bug comes back. Create one Facet host per row owner, named `"PrismLib/" + owner` (ruling R19: the first host per name wins, and "Facet" is reserved), whose `Translate` calls PrismLib's `Words.T` with `Words.Owner` pinned to that owner; set `Field.Owner` to that host name.
+- **Task 3's unavailable check**: Facet shows a getter failure as a dimmed control with `Unavailable == true` and the tooltip "unavailable, see the log"; the "— unavailable" text row appears only when building the row throws. Assert that, not the text.
+- **Distinct types need sync, not a one-time conversion** (Task 4): the gradient editor mutates its stops in place, so a wrapper must write every change back; Facet's `Nav` matches items by reference and fixes its roots at construction, so "converted on Refresh" must update the existing Facet `NavItem`s in place.
+- **Compatibility rule** (all tasks; ruling R21): a Facet patch release adds no public API; a new public member bumps the minor. Within one minor, the first loaded copy wins.
+- **Input gate** (Task 2): `Facet.Input.BlocksGameInput` is allocation-free as of the fix wave, so `InputGate.Blocking` may read it on the per-key path.
