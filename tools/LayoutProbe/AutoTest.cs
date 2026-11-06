@@ -344,6 +344,9 @@ namespace LayoutProbe
             sp.Dispose();
             Tokens.Accent = wasAccent;
 
+            var bare = Facet.Host.Create("LayoutProbe/no-language", o => o.Language = () => null);
+            Check(bare.Language == "en", "a Facet host whose language gives null reads as English", "'" + bare.Language + "'");
+
             yield return SchemaSettings();
             yield return NavMenu();
             yield return TopazMenu();
@@ -557,6 +560,16 @@ namespace LayoutProbe
             Check(LabelIn(content, "Probe far-away switch") != null && LabelIn(content, "Probe far page") == null && count("far") >= 1,
                   "clicking the hit opens its page");
             if (search != null) { search.value = ""; yield return null; }
+
+            // A mod that never sets Words.Language (CamDisplay): search still lists hits, in English
+            Tap(LabelIn(rail, "Probe style")?.parent); yield return null;
+            Words.Language = null;
+            if (search != null) { search.value = "far-away"; yield return null; yield return null; }
+            Check(search != null && LabelIn(content, "Probe far-away switch") != null && LabelIn(content, "Probe shadow") == null,
+                  "with Words.Language unset, nav search still finds a row",
+                  search == null ? "no search box" : string.Join(" | ", content.Query<Label>().ToList().Select(l => l.text).Take(8).ToArray()));
+            if (search != null) { search.value = ""; yield return null; }
+            Words.Language = () => "en";
 
             // Revision: a change rebuilds the open page on the next Tick
             Tap(LabelIn(rail, "Probe fonts")?.parent); yield return null;

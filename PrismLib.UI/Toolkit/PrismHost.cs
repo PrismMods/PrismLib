@@ -48,7 +48,8 @@ namespace PrismLib.UI.Toolkit
         {
             o.Log = m => Ui.Log(m);
             o.Translate = translate;
-            o.Language = () => Words.Language != null ? Words.Language() : null;
+            // A mod may never set Words.Language (CamDisplay): English, not null, which Facet keys indexes by.
+            o.Language = () => (Words.Language != null ? Words.Language() : null) ?? "en";
             o.Read = k => Window.Read != null ? Window.Read(k) : null;
             o.Write = (k, v) => { if (Window.Write != null) Window.Write(k, v); };
             o.Theme = Theme.Default.Twin;
