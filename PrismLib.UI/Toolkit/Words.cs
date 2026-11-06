@@ -135,6 +135,8 @@ namespace PrismLib.UI.Toolkit
             { "Restart now", "지금 다시 시작" },
             // PrismLib's own settings (Prism.DescribeOwnSettings), shown in Prism · Settings.
             { "Show FPS", "FPS 표시" },
+            { "Animation duration (ms)", "애니메이션 길이 (ms)" },
+            { "Length of a standard transition in every Prism window. 0 turns animation off.", "모든 Prism 창의 기본 전환 길이입니다. 0이면 애니메이션이 꺼집니다." },
             { "Frame rate in the bottom-right corner, for every Prism mod", "오른쪽 아래에 프레임 레이트를 표시합니다 (모든 Prism 모드 공통)" },
             { "Display", "표시" },
             { "After a mod update", "모드 업데이트 후" },

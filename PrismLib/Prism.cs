@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace PrismLib
 {
@@ -50,6 +51,19 @@ namespace PrismLib
         public const string FpsKey = "fps.show";
         /// What to do once a mod installs an update: 0 ask, 1 restart, 2 later (RestartPrompt's values).
         public const string RestartKey = "update.restart";
+        /// A standard transition's length in ms, for every Facet window. Bridges copy it into Anim.Duration each frame.
+        public const string AnimKey = "anim.duration";
+
+        /// anim.duration, 0-400; missing or unparsable reads as 120.
+        public static int AnimDuration
+        {
+            get
+            {
+                long v;
+                if (!long.TryParse(Config.Get(AnimKey), NumberStyles.Integer, CultureInfo.InvariantCulture, out v)) return 120;
+                return (int)(v < 0 ? 0 : v > 400 ? 400 : v);
+            }
+        }
 
         private static bool _ownDescribed;
 
@@ -69,10 +83,19 @@ namespace PrismLib
                 },
                 new SettingEntry
                 {
+                    Id = AnimKey, Kind = SettingKind.Int, Label = "Animation duration (ms)", Page = "PrismLib", Group = "Display",
+                    Tooltip = "Length of a standard transition in every Prism window. 0 turns animation off.",
+                    Keywords = new[] { "animation", "duration", "speed", "motion", "transition", "ms" },
+                    Order = int.MinValue + 1, Min = 0, Max = 400,
+                    Get = () => AnimDuration,
+                    Set = v => Config.Set(AnimKey, ((int)Math.Max(0, Math.Min(400, Convert.ToDouble(v, CultureInfo.InvariantCulture)))).ToString(CultureInfo.InvariantCulture)),
+                },
+                new SettingEntry
+                {
                     Id = RestartKey, Kind = SettingKind.Enum, Label = "After a mod update", Page = "PrismLib", Group = "Updates",
                     Tooltip = "What to do once a Prism mod has installed an update",
                     Keywords = new[] { "restart", "update", "relaunch", "remember" },
-                    Order = int.MinValue + 1,
+                    Order = int.MinValue + 2,
                     Options = new[] { "Ask", "Restart now", "Restart later" },
                     Get = () => GetRestartChoice(),
                     Set = v => Config.Set(RestartKey, Convert.ToInt32(v).ToString()),

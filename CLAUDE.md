@@ -408,6 +408,14 @@ the new `Layer.Hud`, which is never in Facet's window stack, never counted as op
 Escape and never blocks input. Bridges call `FpsCounter.Tick(setting)` every frame; it counts a frame
 once even with two mods ticking. Topaz carries an old `ShowFps = true` across once.
 
+The second is `anim.duration` (0-400 ms, default 120): Facet's shared animation speed is the setting
+/ 120, and it reaches only Facet-built windows, never a mod's old uGUI menus. PrismLib.dll cannot
+reference Facet, so each bridge copies `Prism.AnimDuration` into `PrismLib.UI.Toolkit.Anim.Duration`
+every frame, as `fps.show` is handled: Topaz's `PrismBridge.TickAnim` is the model (called at the top
+of `TickDebug`; CamDisplay calls it first in `Tick`). Both calls sit behind NoInlining and one
+catch, since an older PrismLib or PrismLib.UI may be the one loaded; list `TickAnim` among
+check-bridge's ungated methods.
+
 **Performance, measured 2026-10-25** (frame-time probe, Linux, fast CPU): windows add nothing per
 frame once built (10.0 ms avg / 12–14 ms worst at 100 FPS, open or closed); first open is one
 80–100 ms spike. The debug window used to re-read, re-split and `Rebuild()` its list every second —

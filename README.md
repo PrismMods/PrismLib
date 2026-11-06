@@ -117,8 +117,9 @@ A mod describes each setting and how to read and write it; storage stays with th
 mod's previous description rather than adding to it.
 
 PrismLib also has a few settings of its own, stored in `settings.txt` beside `PrismLib.dll`
-(`PrismLib.Config`) and listed first in the settings window. Currently this is **Show FPS**, a
-frame-rate display shared by all Prism mods.
+(`PrismLib.Config`) and listed first in the settings window. Currently these are **Show FPS**, a
+frame-rate display shared by all Prism mods, and **Animation duration (ms)**, the length of a standard
+transition in every Facet-built Prism window (0-400, default 120; 0 turns animation off).
 
 ## PrismLib.UI
 

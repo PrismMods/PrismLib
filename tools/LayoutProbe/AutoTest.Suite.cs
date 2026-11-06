@@ -37,7 +37,7 @@ namespace LayoutProbe
         IEnumerator SuiteChrome()
         {
             var th = Theme.For(Root);
-            foreach (var n in new[] { "layout-done", "layout-grip-0", "layout-knob", "layout-anchor-dot" })
+            foreach (var n in new[] { "layout-done", "layout-grip-0", "layout-knob", "layout-anchor-dot", "layout-crop-edge-0" })
                 Check(Radius(Root.Q(n)) == 2f, n + " has the suite's 2px corner", n + " radius " + Radius(Root.Q(n)));
             var frames = Root.Query("layout-frame").ToList();
             var sel = frames.Where(f => f.style.borderTopWidth.value == 2f && Same(f.resolvedStyle.borderTopColor, th.Accent)).ToList();
@@ -56,10 +56,60 @@ namespace LayoutProbe
             var card = cv != null ? cv.transform.Find("UpdateToast") : null;
             var bg = card != null ? card.GetComponent<PrismLib.UI.RoundedRectGraphic>() : null;
             var pip = card != null ? card.Find("Pip") as RectTransform : null;
-            Check(bg != null && bg.Radius == 2f && Same(bg.color, new Color(0.102f, 0.102f, 0.122f, 0.96f)), "the toast card is 2px round on the suite's window colour",
+            var win = Suite.Window; win.a = 0.96f;
+            Check(bg != null && bg.Radius == 2f && Same(bg.color, win, 0f), "the toast card is 2px round on the suite's window colour",
                   bg == null ? "no card" : bg.Radius + " / " + bg.color);
+            Check(bg != null && Same(bg.BorderColor, Suite.Border, 0f), "its border is the suite's", bg == null ? "no card" : "" + bg.BorderColor);
+            var texts = card != null ? card.GetComponentsInChildren<TMPro.TMP_Text>(true) : new TMPro.TMP_Text[0];
+            var tt = texts.FirstOrDefault(t => t.text == "Probe toast"); var th2 = texts.FirstOrDefault(t => t.text == "hint");
+            Check(tt != null && Same(tt.color, Suite.Text, 0f) && th2 != null && Same(th2.color, Suite.Muted, 0f), "its title is the suite's text colour and its hint the muted one",
+                  tt == null || th2 == null ? "no labels" : tt.color + " / " + th2.color);
             Check(pip != null && Mathf.Approximately(pip.offsetMax.x - pip.offsetMin.x, 2f), "its pip is 2 wide", pip == null ? "no pip" : pip.offsetMin + " / " + pip.offsetMax);
             toast.Dispose();
+
+            // a mod that sets its own colour keeps it (S15)
+            var own = new PrismLib.UI.ToastTheme(); own.Background = new Color(1f, 0f, 1f, 1f);
+            var toast2 = new PrismLib.UI.Toast("Probe2", own);
+            toast2.Set(new PrismLib.UI.ToastContent { Key = "probe", Title = "Own toast" });
+            toast2.Tick();
+            var cv2 = GameObject.Find("Probe2UpdateToastCanvas");
+            var card2 = cv2 != null ? cv2.transform.Find("UpdateToast") : null;
+            var bg2 = card2 != null ? card2.GetComponent<PrismLib.UI.RoundedRectGraphic>() : null;
+            Check(bg2 != null && Same(bg2.color, new Color(1f, 0f, 1f, 1f), 0f), "a toast theme with its own background keeps it", bg2 == null ? "no card" : "" + bg2.color);
+            toast2.Dispose();
+            yield return null;
+        }
+
+        // The animation duration: Anim.Duration is Facet's shared speed in ms. Synchronous - the bridges re-apply the config every frame, so a yield could see theirs.
+        IEnumerator SuiteMotion()
+        {
+            Anim.Duration = 240;
+            var speed = (float[])((System.Collections.Generic.Dictionary<string, object>)AppDomain.CurrentDomain.GetData("Facet.Shared"))["Facet.AnimSpeed"];
+            Check(Anim.Duration == 240 && speed[0] == 2f, "Anim.Duration 240 reads back 240 and is Facet's shared speed 2", Anim.Duration + " / " + speed[0]);
+            Anim.Duration = 9999; int hi = Anim.Duration;
+            Anim.Duration = -5; int lo = Anim.Duration;
+            Check(hi == 400 && lo == 0, "it clamps to 0-400", hi + " / " + lo);
+
+            // the tick runs every frame with an unchanged value: it must not allocate
+            Anim.Duration = 120;
+            for (int i = 0; i < 1000; i++) Anim.Duration = 120;   // warm up
+            long mem = GC.GetTotalMemory(false);
+            for (int i = 0; i < 300000; i++) Anim.Duration = 120;
+            long grew = GC.GetTotalMemory(false) - mem;
+            Check(grew < 4096, "Facet setter allocates nothing", grew + " bytes over 300000 sets");
+
+            // at 0 a window is shown at once: no fade, no slide, in the same call
+            Anim.Duration = 0;
+            var sp = new SettingsPanel("Probe Motion", () => new[]
+            {
+                new SettingRow { Owner = "LayoutProbe", Page = "Motion", Group = "Look", Label = "Motion switch", Kind = SettingControl.Bool, Get = () => false, Set = _ => { } },
+            });
+            sp.Visible = true;
+            var win = PanelRoot("ProbeMotionPanel")?.Children().FirstOrDefault();
+            Check(win != null && win.style.opacity.value == 1f && win.style.translate.value.y.value == 0f, "at 0 ms the window opens at full opacity and in place, in the same call",
+                  win == null ? "no window" : "opacity " + win.style.opacity.value + ", translate y " + win.style.translate.value.y.value);
+            sp.Dispose();
+            Anim.Duration = 120;
             yield return null;
         }
 

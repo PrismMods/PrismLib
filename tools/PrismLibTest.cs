@@ -46,6 +46,37 @@ static class PrismLibTest
         foreach (var kv in Settings.Search("restart")) if (kv.Value.Id == Prism.RestartKey) found = kv.Key == "PrismLib" && Convert.ToInt32(kv.Value.Get()) == 0;
         Check(found, "the restart choice is PrismLib's and defaults to Ask");
 
+        Console.WriteLine("animation duration");
+        string wasAnim = Config.Get(Prism.AnimKey);
+        string[] animIn = { "", "200", "-50", "100000", "fast", "120.5", "99999999999", "-99999999999" };
+        int[] animWant = { 120, 200, 0, 400, 120, 120, 400, 0 };
+        for (int i = 0; i < animIn.Length; i++) { Config.Set(Prism.AnimKey, animIn[i]); Check(Prism.AnimDuration == animWant[i], "anim.duration '" + animIn[i] + "' reads " + animWant[i]); }
+        var order = new List<string>(); SettingEntry anim = null;
+        foreach (var kv in Settings.Search("")) { order.Add(kv.Value.Id); if (kv.Value.Id == Prism.AnimKey && kv.Key == "PrismLib") anim = kv.Value; }
+        Check(anim != null && anim.Kind == SettingKind.Int && anim.Min == 0 && anim.Max == 400, "the animation setting is PrismLib's Int, 0-400");
+        Check(order.IndexOf(Prism.FpsKey) < order.IndexOf(Prism.AnimKey) && order.IndexOf(Prism.AnimKey) < order.IndexOf(Prism.RestartKey), "it comes after fps.show and before update.restart");
+        found = false;
+        foreach (var kv in Settings.Search("animation")) if (kv.Value.Id == Prism.AnimKey) found = true;
+        Check(found, "searching 'animation' finds it");
+        anim.Set(9999); Check(Config.Get(Prism.AnimKey) == "400", "setting 9999 stores 400");
+        anim.Set(250); Check(Prism.AnimDuration == 250, "setting 250 reads 250");
+        bool threw = false;
+        try { anim.Set(1e30); anim.Set(-1e30); anim.Set(long.MaxValue); } catch (Exception) { threw = true; }
+        Check(!threw, "setting a huge number does not throw");
+        anim.Set(1e30); Check(Config.Get(Prism.AnimKey) == "400", "setting 1e30 stores 400");
+        anim.Set(-1e30); Check(Config.Get(Prism.AnimKey) == "0", "setting -1e30 stores 0");
+        Config.Set(Prism.AnimKey, "120");
+        for (int i = 0; i < 1000; i++) { int w = Prism.AnimDuration; }
+        long mem0 = GC.GetTotalMemory(false);
+        int sink = 0;
+        for (int i = 0; i < 300000; i++) sink += Prism.AnimDuration;
+        long grew = GC.GetTotalMemory(false) - mem0;
+        Check(sink == 120 * 300000 && grew < 4096, "reading AnimDuration allocates nothing (" + grew + " bytes over 300000 reads)");
+        Words.Language = () => "ko";
+        Check(Words.Own(anim.Tooltip) == "모든 Prism 창의 기본 전환 길이입니다. 0이면 애니메이션이 꺼집니다.", "the animation tooltip has its Korean string");
+        Words.Language = null;
+        Config.Set(Prism.AnimKey, wasAnim ?? "120");
+
         Console.WriteLine("claims");
         string denied = null;
         Claims.Denied += (asker, key, owner) => denied = asker + "/" + key + "/" + owner;
@@ -172,7 +203,7 @@ static class PrismLibTest
             new SettingEntry { Id = "ui.scale", Kind = SettingKind.Float, Label = "UI scale", Get = () => 1.0 },
         });
         Check(Count(Settings.Of("Sapphire")) == 2, "an entry without a getter is dropped");
-        Check(Count(Settings.Search(null)) == 5, "an empty query returns everything from every mod (and PrismLib's own)");
+        Check(Count(Settings.Search(null)) == 6, "an empty query returns everything from every mod (and PrismLib's own)");
         var hits = new List<KeyValuePair<string, SettingEntry>>(Settings.Search("bpm"));
         Check(hits.Count == 1 && hits[0].Key == "Sapphire", "search finds one setting and names its owner");
         Check(Count(Settings.Search("tempo")) == 1, "a keyword matches when the label does not");
@@ -182,7 +213,7 @@ static class PrismLibTest
         hits[0].Value.Set(true);
         Check(stored && (bool)hits[0].Value.Get(), "Get/Set round-trip through the owning mod");
         a.DescribeSettings(new SettingEntry[0]);
-        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 3, "re-describing replaces only that mod's entries");
+        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 4, "re-describing replaces only that mod's entries");
 
         Console.WriteLine("guards");
         Check(Guards.Major("2.9.8") == 2 && Guards.Major("3.4.0") == 3 && Guards.Major("10.1") == 10, "Major reads the leading integer");
@@ -257,6 +288,7 @@ static class PrismLibTest
         Check(Words.T("Position") == "TEST-위치", "a row is translated by its own mod's table");
         Words.Owner = "PrismLib";
         Check(Words.T("Show FPS") == "FPS 표시", "PrismLib's own rows use its table");
+        Check(Words.T("Animation duration (ms)") == "애니메이션 길이 (ms)", "the animation label translates");
         Words.Owner = null;
         Words.Language = null;
         Check(Words.Own("Undo") == "Undo", "in English PrismLib's words stay English");

@@ -4,10 +4,24 @@ using UnityEngine.UIElements;
 namespace PrismLib.UI.Toolkit
 {
     /* Shared motion: named, short, the same everywhere ("Fast" is 120 ms in every mod) — see
-       Facet.Anim, which also decides what happens to an element not in a panel yet. */
+       Facet.Anim, which also decides what happens to an element not in a panel yet.
+       Duration is the user's setting (PrismLib "anim.duration", 0-400 ms, 120 = the names below as
+       written): it scales every Facet window through Facet.Anim.Speed. PrismLib.dll cannot reference
+       Facet, so each mod's bridge copies Prism.AnimDuration in every frame. */
     public static class Anim
     {
         public const int Instant = 0, Fast = 120, Normal = 180, Slow = 300;
+
+        /// The standard transition length in ms (0-400; 120 is Facet's own speed 1). Writes Facet's shared speed, only when it changes.
+        public static int Duration
+        {
+            get { return (int)Math.Round(Facet.Anim.Speed * 120f); }
+            set
+            {
+                float speed = (value < 0 ? 0 : value > 400 ? 400 : value) / 120f;
+                if (Facet.Anim.Speed != speed) Facet.Anim.Speed = speed;
+            }
+        }
 
         /// Fade to an opacity. Starts from wherever it is, so interrupting mid-fade does not jump.
         public static void Fade(VisualElement e, float to, int ms = Normal, Action done = null) => Facet.Anim.Fade(e, to, ms, done);
