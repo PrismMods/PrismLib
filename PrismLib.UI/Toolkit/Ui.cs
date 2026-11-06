@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -40,19 +39,10 @@ namespace PrismLib.UI.Toolkit
         /// Input.mousePosition and Input.mouseScrollDelta.y — see Facet.Skin.Wheel for why.
         public static void TickWheel(Vector2 pointerScreen, float delta) => Facet.Input.TickWheel(pointerScreen, delta);
 
-        /// Every live Prism surface, in creation order. Stacking order is Facet's (Facet.Ui.Stack).
-        internal static readonly List<Surface> Stack = new List<Surface>();
-
         /* Escape, answered once per frame across every loaded Facet: the topmost window takes it, a
            Prism one or a Facet-native one (see Facet.Input.HandleEscape). Returns false when nothing
-           was open, so the caller lets the key through. A Prism surface it hid raises Hidden here. */
-        public static bool HandleEscape()
-        {
-            bool r = Facet.Input.HandleEscape();
-            for (int i = Stack.Count - 1; i >= 0; i--)
-                if (i < Stack.Count) Stack[i].Sync();   // a Hidden handler may dispose others
-            return r;
-        }
+           was open, so the caller lets the key through. */
+        public static bool HandleEscape() => Facet.Input.HandleEscape();
 
         /// This frame's Escape is spent (a keybind capture took it) — HandleEscape will not act on it.
         public static void ConsumeEscape() => Facet.Input.ConsumeEscape();
