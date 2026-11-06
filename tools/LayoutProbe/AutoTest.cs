@@ -348,6 +348,7 @@ namespace LayoutProbe
             Check(bare.Language == "en", "a Facet host whose language gives null reads as English", "'" + bare.Language + "'");
 
             yield return SchemaSettings();
+            yield return CrossOwnerWords();
             yield return NavMenu();
             yield return TopazMenu();
             yield return GradientSync();
@@ -451,11 +452,58 @@ namespace LayoutProbe
             Check(fps != null && Facet.Host.For(fps).Name == "PrismLib/PrismLib", "a row is built under its owner's host",
                   fps == null ? "no control" : Facet.Host.For(fps).Name);
 
+            // A host's own Matcher, as released Topaz and Sapphire hand a pre-Facet PrismLib.UI, is asked instead
+            var wasMatcher = sp.Matcher;
+            int asked = 0;
+            sp.Matcher = (r, q) => { asked++; return r.Label == "Probe int"; };
+            if (search != null) { search.value = "probe int"; yield return null; }
+            Check(search != null && asked > 0 && shows("Probe int") && !shows("Probe bool") && !shows("Show FPS"),
+                  "a schema panel with its own Matcher lists that matcher's hits", search == null ? "no search box" : "asked " + asked + ": " + labels());
+            sp.Matcher = wasMatcher;
+
             Words.Language = () => "ko";
             sp.Reload();
             if (search != null) { search.value = "ㅍ"; yield return null; }
             Check(search != null && shows("FPS 표시"), "in Korean, searching 'ㅍ' finds FPS 표시",
                   search == null ? "no search box" : labels());
+            Words.Language = wasLanguage;
+            sp.Dispose();
+        }
+
+        /* Two mods, one English key, two senses: each row in Prism · Settings speaks its own owner's
+           word, before and after a language flip. A translator belongs to the assembly its delegate's
+           method was compiled in, so "theirs", bound to Func.Invoke, belongs to the BCL's assembly:
+           a second mod without a second DLL. */
+        IEnumerator CrossOwnerWords()
+        {
+            const string key = "Probe shared word";
+            var invoke = typeof(Func<string, string>).GetMethod("Invoke");
+            string other = invoke.DeclaringType.Assembly.GetName().Name;
+            Func<string, string> mine = s => s != key ? null : Words.Language() == "ko" ? "프로브 낱말" : "Probe word (mine)";
+            Func<string, string> theirs = s => s != key ? null : Words.Language() == "ko" ? "남의 낱말" : "Probe word (theirs)";
+            Func<string, string> theirsAsOther = null;
+            try { theirsAsOther = (Func<string, string>)Delegate.CreateDelegate(typeof(Func<string, string>), theirs, invoke); } catch { }
+            Words.AddTranslator(mine);
+            Words.AddTranslator(theirsAsOther);
+            System.Func<string, SettingRow> row = owner => new SettingRow
+                { Owner = owner, Page = "Words", Label = key, Kind = SettingControl.Bool, Get = () => false, Set = _ => { } };
+            var rows = new[] { row("LayoutProbe"), row(other) };
+
+            var wasLanguage = Words.Language;
+            Words.Language = () => "en";
+            var sp = new SettingsPanel("Probe Words", () => rows);
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var root = PanelRoot("ProbeWordsPanel");
+            Func<string, bool> shows = text => root != null && root.Query<Label>().ToList().Any(l => l.text == text);
+            Func<string> labels = () => root == null ? "no panel" : string.Join(" | ", root.Query<Label>().ToList().Select(l => l.text).Where(s => !string.IsNullOrEmpty(s)).Take(12));
+            Check(theirsAsOther != null && theirsAsOther.Method.DeclaringType.Assembly.GetName().Name == other && other != "LayoutProbe",
+                  "a second translator stands in for another mod (" + other + ")");
+            Check(shows("Probe word (mine)") && shows("Probe word (theirs)"), "two mods' rows with one English key each show their own word", labels());
+            Words.Language = () => "ko";
+            sp.Reload();
+            yield return null;
+            Check(shows("프로브 낱말") && shows("남의 낱말"), "and still after a language flip and Reload", labels());
             Words.Language = wasLanguage;
             sp.Dispose();
         }
