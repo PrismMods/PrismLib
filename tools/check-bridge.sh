@@ -93,7 +93,7 @@ cp "$DLL" "$WORK/mod.dll"
 for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
     [ -f "$sib" ] && cp "$sib" "$WORK/"
 done
-# Facet.*.dll: the mod folder's copy if the build left one, else the one lib/update-facet.sh made.
+# Facet.*.dll: the mod folder's copy if the build left one, else the one tools/update-facet.sh made.
 for f in "$(dirname "$DLL")"/Facet.*.dll lib/Facet.*.dll; do
     [ -f "$f" ] && { cp "$f" "$WORK/"; break; }
 done

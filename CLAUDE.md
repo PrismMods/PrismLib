@@ -145,7 +145,7 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
 `../Facet/CLAUDE.md`), a game-agnostic UI engine, `netstandard2.1`, shipped as `Facet.0.1.dll`.
 
 - **What moved.** Surfaces and windows (`../Facet/Facet/Surface.cs`, `Window.cs`), theme and tokens
-  (`Theme.cs`, `Tokens.cs`), input and key capture (`Input.cs`),
+  (`Theme.cs`, `Tokens.cs`), input (`Input.cs`), key capture (`Core/KeyCapture.cs`),
   `Paint`, popups, the undo history, `Nav`, and the settings `Form` (`Form.cs`) now live in
   Facet. PrismLib.UI keeps every public type and signature and forwards to it; the Prism-only
   pieces stay here: `Words`, `Tokens` pushes from mods, `InputGate`, `DebugPanel`, the layout
@@ -162,12 +162,13 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
 - **Shipping.** `Facet.0.1.dll` ships wherever `PrismLib.UI.dll` ships: each UMM mod folder,
   `UserLibs/` for MelonLoader builds, and each mod's `lib/`. Never name or place it so that
   `PrismLib.dll`'s shared folder could load it. `./dev.sh` refreshes every copy it finds (the
-  mod folders, the standalone `UMMMods/Facet`, and Sapphire's and Topaz's `lib/`) from PrismLib's
-  `lib/`; CamDisplay's `lib/` is refreshed by hand;
-  `tools/update-facet.sh` rebuilds Facet and refreshes `lib/Facet.0.1.dll` (dev machines; `dev.sh`
-  calls it when the file is missing). `release.sh <ver>` uploads it with the release and lists it
+  mod folders, the standalone `UMMMods/Facet`, and Sapphire's, Topaz's and CamDisplay's `lib/`) from
+  PrismLib's `lib/`; `UserLibs/` gets it from CamDisplay's `deploy.sh ML`.
+  `tools/update-facet.sh` rebuilds Facet and refreshes PrismLib's own `lib/Facet.0.1.dll` only (dev
+  machines; `dev.sh` calls it when the file is missing; it refuses a Facet tree with uncommitted
+  changes unless `FORCE=1`). `release.sh <ver>` uploads it with the release and lists it
   in `prismlib.json` as `facet`, so a mod's `lib/update-prismlib.sh` fetches it with a SHA-256 check;
-  until a release carries it, a mod gets it from `tools/update-facet.sh`.
+  until a release carries it, a mod's `lib/` gets it from PrismLib's `./dev.sh` on a dev machine.
 - **Compatibility (R21).** A Facet patch release adds no public API; any new public member bumps the
   minor (a new file name). Within one minor the first loaded copy wins, so a Facet copy beside an
   older PrismLib.UI must be harmless.
@@ -183,8 +184,8 @@ styling is inline C#, never USS/UXML. Everything about how Facet-built windows b
 
 - **The first Prism window drawn in a session costs ~85 ms more than any after it** — first run of
   the window, widget and UI Toolkit code, not glyphs (with every glyph pre-rasterised it was still
-  91 ms; a second settings window took 17). So the first surface schedules
-  `SettingsPanel.WarmUp`: one throwaway window drawn off screen for 100 ms, half a second after load.
+  91 ms; a second settings window took 17). So Facet's first `Surface` schedules
+  `Facet.WarmUp.Run`: one throwaway window drawn off screen for 100 ms, half a second after load.
   The debug window's ListView still pays ~25–40 ms of its own on first open. Measured by
   LayoutProbe's `Perf.cs` ([perf] lines), 2026-11-06.
 - **Long read-only text (a status, a path)** goes in a `SettingControl.Info` row, a wrapped label: a
@@ -258,9 +259,10 @@ PrismLib.UI cannot own a file. Each mod writes `PrismWindows.txt` beside its own
 `key=value`, flushed at most once a second because a drag writes on every frame. Deliberately not
 the mod's XML settings: a mid-write crash must not be able to corrupt real settings.
 
-**Escape** closes the top Prism window and is consumed only when one was open. `Ui.Stack` orders
-open surfaces; clicking a window raises it by taking a `sortingOrder` above the highest used, since
-separate `UIDocument` panels order by that number and nothing else.
+**Escape** closes the top Prism window and is consumed only when one was open. Facet's internal
+window stack (`Facet.Ui.Stack`) orders open surfaces; clicking a window raises it by taking a
+`sortingOrder` above the highest used, since separate `UIDocument` panels order by that number and
+nothing else.
 
 **Undo/redo (`History`) is session-wide and by VALUE.** Every widget records how to put its change
 back and how to do it again; nothing snapshots a mod's settings object, which may be large and
@@ -268,8 +270,9 @@ diffing it per keystroke is both slower and less exact than remembering the one 
 keep it honest: `History.Applying` must suppress recording while an undo runs, or the widget's own
 change handler pushes a fresh entry and undo becomes inescapable; and consecutive changes to the
 same key within `CoalesceSeconds` merge, keeping the FIRST undo and the LAST redo, so a slider drag
-is one step instead of sixty. `History.AfterApply` is how a panel re-reads what it shows —
-without it the window keeps displaying the value the control had before.
+is one step instead of sixty. After an undo or redo Facet re-reads every visible surface's
+controls in place (its `Refresher`), so a window shows the restored value without a rebuild;
+`History.AfterApply` is only an extra hook for a mod's own panel.
 
 **Keybind capture is polled by the MOD, not read from a UI event** — Tab, the arrows and Escape are
 all worth binding and all get eaten as navigation inside a panel. `SettingRow.Capture` is the hook;
@@ -375,8 +378,8 @@ every result, misses included, is cached. Measured: errors 10k/s → 0, UMM text
 
 **Layers.** `Surface` takes a `Layer` (Window, Popup, Modal, Tooltip); each owns a band of
 `PanelSettings.sortingOrder` (30000/31000/31500/32000), so raising a window never lifts it over an
-open popup. `Ui.Stack` is kept in (layer, raise) order. A uGUI canvas sorted higher than the panel
-still draws on top — Topaz's uGUI menu covers popups, which is correct, not a band failure.
+open popup. Facet's window stack is kept in (layer, raise) order. A uGUI canvas sorted higher than
+the panel still draws on top — Topaz's uGUI menu covers popups, which is correct, not a band failure.
 
 **Popups** (`Popup.Open`, `Popup.Menu`) share one Popup-layer surface, sit under their anchor (above
 it when there is no room), take the anchor's window scale, and close on an outside click (a
@@ -387,9 +390,9 @@ the panel. Place from the PANEL's size — a just-shown surface has no layout ye
 beside the DLL). They are described under an owner "PrismLib" that is NOT a loaded mod, at
 `Order = int.MinValue`, so they come first in Prism · Settings. The first is `fps.show`: the FPS
 readout moved out of Topaz (and Quartz) into `FpsCounter` — bottom-right, where Topaz's sat — on
-the new `Layer.Hud`, which is never in `Ui.Stack`, never counted as open, never closed by Escape and
-never blocks input. Bridges call `FpsCounter.Tick(setting)` every frame; it counts a frame once even
-with two mods ticking. Topaz carries an old `ShowFps = true` across once.
+the new `Layer.Hud`, which is never in Facet's window stack, never counted as open, never closed by
+Escape and never blocks input. Bridges call `FpsCounter.Tick(setting)` every frame; it counts a frame
+once even with two mods ticking. Topaz carries an old `ShowFps = true` across once.
 
 **Performance, measured 2026-10-25** (frame-time probe, Linux, fast CPU): windows add nothing per
 frame once built (10.0 ms avg / 12–14 ms worst at 100 FPS, open or closed); first open is one
