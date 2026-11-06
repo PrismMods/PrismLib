@@ -258,9 +258,19 @@ CamDisplayLaunch), by DEBUG-only self-tests that log PASS/FAIL:
   and the queued undo+apply running after game exit.
 - p99 frame time in the level select: 15.60 ms cam hidden, 15.86 ms shown (budget 0.5 ms).
 
-**Not yet verified:** a dense level (needs a human to play one), the UMM build in-game, ADOFAI
-2.9, Linux, Windows (ships untested by decision), and any visual check of styling (screen capture
-needs the user's permission; the game was also behind a Screen Time limit shield).
+Final-review fixes, re-run 2026-11-06 09:50 with the Mac unlocked: with Topaz and Sapphire 28/29
+then 29/29 after the scene-change check below; standalone (no other Prism mod) 29/29, with
+CamDisplay itself installing the input gate.
+
+**Scene-change stop is unavoidable from the mod.** Marking the texture `DontUnloadUnusedAsset`
+did not stop Unity from halting the camera on a scene change. The restart lands in the same frame
+the stop is seen (load transition) and costs about 130 ms on the main thread (about 1.2 s when
+entering the editor). Every level retry is a scene change, so whether that 130 ms is felt at a
+retry's start is part of the dense-level check below; the log line `restarted N frame(s) after it
+(Play took X ms)` shows the cost.
+
+**Not yet verified:** a dense level including retries (needs a human to play one), the UMM build
+in-game, ADOFAI 2.9, Linux, Windows (ships untested by decision), and any visual check of styling.
 
 ## Testing
 
