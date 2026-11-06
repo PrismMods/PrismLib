@@ -118,6 +118,15 @@ Topaz's key limiter lets Alt chords through while its menu is open.
   `codesign -d --entitlements :-` is deprecated; use `--entitlements - --xml`.
 - Re-signing or overwriting the executable of a RUNNING game is unproven; CamDisplay queues it for
   after the game exits.
+- **Re-signing loses Input Monitoring, and with it async input** (seen 2026-11-06): the ad-hoc
+  re-signed game, launched as its own responsible process, logs `SkyHookException: NOT_PERMITTED`
+  in `~/Library/Logs/7th Beat Games/A Dance of Fire and Ice/Player.log` and falls back to Unity's
+  keyboard (`RDInputType_Keyboard`; Topaz's limiter log shows `direct kc=` instead of
+  `async label=`). That path drops every `SpecialKeys` press before counting a hit: Tab, F1-F12,
+  End, Print, SysReq, both Alt, Command and Windows keys. The async path's `SpecialKeys` is only
+  three labels (F12 among them), so Tab and F1-F11 hit fine there. Same table in the June 2026
+  build. Fix: grant the game Input Monitoring again (Privacy & Security); an ad-hoc grant is per
+  signature, so every re-sign or game update needs it redone.
 - UMMInstall sets Steam's launch options to `"<game>/setup_helper.sh" %command%` (an arm64
   re-exec plus the MelonLoader `DYLD_INSERT_LIBRARIES`), not MelonLoader's own
   `melonloader-launch.sh`. Anything that wraps the launch goes in front of whichever is there.
