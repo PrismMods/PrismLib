@@ -6,8 +6,10 @@ using UnityEngine.UIElements;
 namespace PrismLib.UI.Toolkit
 {
     /// Info: read-only text that may be long (a status, a path); it wraps instead of running out of
-    /// the window. Append new kinds at the end: mods compiled against an older build pass the numbers.
-    public enum SettingControl { Bool, Int, Float, Choice, Text, Action, Colour, Key, Info }
+    /// the window. Dropdown: a Choice shown as one button that opens a list, for options too many or
+    /// too long to sit side by side. Append new kinds at the end: mods compiled against an older
+    /// build pass the numbers.
+    public enum SettingControl { Bool, Int, Float, Choice, Text, Action, Colour, Key, Info, Dropdown }
 
     /* One setting, flattened to what a widget needs.
 
@@ -22,7 +24,7 @@ namespace PrismLib.UI.Toolkit
         public Func<object> Get;
         public Action<object> Set;
         public float Min, Max;
-        public string[] Options;          // Choice
+        public string[] Options;          // Choice, Dropdown
         public string ActionLabel;        // Action
         /// Key only. The host starts a capture and calls back with the new binding's display name;
         /// it owns that, because the keys worth binding are ones this panel would treat as
@@ -284,7 +286,7 @@ namespace PrismLib.UI.Toolkit
 
         private static Facet.Search.Text[] Texts(params string[] s) => Array.ConvertAll(s, x => new Facet.Search.Text(x));
 
-        /* SettingControl's nine members are FieldKind's first nine, in order. English goes in: the
+        /* SettingControl's ten members are FieldKind's first ten, in order. English goes in: the
            row's owner host translates it, now and on any relabel. Every Get is somebody else's
            delegate into a live mod; Facet turns one that throws into a dimmed row, not a dead window. */
         private static Facet.Field Field(Entry e, bool grouped)
