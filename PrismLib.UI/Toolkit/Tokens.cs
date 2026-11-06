@@ -4,15 +4,15 @@ namespace PrismLib.UI.Toolkit
 {
     /* Theme values as code, because USS cannot be authored at runtime.
 
-       Mutable and global on purpose: a mod sets these and every window built afterwards picks them
-       up. The colours ARE Theme.Default (refreshed into its Facet twin when a surface is made). The
-       size fields below are read only by Prism-only elements (DebugPanel, RestartPrompt, LayoutEditor,
-       SettingsPanel's search box). Facet 0.2 has no Tokens class; its windows size from Theme.Sizes. */
+       Mutable and global on purpose: a mod sets these and PrismLib.UI picks them up. Of the colours,
+       only Accent reaches Prism windows (Theme.Default reads it live); the rest are kept for the mods
+       that still push their whole palette, and the suite's neutrals win (Suite). The sizes are read
+       by Suite when a theme is made (Theme.Default at load, new Theme(), Theme.FromAccent), so a
+       change reaches schemes made after it. */
     public static class Tokens
     {
         /// Page and section titles. Bigger than body text, and the one place weight is used.
-        // Prism-only elements; Facet-built windows take Theme.Sizes
-        public static float FontSizeTitle = 19f;
+        public static float FontSizeTitle = 17f;
 
         public static Color Panel       = new Color(0.102f, 0.102f, 0.122f, 0.98f);
         public static Color PanelBorder = new Color(1f, 1f, 1f, 0.10f);
@@ -25,21 +25,14 @@ namespace PrismLib.UI.Toolkit
         public static Color Accent      = new Color(0.604f, 0.706f, 1f, 1f);
         public static Color Danger      = new Color(0.886f, 0.404f, 0.427f, 1f);
 
-        /* Sharp, not rounded: the mods' own panels are square-edged and the framework should look
-           like them rather than like a third product. 3px takes the hard edge off a border without
-           reading as a pill. */
-        // Prism-only elements; Facet-built windows take Theme.Sizes
-        public static float Radius      = 3f;
-        // Prism-only elements; Facet-built windows take Theme.Sizes
+        /* Sharp, not rounded: the suite's corners are 2px everywhere, switch knobs included, so the
+           framework looks like the mods' square-edged panels rather than like a third product. */
+        public static float Radius      = 2f;
         public static float Pad         = 12f;
-        // Prism-only elements; Facet-built windows take Theme.Sizes
         public static float Gap         = 8f;
-        // Sized up across the board: the first build was legible on a 2560-wide screen and no more.
-        // Prism-only elements; Facet-built windows take Theme.Sizes
-        public static float FontSize    = 15f;
-        // Prism-only elements; Facet-built windows take Theme.Sizes
-        public static float FontSizeSmall = 13f;
-        // Prism-only elements; Facet-built windows take Theme.Sizes
+        public static float FontSize    = 13f;
+        public static float FontSizeSmall = 12f;
+        /// A list or menu row (Sizes.ListRowHeight).
         public static float RowHeight   = 24f;
     }
 }

@@ -82,11 +82,12 @@ namespace PrismLib.UI.Toolkit
 
             var card = Ui.Card(dim);
             card.style.width = 440f;
-            Ui.Text(Words.Own("Restart to finish updating"), card, Tokens.FontSizeTitle);
+            var sz = Facet.Theme.For(card).Sizes;
+            Ui.Text(Words.Own("Restart to finish updating"), card, sz.Title);
             _body = Ui.Text("", card);
             _body.style.whiteSpace = WhiteSpace.Normal;
-            _body.style.marginTop = Tokens.Gap;
-            _body.style.marginBottom = Tokens.Gap;
+            _body.style.marginTop = sz.Gap;
+            _body.style.marginBottom = sz.Gap;
 
             _remember = false;
             _rememberRow = Widgets.Toggle(card, Words.Own("Remember my choice"), false, v => _remember = v,
@@ -94,7 +95,7 @@ namespace PrismLib.UI.Toolkit
 
             var buttons = Ui.Row(card);
             buttons.style.justifyContent = Justify.FlexEnd;
-            buttons.style.marginTop = Tokens.Gap;
+            buttons.style.marginTop = sz.Gap;
             Ui.Btn(Words.Own("Later"), () => Choose(Later), buttons);
             var restart = Ui.Btn(Words.Own("Restart now"), () => Choose(Restart), buttons);
             restart.style.marginRight = 0f;

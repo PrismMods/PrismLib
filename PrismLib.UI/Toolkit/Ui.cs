@@ -79,8 +79,9 @@ namespace PrismLib.UI.Toolkit
         }
 
         /// Strip a button's background entirely, hover included — for chrome affordances that
-        /// should read as part of the frame rather than as buttons sitting on it.
-        public static void Flat(Button b) { if (b != null) Facet.Paint.Look(b, Facet.Look.FlatButton); }
+        /// should read as part of the frame rather than as buttons sitting on it. Its theme's
+        /// Looks.FlatButton, so a skin restyles it.
+        public static void Flat(Button b) { if (b != null) Facet.Paint.Look(b, Facet.Theme.For(b).Looks.FlatButton); }
 
         /// Mark a button as the selected one. Survives the pointer leaving it.
         public static void Highlight(Button b, bool on) => Facet.Paint.Select(b, on);

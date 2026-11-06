@@ -61,7 +61,7 @@ namespace PrismLib.UI.Toolkit
         public Surface(string name, Layer layer, FontAsset font = null)
         {
             Layer = layer;
-            Theme.Default.Refresh();   // a surface built outside Theme.Use wears the Tokens pushed so far
+            Theme.Default.Refresh();   // a surface built outside Theme.Use wears the accent pushed so far
             Inner = new Facet.Surface(PrismHost.Instance, name, (Facet.Layer)layer, font);
             Ui.OpenWindows = Facet.Ui.OpenWindows;
         }

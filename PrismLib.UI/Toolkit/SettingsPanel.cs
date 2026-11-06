@@ -173,9 +173,10 @@ namespace PrismLib.UI.Toolkit
 
             // Schema mode keeps its own search box: it has tabs rather than a rail, so the header
             // toggle and its alignment do not apply.
+            var sz = Facet.Theme.For(_window.Body).Sizes;
             _search = new TextField { value = "" };
-            _search.style.marginBottom = Tokens.Gap;
-            _search.style.fontSize = Tokens.FontSizeSmall;
+            _search.style.marginBottom = sz.Gap;
+            _search.style.fontSize = sz.Small;
             _search.style.flexShrink = 0f;
             Skin.When<TextField>(_search, Skin.Field);
             _search.RegisterValueChangedCallback(_ => Paint());
@@ -237,20 +238,15 @@ namespace PrismLib.UI.Toolkit
             var shown = q.Length > 0 ? Find(q) : _rows.FindAll(e => e.Page == page);
 
             /* One form per run of rows with one owner: the run builds under that owner's words, so
-               its section titles come from its own table too. A search is a flat list under
-               "owner · page · group" headers, because folding a section shut would hide a hit. */
+               its card titles come from its own table too. Each group is a card; in a search each
+               hit's card is headed "owner · page · group". */
             for (int i = 0; i < shown.Count;)
             {
-                var first = shown[i];
-                string head = q.Length > 0 ? Head(first) : null;
+                string owner = shown[i].Row.Owner;
                 var run = new List<Facet.Field>();
-                for (; i < shown.Count && shown[i].Row.Owner == first.Row.Owner && (head == null || Head(shown[i]) == head); i++)
-                    run.Add(Field(shown[i], head == null));
-                As(first.Row.Owner, () =>
-                {
-                    if (head != null) Widgets.Header(_body, head);
-                    Facet.Form.Build(_body, run);
-                });
+                for (; i < shown.Count && shown[i].Row.Owner == owner; i++)
+                    run.Add(Field(shown[i], q.Length > 0 ? Head(shown[i]) : shown[i].Row.Group));
+                As(owner, () => Facet.Form.Build(_body, run, o => o.Cards = true));
             }
 
             if (shown.Count == 0) Ui.Muted(q.Length > 0 ? Words.OwnF("No setting matches '{0}'", q) : Words.Own("Nothing here yet"), _body);
@@ -289,14 +285,14 @@ namespace PrismLib.UI.Toolkit
         /* SettingControl's ten members are FieldKind's first ten, in order. English goes in: the
            row's owner host translates it, now and on any relabel. Every Get is somebody else's
            delegate into a live mod; Facet turns one that throws into a dimmed row, not a dead window. */
-        private static Facet.Field Field(Entry e, bool grouped)
+        private static Facet.Field Field(Entry e, string group)
         {
             var r = e.Row;
             var get = r.Get;
             var set = r.Set;
             var f = new Facet.Field
             {
-                Owner = PrismHost.Owner(r.Owner), Page = r.Page, Group = grouped ? r.Group : null,
+                Owner = PrismHost.Owner(r.Owner), Page = r.Page, Group = group,
                 Label = r.Label, Tooltip = r.Tooltip, Kind = (Facet.FieldKind)r.Kind, Get = get, Set = set,
                 Min = r.Min, Max = r.Max, Options = r.Options,
                 ActionLabel = r.ActionLabel ?? Words.Own("Run"), Capture = r.Capture,

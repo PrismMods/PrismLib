@@ -56,6 +56,7 @@
         <Compile Include="Toolkit\PrismHost.cs" />
         <Compile Include="Toolkit\Tokens.cs" />
         <Compile Include="Toolkit\Theme.cs" />
+        <Compile Include="Toolkit\Suite.cs" />
         <Compile Include="Toolkit\Words.cs" />
         <Compile Include="Toolkit\Ui.cs" />
         <Compile Include="Toolkit\Anim.cs" />

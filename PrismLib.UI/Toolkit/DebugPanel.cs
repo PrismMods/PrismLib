@@ -136,9 +136,10 @@ namespace PrismLib.UI.Toolkit
 
             _tabs2 = new Tabs(card, i => { _active = i; RefreshFooter(); Refresh(); });
 
+            var sz = Facet.Theme.For(card).Sizes;
             _filter = new TextField { value = "" };
-            _filter.style.marginBottom = Tokens.Gap;
-            _filter.style.fontSize = Tokens.FontSizeSmall;
+            _filter.style.marginBottom = sz.Gap;
+            _filter.style.fontSize = sz.Small;
             _filter.style.flexShrink = 0f;
             Skin.When<TextField>(_filter, Skin.Field);
             _filter.RegisterValueChangedCallback(_ => Refresh());

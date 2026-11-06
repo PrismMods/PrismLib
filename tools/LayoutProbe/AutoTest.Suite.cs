@@ -1,0 +1,240 @@
+// The suite skin (plan 8): what every Prism window wears, and what a window another host made keeps.
+using System;
+using System.Collections;
+using System.Linq;
+using System.Reflection;
+using PrismLib.UI.Toolkit;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace LayoutProbe
+{
+    sealed partial class AutoTest
+    {
+        static bool Same(Color a, Color b, float tol = 0.01f)
+            => Math.Abs(a.r - b.r) <= tol && Math.Abs(a.g - b.g) <= tol && Math.Abs(a.b - b.b) <= tol && Math.Abs(a.a - b.a) <= tol;
+
+        /* Layout snaps each edge to a device pixel, so a size is off by up to one: at a panel scale of 1.4
+           a 1px line lays out 0.71 wide and 30 as 30.55. Set from the panel under test. */
+        static float Snap = 1f;
+        static void SnapTo(VisualElement e) { Snap = e?.panel != null ? 1.01f / e.panel.scaledPixelsPerPoint : 1f; }
+
+        // Elements in `e` (itself included) whose `size` is `want` and whose background is `c`: a tab's underline, a rail entry's edge.
+        static int Bars(VisualElement e, Func<VisualElement, float> size, float want, Color c)
+            => e == null ? -1 : e.Query<VisualElement>().ToList().Count(x => Near(size(x), want, Snap) && Same(x.resolvedStyle.backgroundColor, c));
+
+        // Every element named `name` under `e` has the inline size `want`, exactly (at least one).
+        static bool Inline(VisualElement e, string name, Func<VisualElement, float> size, float want)
+        {
+            var l = e == null ? null : e.Query(name).ToList();
+            return l != null && l.Count > 0 && l.All(x => size(x) == want);
+        }
+
+        static float Radius(VisualElement e) => e == null ? -1f : e.resolvedStyle.borderTopLeftRadius;
+
+        IEnumerator SuiteSkin()
+        {
+            Color red = Color.red, green = Color.green, magenta = new Color(1f, 0f, 1f, 1f);
+            Color window = new Color32(0x1A, 0x1A, 0x1F, 0xFF), sidebar = new Color32(0x11, 0x11, 0x15, 0xFF), danger = new Color32(0xE2, 0x67, 0x6D, 0xFF);
+
+            // Every field Wear owns is set by it, none left to Dark: blank them all, wear, and look.
+            var probe = new Facet.Theme();
+            var looks = typeof(Facet.Looks).GetFields(BindingFlags.Public | BindingFlags.Instance).Where(f => f.FieldType == typeof(Facet.Look)).ToArray();
+            var sizes = typeof(Facet.Sizes).GetFields(BindingFlags.Public | BindingFlags.Instance).Where(f => f.FieldType == typeof(float)).ToArray();
+            foreach (var f in looks) f.SetValue(probe.Looks, null);
+            foreach (var f in sizes) f.SetValue(probe.Sizes, float.NaN);
+            var roles = (Facet.Role[])Enum.GetValues(typeof(Facet.Role));
+            foreach (var r in roles) probe[r] = magenta;
+            Suite.Wear(probe);
+            var worn = looks.Select(f => f.GetValue(probe.Looks)).ToList();
+            Check(looks.Length == 23 && worn.All(l => l != null) && worn.Distinct().Count() == worn.Count, "Suite.Wear sets all 23 Looks, each its own Look",
+                  looks.Length + " fields; unset: " + string.Join(", ", looks.Where(f => f.GetValue(probe.Looks) == null).Select(f => f.Name).ToArray()));
+            Check(sizes.Length == 27 && sizes.All(f => !float.IsNaN((float)f.GetValue(probe.Sizes))), "Suite.Wear sets all 27 Sizes",
+                  sizes.Length + " fields; unset: " + string.Join(", ", sizes.Where(f => float.IsNaN((float)f.GetValue(probe.Sizes))).Select(f => f.Name).ToArray()));
+            Check(probe.Sizes.ControlPad == 5f && probe.Sizes.FieldPad == 4f && probe.Sizes.ItemHeight == 38f, "with ControlPad 5, FieldPad 4 and ItemHeight 38",
+                  probe.Sizes.ControlPad + "/" + probe.Sizes.FieldPad + "/" + probe.Sizes.ItemHeight);
+            var mine = new[] { Facet.Role.Accent, Facet.Role.Focus, Facet.Role.AccentText };
+            Check(roles.All(r => (probe[r] == magenta) == mine.Contains(r)), "it sets every neutral role and leaves Accent, Focus and AccentText alone",
+                  string.Join(", ", roles.Where(r => (probe[r] == magenta) != mine.Contains(r)).Select(r => r.ToString()).ToArray()));
+            Facet.Theme dark = null; string threw = "";
+            try { dark = Suite.Wear(Facet.Theme.Dark); } catch (Exception e) { threw = e.Message; }
+            Check(dark == Facet.Theme.Dark && Facet.Theme.Dark.Sizes.Radius == 3f && Suite.Wear(null) == null, "Wear(Dark) hands Dark back untouched, Wear(null) null", threw);
+
+            // Recolour on a suite theme: the accent and Focus change, the neutrals are the suite's again, Changed fires once; Default also sets Tokens.Accent.
+            {
+                var rc = new Theme();
+                int fired = 0;
+                rc.Twin.Changed += () => fired++;
+                rc.Twin[Facet.Role.Panel] = magenta;
+                rc.Recolour(green);
+                Check(rc.Twin[Facet.Role.Accent] == green && rc.Twin[Facet.Role.Focus] == green && Same(rc.Twin[Facet.Role.Panel], window) && Same(rc.Twin[Facet.Role.Rail], sidebar)
+                      && rc.Twin.Looks.Group != null && fired == 1, "Recolour on a suite theme sets accent and Focus, keeps the suite's neutrals, and fires Changed",
+                      "accent " + rc.Twin[Facet.Role.Accent] + ", focus " + rc.Twin[Facet.Role.Focus] + ", panel " + rc.Twin[Facet.Role.Panel] + ", fired " + fired);
+                var tokAccent = Tokens.Accent;
+                Theme.Default.Recolour(green);
+                Check(Tokens.Accent == green && Theme.Default.Twin[Facet.Role.Accent] == green && Same(Theme.Default.Twin[Facet.Role.Panel], window),
+                      "Recolour on Default also sets Tokens.Accent", Tokens.Accent + " / " + Theme.Default.Twin[Facet.Role.Accent]);
+                Tokens.Accent = tokAccent; Theme.Default.Refresh();
+            }
+
+            // A mod that pushes its whole palette: Prism windows take the accent and nothing else.
+            var wasLanguage = Words.Language;
+            Words.Language = () => "en";
+            Color wasPanel = Tokens.Panel, wasRowHover = Tokens.RowHover, wasDanger = Tokens.Danger, wasAccent = Tokens.Accent;
+            Tokens.Panel = Tokens.RowHover = magenta;
+            Tokens.Danger = new Color(1f, 0.48f, 0.48f, 1f);
+            Tokens.Accent = red;
+            Action<object> set = _ => { };
+            var rows = new[]
+            {
+                new SettingRow { Owner = "LayoutProbe", Page = "Suite", Group = "Look", Label = "Suite switch", Kind = SettingControl.Bool, Get = () => false, Set = set },
+                new SettingRow { Owner = "LayoutProbe", Page = "Suite", Group = "Look", Label = "Suite size", Kind = SettingControl.Float, Min = 0f, Max = 2f, Get = () => 0.5f, Set = set },
+                new SettingRow { Owner = "LayoutProbe", Page = "Suite", Group = "Look", Label = "Suite pick", Kind = SettingControl.Dropdown,
+                                 Options = new[] { "One", "Two", "Three" }, Get = () => 1, Set = set },
+                new SettingRow { Owner = "LayoutProbe", Page = "Suite", Group = "Other", Label = "Suite other", Kind = SettingControl.Bool, Get = () => true, Set = set },
+            };
+            var sp = new SettingsPanel("Probe Suite", () => rows);
+            sp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var root = PanelRoot("ProbeSuitePanel");
+            var win = root?.Children().FirstOrDefault();
+            var th = Facet.Theme.For(win);
+            SnapTo(win);
+            Main.Log("[dbg] suite: one device pixel is " + Snap.ToString("0.000") + " panel px");
+            Func<string> labels = () => root == null ? "no panel" : string.Join(" | ", root.Query<Label>().ToList().Select(l => l.text).Where(s => !string.IsNullOrEmpty(s)).Take(14).ToArray());
+            var sz = th.Sizes;
+            Check(win != null && sz.Radius == 2f && sz.SwitchRadius == 2f && sz.KnobRadius == 2f && sz.Body == 13f && sz.Title == 17f && sz.Small == 12f
+                  && sz.Caps == 11f && sz.RowHeight == 32f && sz.NavRowHeight == 28f && sz.TitleBarHeight == 36f && sz.SwitchWidth == 30f
+                  && sz.SwitchHeight == 16f && sz.Track == 3f && sz.DropdownWidth == 140f, "Prism · Settings builds with the suite's sizes",
+                  "radius " + sz.Radius + "/" + sz.SwitchRadius + "/" + sz.KnobRadius + ", type " + sz.Title + "/" + sz.Body + "/" + sz.Small + "/" + sz.Caps
+                  + ", rows " + sz.RowHeight + "/" + sz.NavRowHeight + "/" + sz.TitleBarHeight + ", switch " + sz.SwitchWidth + "x" + sz.SwitchHeight
+                  + ", track " + sz.Track + ", dropdown " + sz.DropdownWidth);
+            // The rest of Sizes, exact: layout snaps to device pixels, so only the values themselves can tell a 1px line from a 2px one.
+            Check(sz.Line == 1f && sz.Indicator == 2f && sz.Pad == 12f && sz.Gap == 8f && sz.ListRowHeight == 24f && sz.CapsSpacing == 1f
+                  && sz.ThumbWidth == 4f && sz.ThumbHeight == 14f && sz.SliderWidth == 160f && sz.NumberWidth == 52f,
+                  "and the rest of its sizes: line 1, indicator 2, pad 12, gap 8, list row 24, caps spacing 1, thumb 4x14, slider 160, number 52",
+                  "line " + sz.Line + ", indicator " + sz.Indicator + ", pad/gap " + sz.Pad + "/" + sz.Gap + ", list row " + sz.ListRowHeight + ", spacing " + sz.CapsSpacing
+                  + ", thumb " + sz.ThumbWidth + "x" + sz.ThumbHeight + ", slider " + sz.SliderWidth + ", number " + sz.NumberWidth);
+            Check(Same(th[Facet.Role.Panel], window) && Same(th[Facet.Role.RowHover], new Color(1f, 1f, 1f, 0.05f)) && Same(th[Facet.Role.Danger], danger)
+                  && Same(th[Facet.Role.Rail], sidebar) && Near(th[Facet.Role.Line].a, 0.07f, 0.001f) && Near(th[Facet.Role.Off].a, 0.18f, 0.001f),
+                  "its neutrals are the suite's, not the ones pushed into Tokens",
+                  "panel " + th[Facet.Role.Panel] + ", hover " + th[Facet.Role.RowHover] + ", danger " + th[Facet.Role.Danger] + ", rail " + th[Facet.Role.Rail]
+                  + ", line " + th[Facet.Role.Line] + ", off " + th[Facet.Role.Off]);
+            Check(th[Facet.Role.Accent] == red, "and its accent is the pushed one", th[Facet.Role.Accent].ToString());
+            Check(Near(Radius(win), 2f, 0.01f) && win != null && Same(win.resolvedStyle.backgroundColor, window), "the window has 2px corners on the suite's window colour",
+                  win == null ? "no window" : "radius " + Radius(win) + ", bg " + win.resolvedStyle.backgroundColor);
+
+            // Cards: the group's name in capitals, the row fill on the card, rows split by a line
+            var lookCap = LabelIn(root, "LOOK");
+            var card = lookCap?.parent?.parent;   // caps, its head, the card
+            var swRow = root?.Q("Suite switch");
+            var sizeRow = root?.Q("Suite size");
+            Check(lookCap != null && LabelIn(root, "OTHER") != null, "each group is a card headed by its name in capitals", labels());
+            Check(card != null && swRow != null && Same(card.resolvedStyle.backgroundColor, th[Facet.Role.Row]) && (swRow.resolvedStyle.backgroundColor.a == 0f || Same(swRow.resolvedStyle.backgroundColor, th[Facet.Role.RowHover])),   // RowHover: the real pointer may rest on the row
+                  "the card carries the row fill and its rows none of their own",
+                  card == null || swRow == null ? "no card or row" : "card " + card.resolvedStyle.backgroundColor + ", row " + swRow.resolvedStyle.backgroundColor);
+            Check(sizeRow != null && swRow != null && sizeRow.style.borderTopWidth.value == 1f && Near(sizeRow.resolvedStyle.borderTopWidth, 1f, Snap) && swRow.resolvedStyle.borderTopWidth == 0f
+                  && Same(sizeRow.resolvedStyle.borderTopColor, th[Facet.Role.Line]), "a 1px line splits a card's rows, none above the first",
+                  sizeRow == null || swRow == null ? "no rows" : "size " + sizeRow.resolvedStyle.borderTopWidth + " " + sizeRow.resolvedStyle.borderTopColor + ", switch " + swRow.resolvedStyle.borderTopWidth);
+            var swLabel = LabelIn(swRow, "Suite switch");
+            Check(swLabel != null && swLabel.resolvedStyle.fontSize == 13f, "a row label is 13px", swLabel == null ? "no label" : swLabel.resolvedStyle.fontSize.ToString());
+            var control = swRow?.Q("control");
+            var track = control != null && control.childCount > 0 ? control.ElementAt(0) : null;
+            Check(track != null && Near(track.resolvedStyle.width, 30f, Snap) && Near(track.resolvedStyle.height, 16f, Snap) && Near(Radius(track), 2f, 0.01f)
+                  && Same(track.resolvedStyle.backgroundColor, th[Facet.Role.Off]), "an off switch is a 30x16 track, 2px corners, in the off colour",
+                  track == null ? "no track" : track.resolvedStyle.width + "x" + track.resolvedStyle.height + " r" + Radius(track) + " " + track.resolvedStyle.backgroundColor);
+            var fill = root?.Q("Suite size-fill");
+            Check(fill != null && Same(fill.resolvedStyle.backgroundColor, red), "a slider's filled part is the accent", fill == null ? "no fill" : fill.resolvedStyle.backgroundColor.ToString());
+            var pick = root?.Q("Suite pick-input");
+            Check(pick != null && pick.style.minWidth.value.value >= 140f, "a dropdown is at least 140 wide", pick == null ? "no dropdown" : pick.style.minWidth.value.value.ToString());
+            var tab = root?.Query<Button>().ToList().FirstOrDefault(b => b.text == "Suite");
+            int under = Bars(tab?.parent, x => x.resolvedStyle.height, 2f, red);
+            var tabRule = tab?.parent?.Q("rule");
+            Check(under == 1 && Inline(tab?.parent, "indicator", x => x.style.height.value.value, 2f) && tabRule != null && tabRule.style.height.value.value == 1f,
+                  "the selected tab, and only it, has a 2px accent underline (a 2px bar in every tab, a 1px rule under them)", under + " found");
+
+            // A theme of the caller's own: Ui.Flat paints its FlatButton look, not Facet's preset
+            var custom = Suite.Wear(new Facet.Theme());
+            custom.Looks.FlatButton = new Facet.Look { Bg = Facet.Role.Danger };
+            var holder = new VisualElement();
+            win?.Add(holder);
+            Facet.Theme.Set(holder, custom);
+            var flat = Ui.Btn("Probe flat", null, holder);
+            Ui.Flat(flat);
+            yield return null;
+            Check(win != null && Same(flat.resolvedStyle.backgroundColor, custom[Facet.Role.Danger]), "Ui.Flat paints the theme's own Looks.FlatButton",
+                  flat.resolvedStyle.backgroundColor.ToString());
+            holder.RemoveFromHierarchy();
+
+            // A search: each hit in a card headed owner · page · group
+            var sv = root?.Q<ScrollView>();
+            var search = root?.Query<TextField>().ToList().FirstOrDefault(f => sv != null && f.parent == sv.parent);
+            if (search != null) { search.value = "suite size"; yield return null; }
+            var hitCap = LabelIn(root, "LAYOUTPROBE · SUITE · LOOK");
+            Check(search != null && hitCap?.parent?.parent?.Q("Suite size") != null, "a search hit sits in a card headed LAYOUTPROBE · SUITE · LOOK",
+                  search == null ? "no search box" : labels());
+            if (search != null) search.value = "";
+
+            // A mod's own scheme: the suite, with that mod's accent
+            SettingsPanel minePanel;
+            using (Theme.Use(new Theme { Accent = green })) minePanel = new SettingsPanel("Probe Mine", () => rows);
+            minePanel.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var mwin = PanelRoot("ProbeMinePanel")?.Children().FirstOrDefault();
+            var mth = Facet.Theme.For(mwin);
+            Check(mwin != null && Near(Radius(mwin), 2f, 0.01f) && Same(mth[Facet.Role.Panel], window) && mth[Facet.Role.Accent] == green,
+                  "a mod's own scheme wears the suite with that mod's accent",
+                  mwin == null ? "no window" : "radius " + Radius(mwin) + ", panel " + mth[Facet.Role.Panel] + ", accent " + mth[Facet.Role.Accent]);
+
+            // Another host's window on the same Facet keeps Facet's own look
+            var plainHost = Facet.Host.Create("LayoutProbe/plain", o => { });
+            var plain = new Facet.Surface(plainHost, "ProbePlain", Facet.Layer.Window);
+            plain.Visible = true;
+            var pw = plain.Root == null ? null : new Facet.Window(plain.Root, "ProbePlain", "Probe Plain", new Rect(200f, 120f, 420f, 300f));
+            for (int i = 0; i < 3; i++) yield return null;
+            Check(pw != null && Near(Radius(pw.Root), 3f, 0.01f) && Facet.Theme.For(pw.Root).Sizes.Body == 15f, "another host's window keeps Facet's radius 3 and body 15",
+                  pw == null ? "no window" : "radius " + Radius(pw.Root) + ", body " + Facet.Theme.For(pw.Root).Sizes.Body);
+
+            // The debug window
+            var dp = new DebugPanel("Probe Debug", () => new[]
+            {
+                new DebugTab { Name = "Probe A", Lines = () => new[] { "probe a" } },
+                new DebugTab { Name = "Probe B", Lines = () => new[] { "probe b" } },
+            });
+            dp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var droot = FindObjectsByType<UIDocument>(FindObjectsSortMode.None).Where(d => d.gameObject.name == "PrismDebugPanel")
+                .Select(d => d.rootVisualElement).FirstOrDefault(r => LabelIn(r, "Probe Debug") != null);
+            var dwin = droot?.Children().FirstOrDefault();
+            var dth = Facet.Theme.For(dwin);
+            SnapTo(dwin);
+            var dtab = droot?.Query<Button>().ToList().FirstOrDefault(b => b.text == "Probe A");
+            var filter = droot?.Query<TextField>().ToList().FirstOrDefault(f => dtab != null && f.parent == dtab.parent?.parent);
+            var input = filter?.Q(className: "unity-base-text-field__input");
+            Check(dwin != null && Near(Radius(dwin), 2f, 0.01f), "the debug window has 2px corners", dwin == null ? "no window" : Radius(dwin).ToString());
+            int dunder = Bars(dtab?.parent, x => x.resolvedStyle.height, 2f, red);
+            Check(dunder == 1 && Inline(dtab?.parent, "indicator", x => x.style.height.value.value, 2f), "its selected tab, and only it, has a 2px accent underline", dunder + " found");
+            Check(input != null && Same(input.resolvedStyle.borderTopColor, dth[Facet.Role.Line]) && Near(input.resolvedStyle.borderTopColor.a, 0.07f, 0.002f),
+                  "its filter box is outlined in the suite's line", input == null ? "no input" : input.resolvedStyle.borderTopColor.ToString());
+
+            // The rail of a mod's own menu
+            var rp = new SettingsPanel("Probe Rail", () => PrismMenuShape(() => { }));
+            rp.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            var views = PanelRoot("ProbeRailPanel")?.Query<ScrollView>().ToList();
+            var rail = views != null && views.Count > 1 ? views[0] : null;
+            SnapTo(rail);
+            var bars = rail == null ? new System.Collections.Generic.List<VisualElement>() : rail.Query("indicator").ToList();
+            Check(rail != null && Same(rail.resolvedStyle.backgroundColor, sidebar), "the rail is the suite's sidebar colour",
+                  rail == null ? "no rail" : rail.resolvedStyle.backgroundColor.ToString());
+            int lit = bars.Count(b => Near(b.resolvedStyle.width, 2f, Snap) && Same(b.resolvedStyle.backgroundColor, red));
+            Check(lit == 1 && bars.Count > 0 && bars.All(b => b.style.width.value.value == 2f), "exactly one rail entry carries a 2px accent bar (every bar 2px inline)", lit + " of " + bars.Count);
+            Check(bars.Count > 0 && bars.All(b => b.parent.layout.height >= 28f - Snap), "rail entries are at least 28 tall",
+                  string.Join(",", bars.Select(b => b.parent.layout.height.ToString("0.#")).Take(6).ToArray()));
+
+            rp.Dispose(); dp.Dispose(); plain.Dispose(); minePanel.Dispose(); sp.Dispose();
+            Tokens.Panel = wasPanel; Tokens.RowHover = wasRowHover; Tokens.Danger = wasDanger; Tokens.Accent = wasAccent;
+            Words.Language = wasLanguage;
+        }
+    }
+}

@@ -10,7 +10,7 @@ using UnityEngine.UIElements;
 
 namespace LayoutProbe
 {
-    sealed class AutoTest : MonoBehaviour
+    sealed partial class AutoTest : MonoBehaviour
     {
         internal static LayoutEditor Editor;
         internal static Box A, B, C;
@@ -389,6 +389,7 @@ namespace LayoutProbe
             Check(bare.Language == "en", "a Facet host whose language gives null reads as English", "'" + bare.Language + "'");
 
             yield return SchemaSettings();
+            yield return SuiteSkin();
             yield return CrossOwnerWords();
             yield return NavMenu();
             yield return TopazMenu();
@@ -487,7 +488,7 @@ namespace LayoutProbe
             if (search != null) { search.value = "fps"; yield return null; }
             Check(search != null && shows("Show FPS") && !shows("Probe bool"), "searching 'fps' lists Show FPS and nothing else",
                   search == null ? "no search box" : labels());
-            Check(search != null && root.Query<Label>().ToList().Any(l => l.text.StartsWith("PrismLib · ")), "under an owner · page · group header");
+            Check(search != null && root.Query<Label>().ToList().Any(l => l.text.StartsWith("PRISMLIB · ")), "under an owner · page · group card header");
             // What the old matcher also found: letters in order, and punctuation as a plain substring
             if (search != null) { search.value = "efctbpm"; yield return null; }
             Check(search != null && shows("Effective BPM"), "an abbreviation ('efctbpm') finds Effective BPM", search == null ? "no search box" : labels());

@@ -224,8 +224,8 @@ Order for the rest, each step leaving both mods building:
 6. Mod-specific screens (Sapphire's editor palettes, Topaz's `GameUiEditor`/`LocationEditor`) stay
    in their mods, built on the shared widgets.
 
-Done: step 1 (both Themes push their palette into `Tokens`, so a shared window wears the colours of
-the mod that opened it); Topaz's `LogViewer` (268 lines) deleted — the shared debug window
+Done: step 1 (both Themes push their palette into `Tokens`, so a shared window wears the accent of
+the mod that opened it, X6); Topaz's `LogViewer` (268 lines) deleted — the shared debug window
 replaced it.
 
 Step 3 is under way: `Widgets` (labelled rows — toggle, slider, int slider, choice, text, action,
@@ -343,13 +343,18 @@ host's fonts under `/run/host/usr/share/fonts`. Every panel also gets one shared
 whose default font is ours and whose fallback list is empty — left null, UI Toolkit falls back to a
 built-in default that does the same failing OS lookup.
 
-**Colours are per window (`Theme`); sizes stay global (`Tokens`).** Widgets read
-`Theme.For(element)`: the nearest themed ancestor (a Surface, a popup card that took its anchor's),
-else the `Theme.Use` scope being built, else `Theme.Default`, which IS the Tokens fields — so a
-bridge's `PushTokens` still works. Panels build their window in the constructor, so bridges build
-them inside their own scheme (`Wearing(() => new SettingsPanel(…))`); setting `.Theme` afterwards
-misses the chrome. `Theme.FromAccent` is Quartz's derivation. Each mod keeps its palette in a
-`Theme` refreshed by `PushTokens` (Topaz amber, Sapphire blue, Quartz red).
+**Every Prism window wears the suite skin (`Suite`); each mod keeps its accent.** Every theme
+PrismLib.UI makes is shaped by `Suite` when it is made (`Theme.Default` and `new Theme()` wear it whole;
+`Theme.FromAccent` takes the sizes and looks, not the colours): Topaz's neutral greys, 2px corners, 1px lines, rows on a 2.5% fill, the accent only on state,
+and every field of Facet's `Sizes` and `Looks`. The neutrals are the suite's: of a mod's `PushTokens`
+only `Tokens.Accent` reaches a window (Default reads it live). Sizes come from `Tokens` when a theme is
+made, so set them before. `FromAccent` keeps Quartz's derived colours in the suite's sizes and looks;
+`Recolour` on a suite theme re-dresses it in the suite and sets the accent. Widgets read `Theme.For(element)`: the nearest
+themed ancestor (a Surface, a popup card that took its anchor's), else the `Theme.Use` scope being
+built, else `Theme.Default`. Panels build their window in the constructor, so bridges build them inside
+their own scheme (`Wearing(() => new SettingsPanel(…))`); setting `.Theme` afterwards misses the
+chrome. A theme another host made is never dressed; a Facet-native host (Quartz) dresses its own with
+`Suite.Wear(t)`, then sets `Role.Accent` and `Role.Focus` (and `t.Notify()` on a later change).
 
 **Text goes through `Words.T`** — `Ui.Text`, `Ui.Btn`, row labels and tooltips, setting rows on
 intake — so page code never calls it. English is the key. **A string is translated only by the
