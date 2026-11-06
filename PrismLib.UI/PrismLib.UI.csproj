@@ -44,6 +44,7 @@
         <Reference Include="UnityEngine.TextCoreTextEngineModule"><HintPath>$(AdofaiManaged)/UnityEngine.TextCoreTextEngineModule.dll</HintPath><Private>False</Private></Reference>
         <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(AdofaiManaged)/UnityEngine.TextCoreFontEngineModule.dll</HintPath><Private>False</Private></Reference>
         <Reference Include="Unity.TextMeshPro"><HintPath>$(AdofaiManaged)/Unity.TextMeshPro.dll</HintPath><Private>False</Private></Reference>
+        <Reference Include="Facet.0.1"><HintPath>../lib/Facet.0.1.dll</HintPath><Private>False</Private></Reference>
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Properties\AssemblyInfo.cs" />

@@ -47,6 +47,10 @@ static class Probe {
     const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
     static int Main(string[] a) {
         try {
+            // Facet SHIPS beside the mod like PrismLib.UI.dll: it must load by name from there.
+            var fa = Assembly.Load("Facet.0.1");
+            fa.GetType("Facet.Theme", true);
+            Console.WriteLine("  ok   Facet.0.1 loads from " + System.IO.Path.GetDirectoryName(fa.Location));
             var t = Assembly.LoadFrom(a[0]).GetType(a[1], true);
             var p = t.GetProperty("Available", Any);
             object v = p != null ? p.GetValue(null, null) : "<none>";
@@ -88,5 +92,9 @@ cp "$DLL" "$WORK/mod.dll"
 # guard rules rather than a false alarm about a dependency that is always present.
 for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
     [ -f "$sib" ] && cp "$sib" "$WORK/"
+done
+# Facet.*.dll: the mod folder's copy if the build left one, else the one lib/update-facet.sh made.
+for f in "$(dirname "$DLL")"/Facet.*.dll lib/Facet.*.dll; do
+    [ -f "$f" ] && { cp "$f" "$WORK/"; break; }
 done
 MONO_PATH="$WORK/refs" mono "$WORK/probe.exe" "$WORK/mod.dll" "$TYPE" $UNGATED

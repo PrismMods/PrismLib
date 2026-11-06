@@ -37,6 +37,7 @@ fi
 # AdofaiRoot is the matching MSBuild property the csproj reads for its own default — xbuild does
 # not see the shell's ADOFAI_ROOT on its own, so without this a Linux build silently fell back to
 # the csproj's hardcoded macOS path and failed to resolve every UnityEngine.* reference.
+[ -f lib/Facet.0.1.dll ] || tools/update-facet.sh
 xbuild /p:Configuration=Release /p:AdofaiRoot="$GAME" /verbosity:quiet PrismLib/PrismLib.csproj
 xbuild /p:Configuration=Release /p:AdofaiRoot="$GAME" /verbosity:quiet PrismLib.UI/PrismLib.UI.csproj
 DLL="PrismLib/bin/Release/PrismLib.dll"
@@ -52,14 +53,14 @@ echo "installed  $MODS/PrismLib/PrismLib.dll"
 # Every mod folder that already has a copy is one that ships it.
 for dir in "$MODS"/*/; do
     [ -f "$dir/PrismLib.UI.dll" ] || continue
-    cp "$UIDLL" "$dir"
-    echo "installed  ${dir}PrismLib.UI.dll"
+    cp "$UIDLL" lib/Facet.0.1.dll "$dir"
+    echo "installed  ${dir}PrismLib.UI.dll + Facet.0.1.dll"
 done
 
 # ...and the source trees, so their next build compiles against the same thing.
 for repo in ../Sapphire ../Topaz ../sapphire ../topaz; do
     [ -d "$repo/lib" ] || continue
-    cp "$DLL" "$UIDLL" "$repo/lib/"
+    cp "$DLL" "$UIDLL" lib/Facet.0.1.dll "$repo/lib/"
     echo "refreshed  $repo/lib"
 done
 
