@@ -77,6 +77,7 @@ namespace LayoutProbe
             for (int i = 0; i < 30; i++) yield return null;
             float W = Screen.width, H = Screen.height;
             Main.Log("AUTOTEST start screen " + W + "x" + H);
+            yield return Perf.Run((ok, what, detail) => Check(ok, what, detail));
 
             // Open
             Editor.Closed += () => _closed = true;
