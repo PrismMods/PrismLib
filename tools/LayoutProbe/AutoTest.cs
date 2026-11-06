@@ -306,6 +306,22 @@ namespace LayoutProbe
             Check(!sawBlocking, "the editor reads its undo keys exempt from InputGate");
             Check(Near(A.Cx, movedX - 60f), "Ctrl+Z undoes the last gesture", "Cx=" + A.Cx + " was " + movedX);
 
+            // The side panel comes back after it was hidden by deselecting, the editor closed and reopened
+            yield return Click(Ctr(A));
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));   // empty: deselect, hides the panel
+            Check(Root.Q<TextField>("layout-x") == null, "clicking empty space hides the side panel");
+            Submit(ButtonNamed("layout-done")); yield return null; yield return null;
+            Editor.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            yield return Click(Ctr(A));
+            var px = Root.Q<TextField>("layout-x");
+            var card = px?.parent?.parent?.parent;
+            Main.Log("  panel after reopen: field " + (px != null) + ", card display " + card?.resolvedStyle.display + ", bounds " + card?.worldBound
+                     + ", opacity " + card?.resolvedStyle.opacity + ", visibility " + card?.resolvedStyle.visibility);
+            Check(px != null && card.resolvedStyle.display == DisplayStyle.Flex && card.worldBound.width > 0f && card.worldBound.height > 0f,
+                  "after deselect, Done and reopen, selecting again brings the side panel back",
+                  px == null ? "no X field" : "card " + card.resolvedStyle.display + " " + card.worldBound);
+
             // Done
             var done = ButtonNamed("layout-done");
             if (done != null) Submit(done);
