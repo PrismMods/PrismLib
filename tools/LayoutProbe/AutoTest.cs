@@ -377,6 +377,7 @@ namespace LayoutProbe
                                  Tooltip = "Frame rate in the bottom-right corner, for every Prism mod", Get = () => false, Set = _ => { } },
                 row("Probe colour string", SettingControl.Colour), row("Probe fixed key", SettingControl.Key),
                 row("Effective BPM", SettingControl.Bool), row("Arrow -> target", SettingControl.Bool),
+                row("Probe dropdown", SettingControl.Dropdown),
             };
             rows[0].Get = () => true;
             rows[1].Get = () => 3; rows[1].Max = 10f;
@@ -393,6 +394,7 @@ namespace LayoutProbe
             rows[12].Get = () => "#336699"; rows[12].Set = v => colourSet = (Color)v;   // a mod that stores hex and casts on the way back
             rows[13].Get = () => "F10";   // no Capture
             rows[14].Get = () => false; rows[15].Get = () => false;
+            rows[16].Get = () => 1; rows[16].Options = new[] { "One", "Two", "Three" };
 
             // The installed mods point Words.Language at the game's language; English first, Korean below.
             var wasLanguage = Words.Language;
@@ -408,6 +410,9 @@ namespace LayoutProbe
                   "a row whose getter throws is a dimmed control pointing at the log",
                   broken == null ? "no control" : "enabled " + broken.enabledSelf + ", tooltip '" + broken.tooltip + "'");
             Check(root?.Q("Probe after") != null, "and the row after it still builds");
+            var dd = root?.Q("Probe dropdown")?.Query<Button>().ToList();
+            Check(dd != null && dd.Count == 1 && dd[0].text == "Two", "a Dropdown row is one button showing the current option",
+                  dd == null ? "no row" : dd.Count + " buttons, first '" + (dd.Count > 0 ? dd[0].text : "") + "'");
 
             // Changed behind the panel: the open page shows it on its own, no Reload
             live = "after";
