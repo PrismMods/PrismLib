@@ -521,6 +521,19 @@ namespace LayoutProbe
             Check(onBody != null && onBody.style.display == DisplayStyle.None, "switching the ToggleGroup off hides its rows");
             Tap(onRow?.Q("control")?.ElementAt(0)); yield return null;
 
+            // Undo and redo update a switch in place: the same element, not a rebuilt page
+            Func<VisualElement> accSwitch = () => LabelIn(content, "Probe accuracy")?.parent?.Q("control")?.ElementAt(0);
+            var sw = accSwitch();
+            var swOff = sw?.style.backgroundColor.value;
+            Tap(sw); yield return null;
+            var swOn = sw?.style.backgroundColor.value;
+            History.Undo(); yield return null; yield return null;
+            Check(sw != null && swOn != swOff && accSwitch() == sw && sw.style.backgroundColor.value == swOff,
+                  "undoing a switch shows the old state on the same element, with no page rebuild",
+                  "same element " + (accSwitch() == sw) + ", readouts builds " + count("readouts"));
+            History.Redo(); yield return null; yield return null;
+            Check(sw != null && accSwitch() == sw && sw.style.backgroundColor.value == swOn, "and redo restores it on that element");
+
             // ToggleSubPage: the switch switches without navigating; the rest of the row pushes, the back row returns
             var statRow = LabelIn(content, "Probe progress")?.parent;
             Tap(statRow?.Q("control")?.ElementAt(0)); yield return null;
