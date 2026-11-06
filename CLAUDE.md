@@ -178,6 +178,11 @@ Three landmines, all found by the first panel that opened:
   scrollbar, no wheel, and nothing in any log. Every scroll container AND every ancestor up to the
   fixed-height window needs `minHeight = 0` — `Window.Body`, the `ScrollView`, the `ListView`. An absolutely positioned element with only `left`/`top` is sized by its
   CONTENT — pin all four offsets.
+- **Nothing clips without the theme.** The default style sheet is what gives a `ScrollView`'s
+  viewport `overflow: hidden`; at runtime, scrolled rows drew over the settings window's search box
+  and title bar. `Skin.Scroll` now sets it on the view and its `contentViewport`, so build every
+  `ScrollView` through it. A single-line `TextField` cuts long text off at its width: long read-only
+  text (a status, a path) goes in a `SettingControl.Info` row, a wrapped label. Verified 2026-11-06.
 
 Migration is additive — new APIs land here, the mods adopt them screen by screen, nothing breaks at
 once.
