@@ -169,6 +169,11 @@ undo/redo). Spec: `docs/superpowers/specs/2026-11-06-camdisplay-design.md` Part 
   changes unless `FORCE=1`). `release.sh <ver>` uploads it with the release and lists it
   in `prismlib.json` as `facet`, so a mod's `lib/update-prismlib.sh` fetches it with a SHA-256 check;
   until a release carries it, a mod's `lib/` gets it from PrismLib's `./dev.sh` on a dev machine.
+- **The bootstrap carries Facet along.** `PrismBootstrap.SyncUi` gives every PrismLib.UI copy's
+  folder (mod folders and `UserLibs/`) each `Facet.<major>.<minor>.dll` beside the newest copy that
+  it lacks or has older, and `Resolve` answers `Facet.<major>.<minor>` from the mod's own folder,
+  `UserLibs/`, then any sibling mod folder. Neither reads from or writes to the shared PrismLib
+  folder. `tools/check-bootstrap.sh` (run by `release.sh`) pins both against a throwaway mods root.
 - **Compatibility (R21).** A Facet patch release adds no public API; any new public member bumps the
   minor (a new file name). Within one minor the first loaded copy wins, so a Facet copy beside an
   older PrismLib.UI must be harmless.
