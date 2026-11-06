@@ -166,11 +166,12 @@ namespace PrismLib.UI.Toolkit
             row.style.marginTop = 6f;
             row.style.justifyContent = Justify.SpaceBetween;
             Ui.Muted("Anchor", row);
+            // Three explicit rows: a wrapping row of 9 cells relied on the cells' exact outer width
+            // (the button skin's border made it 2 columns).
             var grid = new VisualElement();
-            grid.style.flexDirection = FlexDirection.Row;
-            grid.style.flexWrap = Wrap.Wrap;
-            grid.style.width = 3 * 18f;
+            grid.style.flexShrink = 0f;
             row.Add(grid);
+            VisualElement line = null;
             _anchorCells = new VisualElement[9];
             for (int i = 0; i < 9; i++)
             {
@@ -184,7 +185,8 @@ namespace PrismLib.UI.Toolkit
                 cell.style.width = 14f; cell.style.height = 14f;
                 cell.style.marginLeft = 2f; cell.style.marginRight = 2f; cell.style.marginTop = 2f; cell.style.marginBottom = 2f;
                 Ui.SetRadius(cell, 2f);
-                grid.Add(cell);
+                if (i % 3 == 0) { line = new VisualElement(); line.style.flexDirection = FlexDirection.Row; grid.Add(line); }
+                line.Add(cell);
                 _anchorCells[i] = cell;
             }
             if (f.T.SetAnchorClosest != null)
