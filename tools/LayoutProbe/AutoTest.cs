@@ -305,6 +305,15 @@ namespace LayoutProbe
             Check(Root != null && Facet.Host.For(Root).Name == "PrismLib", "the editor is a Facet surface of the PrismLib host",
                   Root == null ? "no root" : Facet.Host.For(Root).Name);
 
+            // An Escape answered by Facet alone (a Facet-native host's poll) still closes the editor properly
+            _closed = false;
+            Facet.Input.HandleEscape(); yield return null;
+            Check(!Editor.Visible && _closed, "Facet's own Escape closes the editor and raises Closed",
+                  "visible " + Editor.Visible + ", closed " + _closed);
+            Editor.Visible = true;
+            for (int i = 0; i < 3; i++) yield return null;
+            Check(Editor.Visible && Ui.AnyWindowOpen, "and the editor opens again after it", "any window open " + Ui.AnyWindowOpen);
+
             // Escape with a Facet-native window above a Prism one: exactly the topmost closes per press
             var probeHost = Facet.Host.Create("LayoutProbe");
             var facetWin = new Facet.Surface(probeHost, "ProbeFacetWindow", Facet.Layer.Modal);
