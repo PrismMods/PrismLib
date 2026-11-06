@@ -60,7 +60,7 @@ for dir in "$MODS"/*/; do
 done
 
 # ...and the source trees, so their next build compiles against the same thing.
-for repo in ../Sapphire ../Topaz ../sapphire ../topaz; do
+for repo in ../Sapphire ../Topaz ../CamDisplay ../sapphire ../topaz; do
     [ -d "$repo/lib" ] || continue
     cp "$DLL" "$UIDLL" lib/Facet.0.1.dll "$repo/lib/"
     echo "refreshed  $repo/lib"
