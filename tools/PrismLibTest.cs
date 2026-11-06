@@ -241,6 +241,25 @@ static class PrismLibTest
         Check(Math.Abs(cr[0] - 0.7f) < 1e-5 && Math.Abs(cr[2] - 0.25f) < 1e-5, "left kept, right clamped so 5% stays visible");
         Check(cr[1] == 0f && Math.Abs(cr[3] - 0.1f) < 1e-5, "negative crop clamps to 0");
 
+        Console.WriteLine("words");
+        // This exe stands in for a mod: its translator is owned by this assembly's name.
+        string self = typeof(PrismLibTest).Assembly.GetName().Name;
+        Words.Language = () => "ko";
+        Words.AddTranslator(s => s == "Position" ? "TEST-위치" : null);
+        Check(Words.T("Undo") == "Undo", "a mod's string never picks up PrismLib's own table");
+        Check(Words.Own("Undo") == "실행 취소", "PrismLib's own words still translate");
+        Check(Words.T("Prism · Settings") == "Prism · 설정", "the shared window titles translate whoever builds them");
+        Check(Words.T("Position") == "TEST-위치", "outside a settings row every mod's table answers");
+        Words.Owner = "CamDisplay";
+        Check(Words.T("Position") == "Position", "a row is not translated by another mod's table");
+        Words.Owner = self;
+        Check(Words.T("Position") == "TEST-위치", "a row is translated by its own mod's table");
+        Words.Owner = "PrismLib";
+        Check(Words.T("Show FPS") == "FPS 표시", "PrismLib's own rows use its table");
+        Words.Owner = null;
+        Words.Language = null;
+        Check(Words.Own("Undo") == "Undo", "in English PrismLib's words stay English");
+
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
     }
