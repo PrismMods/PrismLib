@@ -15,7 +15,7 @@ namespace LayoutProbe
         internal static LayoutEditor Editor;
         internal static Box A, B, C;
         internal static Action<bool> SetEmpty;
-        internal static bool CThrows, CNull;
+        internal static bool CThrows, CNull, OnlyA;
         int _pass, _fail;
         bool _closed;
 
@@ -193,6 +193,13 @@ namespace LayoutProbe
             var empty = Root.Query<Label>().ToList().FirstOrDefault(l => l.text == "Nothing to arrange yet");
             Check(empty != null && empty.resolvedStyle.display == DisplayStyle.Flex, "an empty target list shows the empty state");
             SetEmpty(false); Editor.Reload(); yield return null;
+
+            // A lone target is selected as soon as the list loads, so its side panel shows unasked
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));   // empty: nothing selected
+            OnlyA = true; Editor.Reload(); yield return null; yield return null;
+            Check(Root.Q<TextField>("layout-x") != null, "a lone target is selected straight away, its side panel showing");
+            OnlyA = false; Editor.Reload(); yield return null;
+            yield return Click(new Vector2(W * 0.95f, H * 0.05f));
 
             // ── Review fixes ────────────────────────────────────────────────
             CThrows = false; CNull = false;

@@ -113,6 +113,7 @@ namespace LayoutProbe
                 GetAnchorClosest = () => a.Closest, SetAnchorClosest = c => a.Closest = c,
                 GetCrop = () => (float[])a.Crop.Clone(), SetCrop = c => a.Crop = (float[])c.Clone(),
             };
+            if (AutoTest.OnlyA) yield break;
             var b = _b;
             yield return new EditTarget
             {

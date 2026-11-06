@@ -80,6 +80,9 @@ namespace PrismLib.UI.Toolkit
                     if (t.Key == keep) _selected = f;
                 }
             _empty.style.display = _all.Count == 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            // A lone target is selected straight away: there is nothing to choose between, and its
+            // side panel only shows for a selection (players took the empty editor for a lost panel).
+            if (_selected == null && _all.Count == 1) { _selected = _all[0]; SelectionChanged(); }
             Tick();
         }
 
