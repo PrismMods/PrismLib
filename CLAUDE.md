@@ -36,7 +36,16 @@ management for logs, player data, save data and fields, so the mods feel like on
   class layout and resolve when the type loads — before any method runs, so before `Ensure()` can
   install the library. This shipped and took both mods down with
   `OnToggle: TypeLoadException`. Hold handles as `object`, cast at use. A **`PrismLib.UI` type in a
-  field is fine** — that assembly ships beside the mod, so it is always there.
+  field is fine for a mod that ships and requires PrismLib.UI beside it (Topaz, Sapphire and CamDisplay
+  hold its types in bridge fields), unless a method the mod runs before checking UI availability
+  names that class. A mod that must start without PrismLib.UI (Quartz, which ships it in its runtime
+  store) keeps the rule for those types too.**
+  The assembly ships beside the mod, but it can still be missing (deleted, blocked) or older than
+  the mod expects (another mod's copy loaded first), and Mono lays out every field of a class when
+  it JIT-compiles a call into it: a `Recolour` that named `PrismWindows` after its own UI check
+  threw `TypeLoadException` before the check ran, and Quartz's whole runtime failed to start
+  (found 2026-11-07). Reach such classes only through NoInlining `…Impl` methods, called after the
+  check.
   `tools/check-bridge.sh <Mod.dll> <Namespace.PrismBridge> [ungated methods...]` catches both
   failure modes: it loads a built mod with `PrismLib.dll` absent but `PrismLib.UI.dll` present (the
   real shape of a failed install), and JIT-compiles each named method that the mod calls without
@@ -52,7 +61,12 @@ management for logs, player data, save data and fields, so the mods feel like on
   each named method's IL, resolving every token, parameter and local type with `PrismLib.dll`
   absent, follows calls into its lambdas and the `<>c`/display classes it touches, and checks those
   classes' field types. It prints the offending method and the PrismLib member. Keep the JIT step
-  too: other runtimes do fail there.
+  too: other runtimes do fail there. The scan also lays out the fields of every one of the mod's own
+  classes an ungated method calls into, as Mono does at JIT time.
+  **`NO_UI=1`** runs the same check with `PrismLib.UI.dll` absent too (Facet stays): use it for a mod
+  that must start without PrismLib.UI (Quartz). Topaz, Sapphire and CamDisplay FAIL it by design, at their
+  bridges' own PrismLib.UI fields. A normal run whose mod folder has no `PrismLib.UI.dll` (a bare
+  `bin/` output) says so, because it is then a NO_UI run as well.
 - **No caller outside the bridge may mention a PrismLib type** — the CLR resolves a method's types
   when that method is JITted.
 - **Each mod's `release.sh` must copy `lib/PrismLib.UI.dll` into the zip.** Leaving it out breaks

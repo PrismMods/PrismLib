@@ -2,6 +2,7 @@
 # Does a mod's PrismLib bridge still load when PrismLib is NOT installed?
 #
 #   ./tools/check-bridge.sh <path/to/Mod.dll> <Namespace.PrismBridge>
+#   NO_UI=1 ./tools/check-bridge.sh ...   # PrismLib.UI.dll absent too (Facet stays)
 #
 # Run it on the BUILT mod before shipping. The failure this catches is silent to the player and
 # near-silent in the log: UMM reports it as "OnToggle: TypeLoadException" and the whole mod is
@@ -33,13 +34,20 @@ MANAGED="$GAME/ADanceOfFireAndIce.app/Contents/Resources/Data/Managed"
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
-# Unity and game assemblies only. Putting Managed/ itself on MONO_PATH swaps in the game's
-# mscorlib and the runtime dies before the test runs.
+# Every game assembly (Unity, Assembly-CSharp, DOTween, Newtonsoft...), so a mod class whose field comes
+# from any of them lays out. Not mscorlib or System*: putting Managed/ itself on MONO_PATH swaps in the
+# game's mscorlib and the runtime dies before the test runs.
 mkdir -p "$WORK/refs"
-for f in "$MANAGED"/Unity*.dll "$MANAGED"/Assembly-CSharp*.dll "$MANAGED"/netstandard.dll; do
+for f in "$MANAGED"/*.dll; do
+    case "$(basename "$f")" in mscorlib.dll|System*) continue ;; esac
     [ -f "$f" ] && ln -sf "$f" "$WORK/refs/"
 done
 [ -f "$GAME/MelonLoader/net472/0Harmony.dll" ] && ln -sf "$GAME/MelonLoader/net472/0Harmony.dll" "$WORK/refs/"
+# The loaders too: the field layout below reaches the mod's entry classes, which hold a ModEntry or a
+# MelonLoader type.
+for f in "$GAME/MelonLoader/net472/MelonLoader.dll" "$GAME/UserLibs/UnityModManager.dll" "$MANAGED/UnityModManager/UnityModManager.dll"; do
+    [ -f "$f" ] && ln -sf "$f" "$WORK/refs/"
+done
 
 cat > "$WORK/probe.cs" <<'CS'
 using System;
@@ -78,6 +86,12 @@ static class Probe {
                             if (inner != null) return "(via " + nm.DeclaringType.Name + "." + nm.Name + ") " + inner;
                         }
                         if (r is FieldInfo rf) { var _ = rf.FieldType.FullName; }
+                        // Mono initialises a callee's class when it JITs the call, which lays out every
+                        // field of that class: a field typed from a missing assembly throws right there.
+                        if (r.DeclaringType != null && r.DeclaringType.Assembly == m.Module.Assembly && !Laid.Contains(r.DeclaringType)) {
+                            foreach (var f in r.DeclaringType.GetFields(Any | BindingFlags.Instance)) { var _ = f.FieldType.FullName; }
+                            Laid.Add(r.DeclaringType);   // only once it laid out: a class that failed fails every caller
+                        }
                         pc += 4; break; }
                     case OperandType.InlineSwitch: pc += 4 + 4 * BitConverter.ToInt32(il, pc); break;
                     case OperandType.InlineNone: break;
@@ -94,6 +108,7 @@ static class Probe {
         }
     }
     static readonly HashSet<Type> Used = new HashSet<Type>();   // nested types the ungated methods touch
+    static readonly HashSet<Type> Laid = new HashSet<Type>();   // the mod's own classes whose fields laid out
     static Type Outer(Type t) { while (t.DeclaringType != null) t = t.DeclaringType; return t; }
     // Name a memberref/typeref token the way monodis prints it; falls back to the raw token.
     static string Name(string dll, int tok) {
@@ -172,9 +187,16 @@ cp "$DLL" "$WORK/mod.dll"
 # Model the real mod folder: PrismLib.UI SHIPS beside the mod, PrismLib.dll does not (the
 # bootstrapper installs that one, and may fail to). Copying the UI half keeps this a test of the
 # guard rules rather than a false alarm about a dependency that is always present.
-for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
-    [ -f "$sib" ] && cp "$sib" "$WORK/"
-done
+# NO_UI=1 leaves PrismLib.UI out too: a mod meant to start without it (a deleted or blocked file, or
+# an older copy loaded first) must not name a PrismLib.UI class in anything it runs before checking.
+if [ "${NO_UI:-}" = 1 ]; then
+    echo "  mode NO_UI: PrismLib.UI.dll absent"
+else
+    for sib in "$(dirname "$DLL")"/PrismLib.UI.dll; do
+        [ -f "$sib" ] && cp "$sib" "$WORK/"
+    done
+    [ -f "$WORK/PrismLib.UI.dll" ] || echo "  note: no PrismLib.UI.dll beside the mod, so this run is NO_UI too"
+fi
 # The Facet minor PrismLib.UI is built on: the mod folder's copy if it has one, else lib/'s.
 FACET=$(sed -n 's:.*<Reference Include="\(Facet\.[0-9]*\.[0-9]*\)".*:\1:p' PrismLib.UI/PrismLib.UI.csproj)
 [ -n "$FACET" ] || { echo "no Facet reference in PrismLib.UI/PrismLib.UI.csproj" >&2; exit 1; }
