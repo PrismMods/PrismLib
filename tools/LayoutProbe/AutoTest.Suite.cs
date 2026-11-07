@@ -32,6 +32,17 @@ namespace LayoutProbe
 
         static float Radius(VisualElement e) => e == null ? -1f : e.resolvedStyle.borderTopLeftRadius;
 
+        // The tabs in a tab row narrower than their name or taller than a line: a tab that lost its text measure.
+        static string Squashed(VisualElement bar)
+        {
+            var bad = bar == null ? null : bar.Query<Button>().ToList().Where(b =>
+            {
+                var m = b.MeasureTextSize(b.text, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined);
+                return b.contentRect.width + 0.5f < m.x || b.contentRect.height > m.y * 1.5f;
+            }).Select(b => b.text + " " + b.contentRect.size);
+            return bad == null ? "no row" : string.Join(", ", bad);
+        }
+
         // The layout editor's chrome and the update toast in the suite look (A is selected; B and C are not).
         // Widths are read from the inline style: layout snaps resolved ones to device pixels.
         IEnumerator SuiteChrome()
@@ -229,10 +240,13 @@ namespace LayoutProbe
             var pick = root?.Q("Suite pick-input");
             Check(pick != null && pick.style.minWidth.value.value >= 140f, "a dropdown is at least 140 wide", pick == null ? "no dropdown" : pick.style.minWidth.value.value.ToString());
             var tab = root?.Query<Button>().ToList().FirstOrDefault(b => b.text == "Suite");
-            int under = Bars(tab?.parent, x => x.resolvedStyle.height, 2f, red);
-            var tabRule = tab?.parent?.Q("rule");
-            Check(under == 1 && Inline(tab?.parent, "indicator", x => x.style.height.value.value, 2f) && tabRule != null && tabRule.style.height.value.value == 1f,
+            var tabBar = tab?.parent?.parent;   // each tab sits in a cell with its underline
+            int under = Bars(tabBar, x => x.resolvedStyle.height, 2f, red);
+            var tabRule = tabBar?.Q("rule");
+            Check(under == 1 && Inline(tabBar, "indicator", x => x.style.height.value.value, 2f) && tabRule != null && tabRule.style.height.value.value == 1f,
                   "the selected tab, and only it, has a 2px accent underline (a 2px bar in every tab, a 1px rule under them)", under + " found");
+            string sq = Squashed(tabBar);
+            Check(sq == "", "every settings tab is as wide as its name and one line tall", sq);
 
             // A theme of the caller's own: Ui.Flat paints its FlatButton look, not Facet's preset
             var custom = Suite.Wear(new Facet.Theme());
@@ -290,11 +304,14 @@ namespace LayoutProbe
             var dth = Facet.Theme.For(dwin);
             SnapTo(dwin);
             var dtab = droot?.Query<Button>().ToList().FirstOrDefault(b => b.text == "Probe A");
-            var filter = droot?.Query<TextField>().ToList().FirstOrDefault(f => dtab != null && f.parent == dtab.parent?.parent);
+            var dbar = dtab?.parent?.parent;   // the tab's cell, then the row
+            var filter = droot?.Query<TextField>().ToList().FirstOrDefault(f => dbar != null && f.parent == dbar.parent);
             var input = filter?.Q(className: "unity-base-text-field__input");
             Check(dwin != null && Near(Radius(dwin), 2f, 0.01f), "the debug window has 2px corners", dwin == null ? "no window" : Radius(dwin).ToString());
-            int dunder = Bars(dtab?.parent, x => x.resolvedStyle.height, 2f, red);
-            Check(dunder == 1 && Inline(dtab?.parent, "indicator", x => x.style.height.value.value, 2f), "its selected tab, and only it, has a 2px accent underline", dunder + " found");
+            int dunder = Bars(dbar, x => x.resolvedStyle.height, 2f, red);
+            Check(dunder == 1 && Inline(dbar, "indicator", x => x.style.height.value.value, 2f), "its selected tab, and only it, has a 2px accent underline", dunder + " found");
+            string dsq = Squashed(dbar);
+            Check(dsq == "", "every debug tab (Probe A, Probe B) is as wide as its name and one line tall", dsq);
             Check(input != null && Same(input.resolvedStyle.borderTopColor, dth[Facet.Role.Line]) && Near(input.resolvedStyle.borderTopColor.a, 0.07f, 0.002f),
                   "its filter box is outlined in the suite's line", input == null ? "no input" : input.resolvedStyle.borderTopColor.ToString());
 
