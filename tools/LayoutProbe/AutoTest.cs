@@ -369,12 +369,13 @@ namespace LayoutProbe
             // Sapphire's PushTokens), which re-themes this one too a frame or two later.
             var spDoc = FindObjectsByType<UIDocument>(FindObjectsSortMode.None).FirstOrDefault(d => d.gameObject.name == "ProbeAccentPanel");
             var bar = spDoc?.rootVisualElement.Children().FirstOrDefault()?.Children().FirstOrDefault();
-            var undoBtn = bar?.Query<Button>().ToList().FirstOrDefault(b => b.text == "↶");
+            // A plain button of the bar's own (DebugPanel's Refresh is one): undo and redo are bare window controls with no selected fill.
+            var barBtn = bar == null ? null : Ui.Btn("Probe", null, bar);
             Check(bar != null && Facet.Theme.For(bar)[Facet.Role.Accent] == red, "the title bar of a window built after Tokens.Accent = red wears red",
                   bar == null ? "no title bar" : Facet.Theme.For(bar)[Facet.Role.Accent].ToString());
-            if (undoBtn != null) Ui.Highlight(undoBtn, true);
-            Check(undoBtn != null && undoBtn.style.backgroundColor.value == red, "a highlighted title-bar button draws in that red",
-                  undoBtn == null ? "no undo button" : undoBtn.style.backgroundColor.value.ToString());
+            if (barBtn != null) Ui.Highlight(barBtn, true);
+            Check(barBtn != null && barBtn.style.backgroundColor.value == red, "a highlighted title-bar button draws in that red",
+                  barBtn == null ? "no title bar" : barBtn.style.backgroundColor.value.ToString());
             sp.Dispose();
             Tokens.Accent = wasAccent;
 

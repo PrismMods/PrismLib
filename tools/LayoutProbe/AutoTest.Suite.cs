@@ -141,7 +141,7 @@ namespace LayoutProbe
             var worn = looks.Select(f => f.GetValue(probe.Looks)).ToList();
             Check(looks.Length == 23 && worn.All(l => l != null) && worn.Distinct().Count() == worn.Count, "Suite.Wear sets all 23 Looks, each its own Look",
                   looks.Length + " fields; unset: " + string.Join(", ", looks.Where(f => f.GetValue(probe.Looks) == null).Select(f => f.Name).ToArray()));
-            Check(sizes.Length == 27 && sizes.All(f => !float.IsNaN((float)f.GetValue(probe.Sizes))), "Suite.Wear sets all 27 Sizes",
+            Check(sizes.Length == 30 && sizes.All(f => !float.IsNaN((float)f.GetValue(probe.Sizes))), "Suite.Wear sets all 30 Sizes",
                   sizes.Length + " fields; unset: " + string.Join(", ", sizes.Where(f => float.IsNaN((float)f.GetValue(probe.Sizes))).Select(f => f.Name).ToArray()));
             Check(probe.Sizes.ControlPad == 5f && probe.Sizes.FieldPad == 4f && probe.Sizes.ItemHeight == 38f, "with ControlPad 5, FieldPad 4 and ItemHeight 38",
                   probe.Sizes.ControlPad + "/" + probe.Sizes.FieldPad + "/" + probe.Sizes.ItemHeight);
@@ -195,18 +195,20 @@ namespace LayoutProbe
             Main.Log("[dbg] suite: one device pixel is " + Snap.ToString("0.000") + " panel px");
             Func<string> labels = () => root == null ? "no panel" : string.Join(" | ", root.Query<Label>().ToList().Select(l => l.text).Where(s => !string.IsNullOrEmpty(s)).Take(14).ToArray());
             var sz = th.Sizes;
-            Check(win != null && sz.Radius == 2f && sz.SwitchRadius == 2f && sz.KnobRadius == 2f && sz.Body == 13f && sz.Title == 17f && sz.Small == 12f
-                  && sz.Caps == 11f && sz.RowHeight == 32f && sz.NavRowHeight == 28f && sz.TitleBarHeight == 36f && sz.SwitchWidth == 30f
+            // Pill switches: a fully round track and a round knob; every other corner stays 2.
+            Check(win != null && sz.Radius == 2f && sz.SwitchRadius == sz.SwitchHeight / 2f && sz.KnobRadius == (sz.SwitchHeight - 4f) / 2f && sz.Body == 13f && sz.Title == 17f && sz.Small == 12f
+                  && sz.Caps == 11f && sz.RowHeight == 38f && sz.NavRowHeight == 28f && sz.TitleBarHeight == 36f && sz.SwitchWidth == 30f
                   && sz.SwitchHeight == 16f && sz.Track == 3f && sz.DropdownWidth == 140f, "Prism · Settings builds with the suite's sizes",
                   "radius " + sz.Radius + "/" + sz.SwitchRadius + "/" + sz.KnobRadius + ", type " + sz.Title + "/" + sz.Body + "/" + sz.Small + "/" + sz.Caps
                   + ", rows " + sz.RowHeight + "/" + sz.NavRowHeight + "/" + sz.TitleBarHeight + ", switch " + sz.SwitchWidth + "x" + sz.SwitchHeight
                   + ", track " + sz.Track + ", dropdown " + sz.DropdownWidth);
             // The rest of Sizes, exact: layout snaps to device pixels, so only the values themselves can tell a 1px line from a 2px one.
             Check(sz.Line == 1f && sz.Indicator == 2f && sz.Pad == 12f && sz.Gap == 8f && sz.ListRowHeight == 24f && sz.CapsSpacing == 1f
-                  && sz.ThumbWidth == 4f && sz.ThumbHeight == 14f && sz.SliderWidth == 160f && sz.NumberWidth == 52f,
-                  "and the rest of its sizes: line 1, indicator 2, pad 12, gap 8, list row 24, caps spacing 1, thumb 4x14, slider 160, number 52",
+                  && sz.ThumbWidth == 4f && sz.ThumbHeight == 14f && sz.SliderWidth == 160f && sz.NumberWidth == 64f && sz.Icon == 16f && sz.RowPadY == 6f && sz.TabGap == 20f,
+                  "and the rest of its sizes: line 1, indicator 2, pad 12, gap 8, list row 24, caps spacing 1, thumb 4x14, slider 160, number 64, icon 16, row text pad 6, tab gap 20",
                   "line " + sz.Line + ", indicator " + sz.Indicator + ", pad/gap " + sz.Pad + "/" + sz.Gap + ", list row " + sz.ListRowHeight + ", spacing " + sz.CapsSpacing
-                  + ", thumb " + sz.ThumbWidth + "x" + sz.ThumbHeight + ", slider " + sz.SliderWidth + ", number " + sz.NumberWidth);
+                  + ", thumb " + sz.ThumbWidth + "x" + sz.ThumbHeight + ", slider " + sz.SliderWidth + ", number " + sz.NumberWidth + ", icon " + sz.Icon
+                  + ", row text pad " + sz.RowPadY + ", tab gap " + sz.TabGap);
             Check(Same(th[Facet.Role.Panel], window) && Same(th[Facet.Role.RowHover], new Color(1f, 1f, 1f, 0.05f)) && Same(th[Facet.Role.Danger], danger)
                   && Same(th[Facet.Role.Rail], sidebar) && Near(th[Facet.Role.Line].a, 0.07f, 0.001f) && Near(th[Facet.Role.Off].a, 0.18f, 0.001f),
                   "its neutrals are the suite's, not the ones pushed into Tokens",
@@ -228,15 +230,23 @@ namespace LayoutProbe
             Check(sizeRow != null && swRow != null && sizeRow.style.borderTopWidth.value == 1f && Near(sizeRow.resolvedStyle.borderTopWidth, 1f, Snap) && swRow.resolvedStyle.borderTopWidth == 0f
                   && Same(sizeRow.resolvedStyle.borderTopColor, th[Facet.Role.Line]), "a 1px line splits a card's rows, none above the first",
                   sizeRow == null || swRow == null ? "no rows" : "size " + sizeRow.resolvedStyle.borderTopWidth + " " + sizeRow.resolvedStyle.borderTopColor + ", switch " + swRow.resolvedStyle.borderTopWidth);
+            Check(swRow != null && Near(swRow.resolvedStyle.height, 38f, Snap), "a one-line row is 38 tall", swRow == null ? "no row" : swRow.resolvedStyle.height.ToString("0.00"));
             var swLabel = LabelIn(swRow, "Suite switch");
             Check(swLabel != null && swLabel.resolvedStyle.fontSize == 13f, "a row label is 13px", swLabel == null ? "no label" : swLabel.resolvedStyle.fontSize.ToString());
             var control = swRow?.Q("control");
             var track = control != null && control.childCount > 0 ? control.ElementAt(0) : null;
-            Check(track != null && Near(track.resolvedStyle.width, 30f, Snap) && Near(track.resolvedStyle.height, 16f, Snap) && Near(Radius(track), 2f, 0.01f)
-                  && Same(track.resolvedStyle.backgroundColor, th[Facet.Role.Off]), "an off switch is a 30x16 track, 2px corners, in the off colour",
-                  track == null ? "no track" : track.resolvedStyle.width + "x" + track.resolvedStyle.height + " r" + Radius(track) + " " + track.resolvedStyle.backgroundColor);
+            var knob = track != null && track.childCount > 0 ? track.ElementAt(0) : null;
+            Check(track != null && knob != null && Near(track.resolvedStyle.width, 30f, Snap) && Near(track.resolvedStyle.height, 16f, Snap) && Near(Radius(track), 8f, 0.01f)
+                  && Near(Radius(knob), 6f, 0.01f) && Near(knob.resolvedStyle.width, 12f, Snap)
+                  && Same(track.resolvedStyle.backgroundColor, th[Facet.Role.Off]), "an off switch is a 30x16 pill (radius 8) with a round 12px knob, in the off colour",
+                  track == null || knob == null ? "no track or knob" : track.resolvedStyle.width + "x" + track.resolvedStyle.height + " r" + Radius(track)
+                  + ", knob " + knob.resolvedStyle.width + " r" + Radius(knob) + " " + track.resolvedStyle.backgroundColor);
             var fill = root?.Q("Suite size-fill");
             Check(fill != null && Same(fill.resolvedStyle.backgroundColor, red), "a slider's filled part is the accent", fill == null ? "no fill" : fill.resolvedStyle.backgroundColor.ToString());
+            // The knob's round corner would be 6 on a 4 px wide thumb; UI Toolkit only hides that by clamping.
+            var thumb = sizeRow?.Q(className: "unity-base-slider__dragger");
+            Check(thumb != null && thumb.style.borderTopLeftRadius.value.value == 2f, "a slider thumb's corner is 2, half its 4 px width",
+                  thumb == null ? "no thumb" : thumb.style.borderTopLeftRadius.value.value.ToString());
             var pick = root?.Q("Suite pick-input");
             Check(pick != null && pick.style.minWidth.value.value >= 140f, "a dropdown is at least 140 wide", pick == null ? "no dropdown" : pick.style.minWidth.value.value.ToString());
             var tab = root?.Query<Button>().ToList().FirstOrDefault(b => b.text == "Suite");
@@ -245,6 +255,9 @@ namespace LayoutProbe
             var tabRule = tabBar?.Q("rule");
             Check(under == 1 && Inline(tabBar, "indicator", x => x.style.height.value.value, 2f) && tabRule != null && tabRule.style.height.value.value == 1f,
                   "the selected tab, and only it, has a 2px accent underline (a 2px bar in every tab, a 1px rule under them)", under + " found");
+            var page = root?.Q<ScrollView>();
+            float tabGap = page == null || tabBar == null || page.parent != tabBar.parent ? -1f : page.layout.yMin - tabBar.layout.yMax;
+            Check(Near(tabGap, 20f, Snap), "the page starts 20 under its tab row, a Pad more than Facet's Gap", tabGap.ToString("0.00"));
             string sq = Squashed(tabBar);
             Check(sq == "", "every settings tab is as wide as its name and one line tall", sq);
 

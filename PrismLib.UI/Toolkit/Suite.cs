@@ -3,9 +3,10 @@ using Facet;
 
 namespace PrismLib.UI.Toolkit
 {
-    /* The Prism suite's look (spec "The suite look"): Topaz's neutral greys, 2px corners, 1px lines,
-       rows on a barely visible fill, the accent only on state. Every theme PrismLib.UI makes wears it,
-       and a Facet-native host (Quartz) dresses its own theme with Wear. Each mod keeps its accent. */
+    /* The Prism suite's look (spec "The suite look"): Topaz's neutral greys, 2px corners (switches are
+       pills), 1px lines, rows on a barely visible fill, the accent only on state. Every theme PrismLib.UI
+       makes wears it, and a Facet-native host (Quartz) dresses its own theme with Wear. Each mod keeps
+       its accent. */
     public static class Suite
     {
         internal static readonly Color Window = new Color32(0x1A, 0x1A, 0x1F, 0xFF), TitleBar = new Color32(0x14, 0x14, 0x18, 0xFF),
@@ -32,16 +33,23 @@ namespace PrismLib.UI.Toolkit
         internal static void Shape(Facet.Theme t)
         {
             var s = t.Sizes;
-            s.Radius = s.SwitchRadius = s.KnobRadius = Tokens.Radius;
+            s.Radius = Tokens.Radius;
             s.Line = 1f;
             s.Pad = Tokens.Pad; s.Gap = Tokens.Gap;
             s.ControlPad = 5f; s.FieldPad = 4f;
-            s.RowHeight = 32f; s.ListRowHeight = Tokens.RowHeight; s.NavRowHeight = 28f; s.TitleBarHeight = 36f; s.ItemHeight = 38f;
+            s.RowHeight = 38f; s.ListRowHeight = Tokens.RowHeight; s.NavRowHeight = 28f; s.TitleBarHeight = 36f; s.ItemHeight = 38f;
             s.Title = Tokens.FontSizeTitle; s.Body = Tokens.FontSize; s.Small = Tokens.FontSizeSmall; s.Caps = 11f; s.CapsSpacing = 1f;
             s.SwitchWidth = 30f; s.SwitchHeight = 16f;
+            // Pill switches (the user's pick): a fully round track and knob. The knob is SwitchHeight - 4 across.
+            s.SwitchRadius = s.SwitchHeight / 2f; s.KnobRadius = (s.SwitchHeight - 4f) / 2f;
             s.Track = 3f; s.ThumbWidth = 4f; s.ThumbHeight = 14f;
-            s.SliderWidth = 160f; s.NumberWidth = 52f; s.DropdownWidth = 140f;
-            s.Indicator = 2f;
+            // 64 fits a four-digit value with its unit ("1000 px/s") inside the box's border and padding.
+            s.SliderWidth = 160f; s.NumberWidth = 64f; s.DropdownWidth = 140f;
+            s.Indicator = 2f; s.Icon = 16f;
+            // Text that wraps stands off its row's top and bottom.
+            s.RowPadY = 6f;
+            // A page stands a Pad further under its tab row than Facet's Gap, so it reads apart from the tabs.
+            s.TabGap = s.Gap + s.Pad;
 
             var k = t.Looks;
             k.Button = new Look { Bg = Role.RowHover, Text = Role.Text, Border = Role.Line, HoverBg = Role.RowAlt, PressedBg = Role.Row,

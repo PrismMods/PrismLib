@@ -377,7 +377,7 @@ built-in default that does the same failing OS lookup.
 
 **Every Prism window wears the suite skin (`Suite`); each mod keeps its accent.** Every theme
 PrismLib.UI makes is shaped by `Suite` when it is made (`Theme.Default` and `new Theme()` wear it whole;
-`Theme.FromAccent` takes the sizes and looks, not the colours): Topaz's neutral greys, 2px corners, 1px lines, rows on a 2.5% fill, the accent only on state,
+`Theme.FromAccent` takes the sizes and looks, not the colours): Topaz's neutral greys, 2px corners (switches are pills), 1px lines, rows on a 2.5% fill, the accent only on state,
 and every field of Facet's `Sizes` and `Looks`. The neutrals are the suite's: of a mod's `PushTokens`
 only `Tokens.Accent` reaches a window (Default reads it live). Sizes come from `Tokens` when a theme is
 made, so set them before. `FromAccent` keeps Quartz's derived colours in the suite's sizes and looks;
