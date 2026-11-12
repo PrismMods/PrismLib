@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using PrismLib;
 using PrismLib.UI.Toolkit;
 
@@ -54,6 +56,7 @@ static class PrismLibTest
         var order = new List<string>(); SettingEntry anim = null;
         foreach (var kv in Settings.Search("")) { order.Add(kv.Value.Id); if (kv.Value.Id == Prism.AnimKey && kv.Key == "PrismLib") anim = kv.Value; }
         Check(anim != null && anim.Kind == SettingKind.Int && anim.Min == 0 && anim.Max == 400, "the animation setting is PrismLib's Int, 0-400");
+        Check(anim != null && anim.Group == "Animation", "it sits in the Animation group");
         Check(order.IndexOf(Prism.FpsKey) < order.IndexOf(Prism.AnimKey) && order.IndexOf(Prism.AnimKey) < order.IndexOf(Prism.RestartKey), "it comes after fps.show and before update.restart");
         found = false;
         foreach (var kv in Settings.Search("animation")) if (kv.Value.Id == Prism.AnimKey) found = true;
@@ -74,8 +77,51 @@ static class PrismLibTest
         Check(sink == 120 * 300000 && grew < 4096, "reading AnimDuration allocates nothing (" + grew + " bytes over 300000 reads)");
         Words.Language = () => "ko";
         Check(Words.Own(anim.Tooltip) == "모든 Prism 창의 기본 전환 길이입니다. 0이면 애니메이션이 꺼집니다.", "the animation tooltip has its Korean string");
+        Check(Words.Own("Animation") == "애니메이션", "the Animation group has its Korean name");
         Words.Language = null;
         Config.Set(Prism.AnimKey, wasAnim ?? "120");
+
+        Console.WriteLine("smooth scrolling");
+        // Config has no way to remove a key, so "missing" drops it from Config's cache; the file is put back after.
+        string cfg = Config.FilePath, wasSmooth = Config.Get(Prism.SmoothKey);
+        byte[] wasCfg = cfg != null && File.Exists(cfg) ? File.ReadAllBytes(cfg) : null;
+        var cache = typeof(Config).GetField("_values", BindingFlags.NonPublic | BindingFlags.Static);
+        string[] smoothIn = { null, "", "1", "0", "true", "False", "garbage", " 0 " };
+        bool[] smoothWant = { true, true, true, false, true, false, true, false };
+        for (int i = 0; i < smoothIn.Length; i++)
+        {
+            if (smoothIn[i] == null) ((Dictionary<string, string>)cache.GetValue(null)).Remove(Prism.SmoothKey);
+            else Config.Set(Prism.SmoothKey, smoothIn[i]);
+            Check(Prism.SmoothScroll == smoothWant[i], "scroll.smooth " + (smoothIn[i] == null ? "missing" : "'" + smoothIn[i] + "'") + " reads " + (smoothWant[i] ? "on" : "off"));
+        }
+        SettingEntry smooth = null; var groups = new List<string>(); order.Clear();
+        foreach (var kv in Settings.Search(""))
+        {
+            order.Add(kv.Value.Id);
+            if (kv.Key == "PrismLib") groups.Add(kv.Value.Group);
+            if (kv.Value.Id == Prism.SmoothKey && kv.Key == "PrismLib") smooth = kv.Value;
+        }
+        Check(smooth != null && smooth.Kind == SettingKind.Bool && smooth.Page == "PrismLib" && smooth.Group == "Animation", "smooth scrolling is PrismLib's Bool, on page PrismLib in group Animation");
+        Check(order.IndexOf(Prism.AnimKey) < order.IndexOf(Prism.SmoothKey) && order.IndexOf(Prism.SmoothKey) < order.IndexOf(Prism.RestartKey), "it comes after anim.duration and before update.restart");
+        Check(string.Join(",", groups.ToArray()) == "Display,Animation,Animation,Updates", "PrismLib's page reads Display, Animation, Updates");
+        foreach (var q in new[] { "smooth", "scroll" })
+        {
+            found = false;
+            foreach (var kv in Settings.Search(q)) if (kv.Value.Id == Prism.SmoothKey) found = true;
+            Check(found, "searching '" + q + "' finds it");
+        }
+        if (smooth != null) smooth.Set(false);
+        Check(smooth != null && Config.Get(Prism.SmoothKey) == "0" && !(bool)smooth.Get(), "Set(false) stores \"0\" and reads off");
+        if (smooth != null) smooth.Set(true);
+        Check(smooth != null && Config.Get(Prism.SmoothKey) == "1" && (bool)smooth.Get(), "Set(true) stores \"1\" and reads on");
+        Words.Language = () => "ko";
+        Check(smooth != null && Words.Own(smooth.Label) == "부드러운 스크롤", "the smooth scrolling label has its Korean string");
+        Check(smooth != null && Words.Own(smooth.Tooltip) == "마우스 휠로 스크롤할 때 모든 Prism 창에서 바로 건너뛰지 않고 부드럽게 움직입니다.", "...and its tooltip");
+        Check(smooth != null && Words.Own(smooth.Group) == "애니메이션", "...and its group");
+        Words.Language = null;
+        if (wasCfg != null) File.WriteAllBytes(cfg, wasCfg); else if (cfg != null) File.Delete(cfg);
+        cache.SetValue(null, null);   // reloads from the file on the next read
+        Check(Config.Get(Prism.SmoothKey) == wasSmooth, "the config is put back as it was, a missing key still missing");
 
         Console.WriteLine("claims");
         string denied = null;
@@ -203,17 +249,17 @@ static class PrismLibTest
             new SettingEntry { Id = "ui.scale", Kind = SettingKind.Float, Label = "UI scale", Get = () => 1.0 },
         });
         Check(Count(Settings.Of("Sapphire")) == 2, "an entry without a getter is dropped");
-        Check(Count(Settings.Search(null)) == 6, "an empty query returns everything from every mod (and PrismLib's own)");
+        Check(Count(Settings.Search(null)) == 7, "an empty query returns everything from every mod (and PrismLib's own)");
         var hits = new List<KeyValuePair<string, SettingEntry>>(Settings.Search("bpm"));
         Check(hits.Count == 1 && hits[0].Key == "Sapphire", "search finds one setting and names its owner");
         Check(Count(Settings.Search("tempo")) == 1, "a keyword matches when the label does not");
-        Check(Count(Settings.Search("sc")) == 1, "search spans mods");
+        Check(Count(Settings.Search("scale")) == 1, "search spans mods");
         hits = new List<KeyValuePair<string, SettingEntry>>(Settings.Search("editor"));
         Check(hits.Count == 2 && hits[0].Value.Id == "editor.effectiveBpm", "an id hit outranks a group hit");
         hits[0].Value.Set(true);
         Check(stored && (bool)hits[0].Value.Get(), "Get/Set round-trip through the owning mod");
         a.DescribeSettings(new SettingEntry[0]);
-        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 4, "re-describing replaces only that mod's entries");
+        Check(Count(Settings.Of("Sapphire")) == 0 && Count(Settings.Search(null)) == 5, "re-describing replaces only that mod's entries");
 
         Console.WriteLine("guards");
         Check(Guards.Major("2.9.8") == 2 && Guards.Major("3.4.0") == 3 && Guards.Major("10.1") == 10, "Major reads the leading integer");

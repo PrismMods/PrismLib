@@ -448,6 +448,16 @@ of `TickDebug`; CamDisplay calls it first in `Tick`). Both calls sit behind NoIn
 catch, since an older PrismLib or PrismLib.UI may be the one loaded; list `TickAnim` among
 check-bridge's ungated methods.
 
+The third is `scroll.smooth` (on by default, in the Animation group after `anim.duration`): every Facet
+window glides to where the mouse wheel sends it. It reads off only when the stored value, trimmed, is
+"0" or "false" (any case); missing, empty or garbage reads on, so not `Config.GetBool`, which reads
+garbage as off. Bridges read `Config.Get(Prism.SmoothKey)` and parse it by that rule themselves rather
+than call `Prism.SmoothScroll`, which a published 0.3.12 install lacks (the `RestartKey` precedent).
+Each bridge copies it into `PrismLib.UI.Toolkit.Anim.SmoothScroll` every frame, which writes Facet's
+shared `Facet.SmoothScroll` only on a change. Since every bridge rewrites that switch each frame, a
+check sets `scroll.smooth` through Config and makes the bridge's copy in the frame it steps, never
+Facet's flag alone (LayoutProbe's `SuiteSmooth`).
+
 **Performance, measured 2026-10-25** (frame-time probe, Linux, fast CPU): windows add nothing per
 frame once built (10.0 ms avg / 12–14 ms worst at 100 FPS, open or closed); first open is one
 80–100 ms spike. The debug window used to re-read, re-split and `Rebuild()` its list every second —

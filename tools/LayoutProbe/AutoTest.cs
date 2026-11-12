@@ -393,6 +393,7 @@ namespace LayoutProbe
             yield return SchemaSettings();
             yield return SuiteSkin();
             yield return SuiteMotion();
+            yield return SuiteSmooth();
             yield return CrossOwnerWords();
             yield return NavMenu();
             yield return TopazMenu();

@@ -1,6 +1,8 @@
 // The suite skin (plan 8): what every Prism window wears, and what a window another host made keeps.
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using PrismLib.UI.Toolkit;
@@ -122,6 +124,96 @@ namespace LayoutProbe
             sp.Dispose();
             Anim.Duration = 120;
             yield return null;
+        }
+
+        // PrismLib.dll, which the probe does not reference: the copy the mods loaded, through reflection.
+        static Type Lib(string name) => AppDomain.CurrentDomain.GetAssemblies().Where(x => x.GetName().Name == "PrismLib")
+            .Select(x => x.GetType("PrismLib." + name)).FirstOrDefault(t => t != null);
+
+        static bool? SharedSmooth()
+        {
+            var d = AppDomain.CurrentDomain.GetData("Facet.Shared") as Dictionary<string, object>;
+            object v;
+            return d != null && d.TryGetValue("Facet.SmoothScroll", out v) && v is bool[] && ((bool[])v).Length > 0 ? ((bool[])v)[0] : (bool?)null;
+        }
+
+        /* Smooth scrolling: Anim.SmoothScroll is Facet's shared switch, and PrismLib's scroll.smooth is the player's.
+           Every bridge copies the setting into the switch each frame, so the check sets scroll.smooth through Config
+           and makes a bridge's copy in the frame it steps, never Facet's flag alone. The settings file is put back
+           byte for byte, a missing key still missing. */
+        IEnumerator SuiteSmooth()
+        {
+            bool was = Anim.SmoothScroll;
+            Anim.SmoothScroll = true; var on = SharedSmooth();
+            Anim.SmoothScroll = false; var off = SharedSmooth();
+            Check(on == true && off == false, "Anim.SmoothScroll writes Facet's shared switch", on + " / " + off);
+            for (int i = 0; i < 1000; i++) Anim.SmoothScroll = false;   // warm up
+            long mem = GC.GetTotalMemory(false);
+            for (int i = 0; i < 300000; i++) Anim.SmoothScroll = false;
+            long grew = GC.GetTotalMemory(false) - mem;
+            Check(grew < 4096, "...and allocates nothing when unchanged", grew + " bytes over 300000 sets");
+
+            var config = Lib("Config");
+            var smooth = Lib("Prism")?.GetProperty("SmoothScroll");
+            Check(config != null && smooth != null, "the loaded PrismLib has scroll.smooth", config == null ? "no PrismLib loaded" : "no Prism.SmoothScroll");
+            if (config == null || smooth == null) { Anim.SmoothScroll = was; yield break; }
+            Func<string> stored = () => (string)config.GetMethod("Get").Invoke(null, new object[] { "scroll.smooth", null });
+            Action<string> setting = v => config.GetMethod("Set").Invoke(null, new object[] { "scroll.smooth", v });
+            Action copy = () => Anim.SmoothScroll = (bool)smooth.GetValue(null, null);   // what a bridge does each frame
+            string path = (string)config.GetProperty("FilePath").GetValue(null, null), wasStored = stored();
+            byte[] file = path != null && File.Exists(path) ? File.ReadAllBytes(path) : null;
+
+            var rows = Enumerable.Range(0, 40).Select(i => new SettingRow
+                { Owner = "LayoutProbe", Page = "Smooth", Group = "Rows", Label = "Smooth row " + i, Kind = SettingControl.Bool, Get = () => false, Set = _ => { } }).ToArray();
+            var sp = new SettingsPanel("Probe Smooth", () => rows);
+            try
+            {
+                sp.Visible = true;
+                for (int i = 0; i < 5; i++) yield return null;
+                var root = PanelRoot("ProbeSmoothPanel");
+                var sv = root?.Q<ScrollView>();
+                Check(sv != null && sv.contentContainer.layout.height > sv.contentViewport.layout.height + 120f, "a SettingsPanel of 40 rows scrolls",
+                      sv == null ? "no ScrollView" : sv.contentContainer.layout.height + " in " + sv.contentViewport.layout.height);
+                if (sv == null) yield break;
+                float k = root.layout.width / Screen.width;
+                var c = new Vector2(sv.worldBound.center.x / k, Screen.height - sv.worldBound.center.y / k);
+
+                // off: the notch lands in the frame it arrives, set and stepped in that one frame
+                float y0 = sv.scrollOffset.y;
+                setting("0"); copy(); Facet.Skin.Wheel(root, c, -1f);
+                float step = sv.scrollOffset.y - y0;
+                Check(step > 0f && !Anim.SmoothScroll, "scroll.smooth off: a wheel notch lands in the frame it arrives", step + ", switch " + Anim.SmoothScroll);
+                yield return null;
+
+                // on: nothing in that frame, a quarter in between start and target, then exactly the same step
+                float same = 0f, mid = 0f, end = 0f; bool late = false;
+                for (int attempt = 0; attempt < 2; attempt++)
+                {
+                    y0 = sv.scrollOffset.y;
+                    float t0 = Time.realtimeSinceStartup;
+                    setting("1"); copy(); Anim.Duration = 120; Facet.Skin.Wheel(root, c, -1f);
+                    same = sv.scrollOffset.y;
+                    while (Time.realtimeSinceStartup - t0 < 0.05f) yield return null;
+                    mid = sv.scrollOffset.y;
+                    late = Time.realtimeSinceStartup - t0 >= 0.2f;
+                    while (Time.realtimeSinceStartup - t0 < 0.2f) yield return null;
+                    yield return null; yield return null;
+                    end = sv.scrollOffset.y;
+                    if (!late) break;
+                    Main.Log("INFO smooth sample ran past the glide's end; re-running the step once");
+                }
+                Check(Mathf.Approximately(same, y0), "scroll.smooth on: the notch moves nothing in the frame it arrives", (same - y0).ToString());
+                Check(mid > y0 && mid < y0 + step, "...a quarter into the glide the offset is between start and target", y0 + " < " + mid + " < " + (y0 + step) + (late ? " (late)" : ""));
+                Check(Math.Abs(end - y0 - step) <= 0.5f, "...and it settles exactly the off step further", (end - y0) + " vs " + step);
+            }
+            finally
+            {
+                sp.Dispose();
+                if (file != null) File.WriteAllBytes(path, file); else if (path != null) File.Delete(path);
+                config.GetField("_values", BindingFlags.NonPublic | BindingFlags.Static)?.SetValue(null, null);   // reloads from the file
+                Anim.SmoothScroll = was;
+            }
+            Check(stored() == wasStored, "scroll.smooth is put back as it was", "'" + stored() + "' vs '" + wasStored + "'");
         }
 
         IEnumerator SuiteSkin()

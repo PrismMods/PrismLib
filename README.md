@@ -118,8 +118,10 @@ mod's previous description rather than adding to it.
 
 PrismLib also has a few settings of its own, stored in `settings.txt` beside `PrismLib.dll`
 (`PrismLib.Config`) and listed first in the settings window. Currently these are **Show FPS**, a
-frame-rate display shared by all Prism mods, and **Animation duration (ms)**, the length of a standard
-transition in every Facet-built Prism window (0-400, default 120; 0 turns animation off).
+frame-rate display shared by all Prism mods; **Animation duration (ms)**, the length of a standard
+transition in every Facet-built Prism window (0-400, default 120; 0 turns animation off); and
+**Smooth scrolling** (`scroll.smooth`, default on), which makes those windows glide to where the mouse
+wheel sends them instead of jumping.
 
 ## PrismLib.UI
 

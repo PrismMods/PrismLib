@@ -65,6 +65,23 @@ namespace PrismLib
             }
         }
 
+        /// Whether every Facet window glides to where the mouse wheel sends it. Bridges copy it into Anim.SmoothScroll each frame.
+        public const string SmoothKey = "scroll.smooth";
+
+        /* scroll.smooth: off only when the stored value, trimmed, is "0" or "false" (any case); missing, empty or
+           anything else reads on, the default. Not Config.GetBool, which reads garbage as off. Bridges parse
+           Config.Get(SmoothKey) by this same rule themselves: a published 0.3.12 install lacks this member. */
+        public static bool SmoothScroll
+        {
+            get
+            {
+                string v = Config.Get(SmoothKey);
+                if (v == null) return true;
+                v = v.Trim();
+                return v != "0" && !v.Equals("false", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         private static bool _ownDescribed;
 
         private static void DescribeOwnSettings()
@@ -83,7 +100,7 @@ namespace PrismLib
                 },
                 new SettingEntry
                 {
-                    Id = AnimKey, Kind = SettingKind.Int, Label = "Animation duration (ms)", Page = "PrismLib", Group = "Display",
+                    Id = AnimKey, Kind = SettingKind.Int, Label = "Animation duration (ms)", Page = "PrismLib", Group = "Animation",
                     Tooltip = "Length of a standard transition in every Prism window. 0 turns animation off.",
                     Keywords = new[] { "animation", "duration", "speed", "motion", "transition", "ms" },
                     Order = int.MinValue + 1, Min = 0, Max = 400,
@@ -92,10 +109,19 @@ namespace PrismLib
                 },
                 new SettingEntry
                 {
+                    Id = SmoothKey, Kind = SettingKind.Bool, Label = "Smooth scrolling", Page = "PrismLib", Group = "Animation",
+                    Tooltip = "Glide to where the mouse wheel sends you instead of jumping, in every Prism window.",
+                    Keywords = new[] { "smooth", "scroll", "scrolling", "wheel", "glide", "animation" },
+                    Order = int.MinValue + 2,
+                    Get = () => SmoothScroll,
+                    Set = v => Config.SetBool(SmoothKey, Convert.ToBoolean(v)),
+                },
+                new SettingEntry
+                {
                     Id = RestartKey, Kind = SettingKind.Enum, Label = "After a mod update", Page = "PrismLib", Group = "Updates",
                     Tooltip = "What to do once a Prism mod has installed an update",
                     Keywords = new[] { "restart", "update", "relaunch", "remember" },
-                    Order = int.MinValue + 2,
+                    Order = int.MinValue + 3,
                     Options = new[] { "Ask", "Restart now", "Restart later" },
                     Get = () => GetRestartChoice(),
                     Set = v => Config.Set(RestartKey, Convert.ToInt32(v).ToString()),

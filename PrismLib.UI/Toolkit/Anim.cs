@@ -7,7 +7,7 @@ namespace PrismLib.UI.Toolkit
        Facet.Anim, which also decides what happens to an element not in a panel yet.
        Duration is the user's setting (PrismLib "anim.duration", 0-400 ms, 120 = the names below as
        written): it scales every Facet window through Facet.Anim.Speed. PrismLib.dll cannot reference
-       Facet, so each mod's bridge copies Prism.AnimDuration in every frame. */
+       Facet, so each mod's bridge copies Prism.AnimDuration in every frame, and scroll.smooth into SmoothScroll. */
     public static class Anim
     {
         public const int Instant = 0, Fast = 120, Normal = 180, Slow = 300;
@@ -21,6 +21,14 @@ namespace PrismLib.UI.Toolkit
                 float speed = (value < 0 ? 0 : value > 400 ? 400 : value) / 120f;
                 if (Facet.Anim.Speed != speed) Facet.Anim.Speed = speed;
             }
+        }
+
+        /// Whether Facet windows glide to where the mouse wheel sends them (PrismLib "scroll.smooth"). Each bridge copies
+        /// the setting in every frame, so this writes Facet's shared switch only when it changes.
+        public static bool SmoothScroll
+        {
+            get { return Facet.Anim.SmoothScroll; }
+            set { if (Facet.Anim.SmoothScroll != value) Facet.Anim.SmoothScroll = value; }
         }
 
         /// Fade to an opacity. Starts from wherever it is, so interrupting mid-fade does not jump.
