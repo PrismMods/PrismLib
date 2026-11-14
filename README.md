@@ -225,6 +225,25 @@ A mod drives it through a `SuiteAdapter` subclass.
   the editor closes, and the next press shows the hub. Escape and Close hide it; `Dispose` brings
   nothing back. Quartz builds no `SuiteHub`: its classic reposition screen stays its hub.
 
+**For mods.** How a mod plugs in, with no shell change:
+- **The door.** One NoInlining probe touches `typeof(SuiteShell)` inside a try, caches the answer and
+  logs one line when it fails ("PrismLib.UI has no suite shell": an older copy another mod loaded
+  first). Everything else is gated on it. The adapter (`class MyModSuite : SuiteAdapter`) is the
+  only class of the mod that derives from, or has a field or signature naming, a shell type, and it
+  is constructed only inside a NoInlining build helper reached after the probe. The rest of the mod
+  holds the shell as `object` and calls NoInlining helpers whose signatures name only Facet and BCL
+  types; a facade member checks the handle for null itself and then calls the helper, because a
+  NoInlining method that names `SuiteShell` is compiled whole, null check and all, before it runs.
+  Without the shell the mod keeps its own older menu.
+- **The probe.** `tools/check-bridge.sh` with an older `PrismLib.UI.dll` copied beside the mod's DLL
+  JIT-compiles the facade and gate methods you list against a copy that has no shell; each must
+  print `ok`. Run it again whenever a facade member is added.
+- **`Dispose`** the shell (and a `SuiteHub` over it) when the mod shuts down or its master switch
+  goes off. It raises no `Hidden`, so nothing the mod hangs on a close (its hub, a classic menu)
+  reopens behind it. Build a new shell when the mod comes back.
+- A release of a mod that uses the shell needs a PrismLib release carrying it first, with PrismLib.UI's
+  assembly version raised, so the bootstrap replaces older copies beside other mods.
+
 `tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:`, `pages:` and `hub:` checks).
 
 ### Update toast

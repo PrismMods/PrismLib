@@ -27,6 +27,14 @@ namespace LayoutProbe
         static ScrollView Rail(SuiteShell s) => s.Window?.Body.Query<ScrollView>().ToList().FirstOrDefault(IsRail);
         static ScrollView Content(SuiteShell s) => s.Window?.Body.Query<ScrollView>().ToList().FirstOrDefault(v => !IsRail(v));
 
+        // What a failed sidebar-toggle check needs to tell a lost button from a fold that did not happen.
+        static string ToggleState(SuiteShell s)
+        {
+            var b = s.Window?.Root.Q("sidebar-toggle");
+            return "button=" + s.Nav.CompactButton + " compact=" + s.Nav.Compact + " toggle=" + (b != null)
+                + (b == null ? "" : " inline=" + b.style.display.value + " resolved=" + b.resolvedStyle.display);
+        }
+
         static int Count(List<string> lines, string part) => lines.Count(l => l.Contains(part));
 
         static float Order(Facet.Surface s) => FindObjectsByType<UIDocument>(FindObjectsSortMode.None)
@@ -111,7 +119,9 @@ namespace LayoutProbe
             new Facet.Window(other.Root, "probeshellother", "Other", new Rect(100, 100, 300, 200));
             yield return null;
             bool under = Order(other) > Order(shell.Surface);
-            PressAt(shell.Surface.Root, shell.Window.TitleBarLeft.worldBound.center);
+            // At the logo end of the title bar: its centre can fall on the sidebar toggle, which the press would flip.
+            var bar0 = shell.Window.TitleBarLeft.worldBound;
+            PressAt(shell.Surface.Root, new Vector2(bar0.x + 4f, bar0.center.y));
             Check(under && Order(shell.Surface) > Order(other), "shell: a press on the menu raises it over a later window",
                   Order(shell.Surface) + " / " + Order(other));
             other.Dispose();
@@ -157,7 +167,7 @@ namespace LayoutProbe
             shell.SidebarMode = 0;
             yield return null;
             Check(!demo.Store.ContainsKey(SuiteShell.SidebarStore) && shell.Nav.CompactButton && railButton() != null && !shell.Nav.Compact,
-                  "shell: sidebar mode 0 removes the key and shows the button");
+                  "shell: sidebar mode 0 removes the key and shows the button", ToggleState(shell));
             Tap(railButton());
             yield return null;
             string folded;
@@ -252,7 +262,8 @@ namespace LayoutProbe
             shells.Add(s);
             s.Open();
             yield return null;
-            Check(s.Nav.Compact && s.Nav.CompactButton && s.Window?.Root.Q("sidebar-toggle") != null, "shell: a rail folded with the button stays folded in a later build");
+            Check(s.Nav.Compact && s.Nav.CompactButton && s.Window?.Root.Q("sidebar-toggle") != null, "shell: a rail folded with the button stays folded in a later build",
+                  ToggleState(s));
             s.Dispose();
             demo.Store[SuiteShell.PageStore] = "gone.page";
             s = new SuiteShell(demo2);
