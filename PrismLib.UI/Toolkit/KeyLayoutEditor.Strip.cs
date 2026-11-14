@@ -37,13 +37,13 @@ namespace PrismLib.UI.Toolkit
                 if (!hands)
                     o.TitleMenu = () => new List<Facet.MenuItem>
                     {
-                        Item(KeyLayoutText.HideFeet, null, () => Do(KeyLayoutText.HideFeet, () => _model.Show(LayoutGroup.Feet, null))),
+                        Item(KeyLayoutText.HideFeet, null, () => Pick(KeyLayoutText.HideFeet, LayoutGroup.Feet, null)),
                     };
                 o.Items = () => _model.Layouts(group);
                 o.Text = _model.Name;
                 o.Selected = id => id == _model.Editing;
                 o.Active = id => id == _model.Shown(group);
-                o.Select = id => Do(KeyLayoutText.EditLayout, () => _model.Show(group, id));
+                o.Select = id => Pick(KeyLayoutText.EditLayout, group, id);
                 o.Move = (from, to) => Do(KeyLayoutText.MoveLayout, () => _model.Move(_model.Layouts(group)[from], to));
                 o.Rename = (id, name) => Do(KeyLayoutText.Rename, () => _model.Rename(id, name));
                 // Foot counts are new empty layouts, not presets.

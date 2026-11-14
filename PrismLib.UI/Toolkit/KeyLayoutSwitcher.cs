@@ -28,6 +28,7 @@ namespace PrismLib.UI.Toolkit
         // Rebuilt by Refresh, so a grid's refresh pass reads them without allocating.
         private List<Card> _handCards = new List<Card>(), _footCards = new List<Card>();
         private string _limit;
+        private Facet.Role _tone = Facet.Role.Danger;
         private float _limitUntil = float.NegativeInfinity;
 
         private KeyLayoutSwitcher(KeyLayoutModel<T> model, Action<string> edit)
@@ -58,7 +59,7 @@ namespace PrismLib.UI.Toolkit
             Facet.Controls.Info(w.Body, "", () => _limit, o =>
             {
                 o.Id = "kle-switcher-limit";
-                o.Tone = () => Facet.Role.Danger;
+                o.Tone = () => _tone;
                 o.VisibleWhen = () => Time.realtimeSinceStartup < _limitUntil;
             });
             var scroll = Facet.Ui.Scroll(w.Body);
@@ -107,6 +108,14 @@ namespace PrismLib.UI.Toolkit
             if (c != null) (c.Group == LayoutGroup.Hands ? _hands : _feet).Redraw(c);
         }
 
+        /// Shows a line at the top of the window for a few seconds: the model's messages while no editor shows them.
+        public void Say(string text, Facet.Role role = Facet.Role.TextMuted)
+        {
+            _limit = text;
+            _tone = role;
+            _limitUntil = Time.realtimeSinceStartup + LimitFor;
+        }
+
         public void Dispose()
         {
             Facet.History.AfterApply -= _afterApply;
@@ -139,8 +148,7 @@ namespace PrismLib.UI.Toolkit
         {
             string t = _model.LimitText();
             if (t == null) return false;
-            _limit = t;
-            _limitUntil = Time.realtimeSinceStartup + LimitFor;
+            Say(t, Facet.Role.Danger);
             return true;
         }
 
@@ -165,7 +173,12 @@ namespace PrismLib.UI.Toolkit
                 o.Title = c => c.Layout == null ? _model.Host.Translate(L(KeyLayoutText.Hidden)) : _model.Name(c.Layout);
                 o.Active = c => c.Layout == _model.Shown(c.Group);
                 o.Thumb = (box, c) => { if (c.Layout != null) Paint(box, c.Layout); };
-                o.Click = c => Do(KeyLayoutText.EditLayout, () => _model.Show(c.Group, c.Layout));
+                o.Click = c =>
+                {
+                    KeyLayoutEditor<T>.Pick(_model, KeyLayoutText.EditLayout, c.Group, c.Layout);
+                    _model.Committed();
+                    Refresh();
+                };
                 o.DoubleClick = c => { if (c.Layout != null) EditLayout(c.Layout); };
                 o.Menu = c => c.Layout == null ? null : new List<Facet.MenuItem>
                 {

@@ -18,6 +18,7 @@ namespace PrismLib.UI.Toolkit
         private readonly Dictionary<string, VisualElement> _boxes = new Dictionary<string, VisualElement>();
         private readonly Dictionary<T, VisualElement> _byItem = new Dictionary<T, VisualElement>();
         private int _inspected;   // the inspector rebuilds when this changes: a new selection, or Refresh
+        private int _built;       // the _inspected the inspector was last built for
         private bool _dirty;      // the selection's boxes redraw on the next Tick
 
         private void BuildCanvas()
@@ -98,7 +99,9 @@ namespace PrismLib.UI.Toolkit
             scroll.style.maxHeight = Length.Percent(InspectorShare);
             var container = new VisualElement { name = "kle-inspector" };
             scroll.Add(container);
-            Facet.Controls.Live(container, (Func<int>)(() => _inspected), body =>
+            // While the canvas holds the pointer the inspector keeps its build: a marquee changes the selection every frame,
+            // and a rebuild over a hundred keys each frame stutters. The pass after the release rebuilds it.
+            Facet.Controls.Live(container, (Func<int>)(() => CanvasHeld() ? _built : (_built = _inspected)), body =>
             {
                 var sel = Sel();
                 Facet.Ui.Text(body, _model.InspectorTitle(sel));

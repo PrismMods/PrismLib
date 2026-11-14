@@ -96,6 +96,42 @@ namespace PrismLib.UI.Toolkit
                 change, Facet.History.BoundTo(model.UndoDocument), model.Host.Translate);
         }
 
+        /// A tab or card click as one undo step by value: what each group shows and which layout is edited, not a capture of
+        /// the whole model (a layout with embedded images would copy megabytes per click). Show(group, layout) inside it.
+        public static void Pick(KeyLayoutModel<T> model, string labelId, LayoutGroup group, string layout)
+        {
+            Facet.History.Snapshot<Picked>(model.Label(labelId, KeyLayoutText.English(labelId)), null, () => Picked.Of(model),
+                p => p.Apply(model), () => model.Show(group, layout), Facet.History.BoundTo(model.UndoDocument), model.Host.Translate);
+        }
+
+        private void Pick(string labelId, LayoutGroup group, string layout)
+        {
+            Pick(_model, labelId, group, layout);
+            _model.Committed();
+            Refresh();
+        }
+
+        private struct Picked : IEquatable<Picked>
+        {
+            private string _hands, _feet, _editing;
+
+            public static Picked Of(KeyLayoutModel<T> m)
+            {
+                return new Picked { _hands = m.Shown(LayoutGroup.Hands), _feet = m.Shown(LayoutGroup.Feet), _editing = m.Editing };
+            }
+
+            // Show also makes its layout the edited one, so the group holding the edited layout goes last.
+            public void Apply(KeyLayoutModel<T> m)
+            {
+                bool feetEdited = _editing != null && _editing == _feet;
+                if (feetEdited) m.Show(LayoutGroup.Hands, _hands);
+                m.Show(LayoutGroup.Feet, _feet);
+                if (!feetEdited) m.Show(LayoutGroup.Hands, _hands);
+            }
+
+            public bool Equals(Picked o) { return _hands == o._hands && _feet == o._feet && _editing == o._editing; }
+        }
+
         /// A 4 s status over the resting line; text is already translated.
         public void Say(string text, Facet.Role role = Facet.Role.TextMuted)
         {
@@ -120,6 +156,14 @@ namespace PrismLib.UI.Toolkit
 
         private T[] Sel() => Canvas.Selection.ToArray();
 
+        // The canvas captures whichever pointer pressed it (mouse, pen or touch).
+        private bool CanvasHeld()
+        {
+            for (int id = 0; id < PointerId.maxPointers; id++)
+                if (Canvas.Stage.HasPointerCapture(id)) return true;
+            return false;
+        }
+
         /// Every frame. Keys only while Root is shown: the canvas's own keys first, then the chorded menu items.
         public bool Tick(Func<KeyCode, bool> down, Func<KeyCode, bool> held, bool ctrlOrCmd, bool shift, bool alt)
         {
@@ -129,7 +173,7 @@ namespace PrismLib.UI.Toolkit
             // Fit has no canvas key of its own; like the canvas's keys it needs the canvas focused, no key capture and no
             // drag in progress (a canvas drag holds the pointer on its stage).
             if (!ctrlOrCmd && !shift && !alt && down != null && Canvas.Focused && !Facet.Input.TextFocused
-                && Facet.KeyCapture.Owner == null && !Canvas.Stage.HasPointerCapture(PointerId.mousePointerId) && down(KeyCode.F))
+                && Facet.KeyCapture.Owner == null && !CanvasHeld() && down(KeyCode.F))
             {
                 Canvas.Fit();
                 return true;
