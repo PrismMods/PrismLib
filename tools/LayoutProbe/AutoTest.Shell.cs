@@ -529,5 +529,169 @@ namespace LayoutProbe
             shell.Dispose();
             yield return null;
         }
+
+        static Button HubButton(SuiteHub h, string name) => h.Surface?.Root?.Q<Button>(name);
+
+        // The hub's window: the element under the surface root that holds its buttons.
+        static VisualElement HubWindow(SuiteHub h)
+        {
+            VisualElement e = HubButton(h, "hub-close");
+            while (e != null && e.parent != h.Surface.Root) e = e.parent;
+            return e;
+        }
+
+        // Out of scope: a trip whose Edit layout ends without a return stays armed (no mod builds that today).
+        IEnumerator SuiteHubChecks()
+        {
+            var demo = new DemoSuite("LayoutProbeHub") { Id = "probe.hubmenu" };
+            var shell = new SuiteShell(demo);
+            var hub = new SuiteHub(shell);
+            hub.Toggle();
+            yield return Frames(3);
+            var names = hub.Surface == null ? new List<string>()
+                : hub.Surface.Root.Query<Button>().ToList().Where(b => b.name != null && b.name.StartsWith("hub-")).Select(b => b.name).ToList();
+            bool hint = hub.Surface != null && Texts(hub.Surface.Root).Any(t => t.Contains("Alt+X"));
+            Check(hub.Visible && names.SequenceEqual(new[] { "hub-ping", "hub-settings", "hub-close" }) && hint, "hub: Toggle shows the hub with its buttons",
+                  hub.Visible + " / " + string.Join(",", names.ToArray()) + " / hint " + hint);
+            var win = HubWindow(hub);
+            var close = HubButton(hub, "hub-close");
+            var first = HubButton(hub, "hub-ping");
+            bool fits = win != null && close != null && first != null && close.worldBound.width > 0f && win.worldBound.x > 1f && win.worldBound.y > 1f
+                        && first.worldBound.x >= win.worldBound.x - 0.5f && close.worldBound.xMax <= win.worldBound.xMax + 0.5f
+                        && close.worldBound.yMax <= win.worldBound.yMax + 0.5f;
+            Check(fits, "hub: the window fits its buttons, centred", win == null || close == null ? "none" : win.worldBound + " / " + close.worldBound);
+
+            demo.Calls.Clear();
+            Submit(first);
+            Check(!hub.Visible && demo.Calls.SequenceEqual(new[] { "ping" }), "hub: an adapter button hides the hub and runs",
+                  hub.Visible + " / " + string.Join(",", demo.Calls.ToArray()));
+            yield return null;
+
+            // The first Settings click builds the menu: its own hide while building is no close.
+            hub.Show();
+            yield return null;
+            Submit(HubButton(hub, "hub-settings"));
+            bool opened = !hub.Visible && shell.Visible;
+            yield return null;
+            shell.Hide();
+            bool back = hub.Visible;
+            hub.Hide();
+            yield return null;
+            shell.Open();
+            yield return null;
+            shell.Hide();
+            yield return null;
+            Check(opened && back && !hub.Visible, "hub: Settings opens the menu and its close returns to the hub",
+                  opened + " / " + back + " / " + hub.Visible);
+
+            hub.Show();
+            yield return null;
+            Submit(HubButton(hub, "hub-settings"));
+            yield return null;
+            shell.EditLayout();
+            bool away = !hub.Visible && !shell.Visible;
+            demo.Showing = true; shell.Tick();
+            demo.Showing = false; shell.Tick();
+            bool menuBack = shell.Visible && !hub.Visible;
+            yield return null;
+            shell.Hide();
+            Check(away && menuBack && hub.Visible, "hub: Edit layout from the hub keeps the hub hidden until the menu closes",
+                  away + " / " + menuBack + " / " + hub.Visible);
+            yield return null;
+
+            Submit(HubButton(hub, "hub-settings"));
+            yield return null;
+            hub.Toggle();
+            bool both = !hub.Visible && !shell.Visible;
+            yield return Frames(3);
+            Check(both && !hub.Visible && !shell.Visible, "hub: the hotkey over the menu from the hub closes everything", both + " / " + hub.Visible);
+
+            shell.Open();
+            yield return null;
+            hub.Toggle();
+            bool shut = !shell.Visible && !hub.Visible;
+            yield return Frames(3);
+            Check(shut && !hub.Visible && !shell.Visible, "hub: the hotkey over a menu opened directly closes it and shows no hub", shut + " / " + hub.Visible);
+
+            hub.Show();
+            yield return null;
+            Facet.Input.HandleEscape();
+            bool escaped = !hub.Visible;
+            yield return null;
+            hub.Show();
+            yield return null;
+            Submit(HubButton(hub, "hub-close"));
+            Check(escaped && !hub.Visible, "hub: Escape and Close hide the hub", escaped + " / " + hub.Visible);
+            yield return null;
+
+            hub.Show();
+            yield return null;
+            demo.Lang = "ko";
+            demo.Host.RelabelSurfaces();
+            yield return null;
+            bool korean = Texts(hub.Surface.Root).Contains("Alt+X 키로 열고 닫아요");
+            demo.Lang = "en";
+            demo.Host.RelabelSurfaces();
+            Check(korean && Texts(hub.Surface.Root).Contains("Alt+X opens or closes this"), "hub: the hint relabels with the host",
+                  string.Join("|", Texts(hub.Surface.Root).ToArray()));
+
+            var other = new Facet.Surface(demo.Host, "ProbeHubOther", Facet.Layer.Window);
+            new Facet.Window(other.Root, "probehubother", "Other", new Rect(100, 100, 300, 200));
+            yield return null;
+            bool under = Order(other) > Order(hub.Surface);
+            win = HubWindow(hub);
+            if (win != null) PressAt(hub.Surface.Root, new Vector2(win.worldBound.x + 20f, win.worldBound.y + 10f));
+            Check(under && Order(hub.Surface) > Order(other), "hub: a press on the hub raises it over a later window",
+                  Order(hub.Surface) + " / " + Order(other));
+            other.Dispose();
+            hub.Hide();
+            yield return null;
+
+            var demo2 = new DemoSuite("LayoutProbeHub2") { Id = "probe.hubmenu2", HubEdit = true };
+            var shell2 = new SuiteShell(demo2);
+            demo2.Shell = shell2;
+            var hub2 = new SuiteHub(shell2);
+            hub2.Show();
+            yield return null;
+            Submit(HubButton(hub2, "hub-edit"));
+            bool aside = !hub2.Visible && !shell2.Visible && shell2.WaitingForLayout && demo2.Calls.Contains("open-editor");
+            demo2.Showing = true; shell2.Tick(); hub2.Tick();
+            bool waits = !hub2.Visible;
+            demo2.Showing = false; shell2.Tick(); hub2.Tick();
+            Check(aside && waits && hub2.Visible && !shell2.Visible && !shell2.WaitingForLayout,
+                  "hub: a button's editor brings the hub back when it closes, the menu stays shut",
+                  aside + " / " + waits + " / " + hub2.Visible + " / " + shell2.Visible);
+            hub2.Dispose();
+            shell2.Dispose();
+            yield return null;
+
+            hub.Show();
+            yield return null;
+            Submit(HubButton(hub, "hub-settings"));
+            yield return null;
+            hub.Dispose();
+            shell.Hide();
+            hub.Show();
+            yield return Frames(2);
+            Check(hub.Surface == null && !hub.Visible && !shell.Visible, "hub: Dispose mid-trip reopens nothing", (hub.Surface != null) + " / " + shell.Visible);
+            shell.Dispose();
+            yield return null;
+
+            float t0 = Time.realtimeSinceStartup;
+            while (!Facet.WarmUp.Done && Time.realtimeSinceStartup - t0 < 10f) yield return null;
+            var pd = new DemoSuite("LayoutProbeHubPerf") { Id = "probe.hubperf" };
+            var ps = new SuiteShell(pd);
+            var ph = new SuiteHub(ps);
+            var sw = Stopwatch.StartNew();
+            ph.Show();
+            yield return null;
+            yield return new WaitForEndOfFrame();
+            double ms = sw.Elapsed.TotalMilliseconds;
+            Main.Log("[perf] suite hub first show " + ms.ToString("0.0") + " ms");
+            Check(ph.Visible && ms <= 50.0, "hub: [perf] suite hub first show within 50 ms", ms.ToString("0.0") + " ms");
+            ph.Dispose();
+            ps.Dispose();
+            yield return null;
+        }
     }
 }

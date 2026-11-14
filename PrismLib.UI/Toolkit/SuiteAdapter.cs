@@ -19,6 +19,23 @@ namespace PrismLib.UI.Toolkit
         public Action<Facet.SearchIndex.Hit> OnHit { get; set; }
     }
 
+    /// One button of the hub a mod's hotkey opens (SuiteHub), before its Settings and Close.
+    public sealed class SuiteHubButton
+    {
+        /// The element is named "hub-" + Id.
+        public string Id { get; set; }
+        /// What the adapter's host translates.
+        public string Label { get; set; }
+        /// Default: none.
+        public Background Icon { get; set; }
+        /// Runs after the hub hides.
+        public Action Click { get; set; }
+        /// Asked on every Show. Null: always.
+        public Func<bool> Visible { get; set; }
+        /// Whatever Click opened is still up: when it goes, the hub shows again (SuiteHub.Tick). Null: no return.
+        public Func<bool> Showing { get; set; }
+    }
+
     /// One entry of the rail.
     public sealed class SuiteCategory
     {
@@ -77,5 +94,9 @@ namespace PrismLib.UI.Toolkit
         public virtual bool ReturnFromLayout { get { return true; } }
         /// Just before the shell reopens after the layout wait.
         public virtual void OnReturning() { }
+        /// The hub's own buttons, asked once when it builds.
+        public virtual IList<SuiteHubButton> HubButtons() { return new SuiteHubButton[0]; }
+        /// The mod's hotkey as the player reads it ("Alt+T"), named in the hub's footer; null names none.
+        public virtual string HotkeyText { get { return null; } }
     }
 }

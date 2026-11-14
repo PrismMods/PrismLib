@@ -76,18 +76,7 @@ namespace PrismLib.UI.Toolkit
             _sw = sw;
             try
             {
-                Background? logo = _adapter.Logo;
-                if (logo.HasValue)
-                {
-                    var e = new VisualElement { name = "menu-logo", pickingMode = PickingMode.Ignore };
-                    e.style.width = 18f;
-                    e.style.height = 18f;
-                    e.style.marginRight = 6f;
-                    e.style.alignSelf = Align.Center;
-                    e.style.flexShrink = 0f;
-                    e.style.backgroundImage = new StyleBackground(logo.Value);
-                    sw.Window.TitleBarLeft.Insert(0, e);
-                }
+                AddLogo(sw.Window, _adapter.Logo);
                 var nav = sw.Nav;
                 sw.Window.ShowSearch(_adapter.Key("suite.search", "Search"), q => nav.Filter(q));
                 nav.AddSearchSource(_adapter.SearchRows);
@@ -110,6 +99,20 @@ namespace PrismLib.UI.Toolkit
                 throw;
             }
             if (CurrentPage != last) Go(last);
+        }
+
+        // The 18x18 "menu-logo" leading a title bar: the menu's and the hub's.
+        internal static void AddLogo(Facet.Window w, Background? logo)
+        {
+            if (!logo.HasValue) return;
+            var e = new VisualElement { name = "menu-logo", pickingMode = PickingMode.Ignore };
+            e.style.width = 18f;
+            e.style.height = 18f;
+            e.style.marginRight = 6f;
+            e.style.alignSelf = Align.Center;
+            e.style.flexShrink = 0f;
+            e.style.backgroundImage = new StyleBackground(logo.Value);
+            w.TitleBarLeft.Insert(0, e);
         }
 
         /// Shows the window, on pageKey when given. A category added or removed since the last open joins the rail first.

@@ -18,7 +18,7 @@ namespace LayoutProbe
         public string Lang = "en";
         public string Id = "probe.menu";
         public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true, SecretShown;
-        public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown;
+        public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown, HubEdit;
         public float Speed = 100f;
         public SuiteShell Shell;
         // What the shell's rows gave back, for the checks.
@@ -28,7 +28,8 @@ namespace LayoutProbe
         readonly Facet.Host _host;
         readonly Background _logo;
 
-        static readonly Dictionary<string, string> Korean = new Dictionary<string, string> { { "Search", "찾기" }, { "Find", "검색" }, { "Alpha", "알파" } };
+        static readonly Dictionary<string, string> Korean = new Dictionary<string, string> { { "Search", "찾기" }, { "Find", "검색" }, { "Alpha", "알파" },
+                                                                                     { "{0} opens or closes this", "{0} 키로 열고 닫아요" } };
 
         public DemoSuite(string hostName = "LayoutProbeSuite", Dictionary<string, string> store = null)
         {
@@ -60,6 +61,15 @@ namespace LayoutProbe
         public override void OnReturning() { Calls.Add("returning"); }
         // Not the English fallback: the shell's search word must come through Key.
         public override string Key(string id, string english) => id == "suite.search" ? "Find" : english;
+
+        public override string HotkeyText => "Alt+X";
+        // With HubEdit, a second button opens Edit layout and brings the hub back when the editor closes.
+        public override IList<SuiteHubButton> HubButtons()
+        {
+            var l = new List<SuiteHubButton> { new SuiteHubButton { Id = "ping", Label = "Ping", Click = () => Calls.Add("ping") } };
+            if (HubEdit) l.Add(new SuiteHubButton { Id = "edit", Label = "Edit", Click = () => Shell.EditLayout(), Showing = () => Showing });
+            return l;
+        }
 
         static SuitePage Page(string key, string label, string feature = null, Func<bool> visible = null) =>
             new SuitePage { Key = key, Label = label, Feature = feature, Visible = visible };

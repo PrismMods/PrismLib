@@ -400,6 +400,7 @@ namespace LayoutProbe
             yield return GradientSync();
             yield return SuiteShellChecks();
             yield return SuitePageChecks();
+            yield return SuiteHubChecks();
 
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;

@@ -213,7 +213,17 @@ A mod drives it through a `SuiteAdapter` subclass.
   block, `menu-master`. It is no undo step. **`ApplyLook()`** re-reads scale, opacity and input
   blocking: call it when one of them changes.
 
-`tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:` and `pages:` checks).
+- **The hub** (`SuiteHub`, over a shell) is the small window a mod's hotkey opens: the adapter's
+  `HubButtons()` (`hub-<Id>`, each shown while its `Visible`), then `hub-settings` and `hub-close`,
+  with `HotkeyText` named in the footer (`suite.hub.hint`, formatted in the host's language and
+  again on every relabel). A button's click hides the hub and runs it; with `Showing`, the hub comes
+  back once what it opened closes (call `hub.Tick()` each frame). Settings opens the shell, and the
+  shell's next close shows the hub again, once; Edit layout stepping the menu aside is no close.
+  `Toggle()` is the hotkey: it closes the hub and the menu however the menu was opened, ending any
+  trip, and shows the hub only when neither was showing. Escape and Close hide it; `Dispose` brings
+  nothing back. Quartz builds no `SuiteHub`: its classic reposition screen stays its hub.
+
+`tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:`, `pages:` and `hub:` checks).
 
 ### Update toast
 
