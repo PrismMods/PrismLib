@@ -159,6 +159,15 @@ namespace PrismLib.UI.Toolkit
             if (open != null) open();
         }
 
+        // The hub's hotkey while the window is stepped aside: the wait ends and the window does not come back.
+        internal void EndLayoutWait()
+        {
+            WaitingForLayout = false;
+            _reopen = false;
+            _frames = 0;
+            _seen = false;
+        }
+
         /// Per frame. Nothing while hidden, unless Edit layout is waiting to bring it back.
         public void Tick()
         {

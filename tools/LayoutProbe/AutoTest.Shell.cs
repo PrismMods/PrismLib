@@ -540,26 +540,69 @@ namespace LayoutProbe
             return e;
         }
 
+        // The window's body holds the button row; the footer is the body's next sibling.
+        static VisualElement HubBody(SuiteHub h) => HubButton(h, "hub-close")?.parent?.parent;
+        static VisualElement HubFooter(SuiteHub h)
+        {
+            var body = HubBody(h);
+            var w = body?.parent;
+            int i = w == null ? -1 : w.IndexOf(body);
+            return i >= 0 && i + 1 < w.childCount ? w[i + 1] : null;
+        }
+
+        // Every shown button at its full width (none squeezed), margins included, inside the body's padding box; the
+        // footer inside the window's border.
+        static bool HubFits(SuiteHub h, out string why)
+        {
+            var win = HubWindow(h);
+            var body = HubBody(h);
+            var foot = HubFooter(h);
+            why = "no window";
+            if (win == null || body == null || foot == null) return false;
+            var p = body.resolvedStyle;
+            Rect c = body.worldBound;
+            float l = c.x + p.paddingLeft, r = c.xMax - p.paddingRight, t = c.y + p.paddingTop, b = c.yMax - p.paddingBottom;
+            bool ok = true;
+            var spans = new List<string>();
+            foreach (var x in body.Query<Button>().ToList())
+            {
+                if (x.resolvedStyle.display == DisplayStyle.None) continue;
+                var m = x.resolvedStyle;
+                Rect e = x.worldBound;
+                spans.Add((e.x - m.marginLeft).ToString("0.0") + ".." + (e.xMax + m.marginRight).ToString("0.0") + " w" + e.width.ToString("0.0") + "/" + e.yMax.ToString("0.0"));
+                if (e.width < 103.5f || e.x - m.marginLeft < l - 0.5f || e.xMax + m.marginRight > r + 0.5f || e.y < t - 0.5f || e.yMax > b + 0.5f) ok = false;
+            }
+            float bottom = win.worldBound.yMax - win.resolvedStyle.borderBottomWidth;
+            ok &= spans.Count > 0 && foot.worldBound.height > 0f && foot.worldBound.yMax <= bottom + 0.5f;
+            why = "box " + l.ToString("0.0") + ".." + r.ToString("0.0") + "/" + b.ToString("0.0") + " buttons " + string.Join(" ", spans.ToArray())
+                  + " footer " + foot.worldBound.yMax.ToString("0.0") + " in " + bottom.ToString("0.0");
+            return ok;
+        }
+
         // Out of scope: a trip whose Edit layout ends without a return stays armed (no mod builds that today).
         IEnumerator SuiteHubChecks()
         {
             var demo = new DemoSuite("LayoutProbeHub") { Id = "probe.hubmenu" };
             var shell = new SuiteShell(demo);
             var hub = new SuiteHub(shell);
+            bool fresh = !demo.Store.ContainsKey("window.probe.hubmenu.hub");
             hub.Toggle();
             yield return Frames(3);
             var names = hub.Surface == null ? new List<string>()
                 : hub.Surface.Root.Query<Button>().ToList().Where(b => b.name != null && b.name.StartsWith("hub-")).Select(b => b.name).ToList();
-            bool hint = hub.Surface != null && Texts(hub.Surface.Root).Any(t => t.Contains("Alt+X"));
+            var footer = HubFooter(hub);
+            bool hint = footer != null && Texts(footer).Any(t => t.Contains("Alt+X"));
             Check(hub.Visible && names.SequenceEqual(new[] { "hub-ping", "hub-settings", "hub-close" }) && hint, "hub: Toggle shows the hub with its buttons",
-                  hub.Visible + " / " + string.Join(",", names.ToArray()) + " / hint " + hint);
+                  hub.Visible + " / " + string.Join(",", names.ToArray()) + " / footer hint " + hint);
             var win = HubWindow(hub);
-            var close = HubButton(hub, "hub-close");
             var first = HubButton(hub, "hub-ping");
-            bool fits = win != null && close != null && first != null && close.worldBound.width > 0f && win.worldBound.x > 1f && win.worldBound.y > 1f
-                        && first.worldBound.x >= win.worldBound.x - 0.5f && close.worldBound.xMax <= win.worldBound.xMax + 0.5f
-                        && close.worldBound.yMax <= win.worldBound.yMax + 0.5f;
-            Check(fits, "hub: the window fits its buttons, centred", win == null || close == null ? "none" : win.worldBound + " / " + close.worldBound);
+            string fitWhy;
+            bool fits = HubFits(hub, out fitWhy);
+            // Centred on its first layout, with no rect stored for it.
+            Vector2 mid = win == null ? Vector2.zero : win.worldBound.center, panel = hub.Surface?.Root == null ? Vector2.zero : hub.Surface.Root.worldBound.center;
+            bool centred = win != null && Mathf.Abs(mid.x - panel.x) <= 1f && Mathf.Abs(mid.y - panel.y) <= 1f;
+            Check(fresh && fits && centred, "hub: the window fits its buttons, centred",
+                  fresh + " / centre " + mid + " panel " + panel + " / " + fitWhy);
 
             demo.Calls.Clear();
             Submit(first);
@@ -652,7 +695,12 @@ namespace LayoutProbe
             demo2.Shell = shell2;
             var hub2 = new SuiteHub(shell2);
             hub2.Show();
-            yield return null;
+            yield return Frames(3);
+            string wideWhy;
+            bool wideFits = HubFits(hub2, out wideWhy);
+            var win2 = HubWindow(hub2);
+            Check(wideFits && win2 != null && win2.worldBound.width > 361f, "hub: a hub wider than its minimum fits its buttons and footer",
+                  (win2 == null ? "no window" : win2.worldBound.ToString()) + " / " + wideWhy);
             Submit(HubButton(hub2, "hub-edit"));
             bool aside = !hub2.Visible && !shell2.Visible && shell2.WaitingForLayout && demo2.Calls.Contains("open-editor");
             demo2.Showing = true; shell2.Tick(); hub2.Tick();
@@ -661,19 +709,81 @@ namespace LayoutProbe
             Check(aside && waits && hub2.Visible && !shell2.Visible && !shell2.WaitingForLayout,
                   "hub: a button's editor brings the hub back when it closes, the menu stays shut",
                   aside + " / " + waits + " / " + hub2.Visible + " / " + shell2.Visible);
+
+            // The hotkey while an editor is up ends the trip: nothing shows, then or when the editor closes, and the
+            // next press shows the hub. Once from a hub button's editor, once from the menu's Edit layout.
+            Submit(HubButton(hub2, "hub-edit"));
+            demo2.Showing = true; shell2.Tick(); hub2.Tick();
+            hub2.Toggle();
+            bool quiet = !hub2.Visible && !shell2.Visible && !shell2.WaitingForLayout;
+            demo2.Showing = false; shell2.Tick(); hub2.Tick();
+            bool stays = !hub2.Visible && !shell2.Visible;
+            hub2.Toggle();
+            bool next = hub2.Visible;
+            yield return null;
+            Submit(HubButton(hub2, "hub-settings"));
+            yield return null;
+            shell2.EditLayout();
+            demo2.Showing = true; shell2.Tick(); hub2.Tick();
+            hub2.Toggle();
+            bool quiet2 = !hub2.Visible && !shell2.Visible && !shell2.WaitingForLayout;
+            demo2.Showing = false; shell2.Tick(); hub2.Tick();
+            bool stays2 = !hub2.Visible && !shell2.Visible;
+            hub2.Toggle();
+            bool next2 = hub2.Visible;
+            hub2.Hide();
+            Check(quiet && stays && next && quiet2 && stays2 && next2, "hub: the hotkey while an editor is up ends the trip and shows nothing",
+                  quiet + " " + stays + " " + next + " / " + quiet2 + " " + stays2 + " " + next2);
+            yield return null;
             hub2.Dispose();
             shell2.Dispose();
+            yield return null;
+
+            // A long label with an icon, as a host's translation can be: it wraps inside its button, and the window
+            // grows to hold it.
+            var demo3 = new DemoSuite("LayoutProbeHub3") { Id = "probe.hubmenu3", PingLabel = "Edit positions on screen", HubIcon = true };
+            var shell3 = new SuiteShell(demo3);
+            var hub3 = new SuiteHub(shell3);
+            hub3.Show();
+            yield return Frames(3);
+            var longB = HubButton(hub3, "hub-ping");
+            var label = longB?.Query<Label>().ToList().FirstOrDefault(l => l.text == demo3.PingLabel);
+            var win3 = HubWindow(hub3);
+            bool inside = label != null && win3 != null && longB.worldBound.Contains(label.worldBound.min - new Vector2(-0.5f, -0.5f))
+                          && longB.worldBound.Contains(label.worldBound.max - new Vector2(0.5f, 0.5f))
+                          && longB.worldBound.yMax <= win3.worldBound.yMax + 0.5f;
+            // The whole text shows: a text wider than its box must take more than one line, and all its lines fit.
+            Vector2 one = Vector2.zero, line = Vector2.zero, need = Vector2.zero;
+            if (label != null)
+            {
+                var U = VisualElement.MeasureMode.Undefined;
+                one = label.MeasureTextSize(label.text, 0f, U, 0f, U);
+                line = label.MeasureTextSize("Ag", 0f, U, 0f, U);
+                need = label.MeasureTextSize(label.text, label.layout.width, VisualElement.MeasureMode.Exactly, 0f, U);
+            }
+            bool whole = label != null && !label.isElided && need.y <= label.layout.height + 0.5f
+                         && (one.x <= label.layout.width + 0.5f || label.layout.height >= 1.5f * line.y);
+            Main.Log("INFO hub long label " + (label == null ? "none" : label.worldBound + " one line " + one + " wrapped " + need + " in " + longB.worldBound));
+            Check(inside && whole, "hub: a long label wraps inside its button and the window holds it",
+                  label == null ? "no label" : label.worldBound + " in " + longB.worldBound + " / win " + (win3 == null ? "no window" : win3.worldBound.ToString()) + " / needs " + need);
+            hub3.Dispose();
+            shell3.Dispose();
             yield return null;
 
             hub.Show();
             yield return null;
             Submit(HubButton(hub, "hub-settings"));
             yield return null;
+            var hs = hub.Surface;
             hub.Dispose();
             shell.Hide();
             hub.Show();
             yield return Frames(2);
-            Check(hub.Surface == null && !hub.Visible && !shell.Visible, "hub: Dispose mid-trip reopens nothing", (hub.Surface != null) + " / " + shell.Visible);
+            bool dropped = hs != null && hs.Root == null && !hs.Visible;
+            bool none = !FindObjectsByType<UIDocument>(FindObjectsSortMode.None).Any(d => d != null && d.gameObject.name == "probe.hubmenu.hub"
+                         && d.rootVisualElement != null && d.rootVisualElement.resolvedStyle.display != DisplayStyle.None);
+            Check(dropped && none && hub.Surface == null && !hub.Visible && !shell.Visible, "hub: Dispose mid-trip reopens nothing",
+                  dropped + " / shown hub panel " + !none + " / " + (hub.Surface != null) + " / " + shell.Visible);
             shell.Dispose();
             yield return null;
 

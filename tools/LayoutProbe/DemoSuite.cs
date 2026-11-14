@@ -18,7 +18,8 @@ namespace LayoutProbe
         public string Lang = "en";
         public string Id = "probe.menu";
         public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true, SecretShown;
-        public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown, HubEdit;
+        public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown, HubEdit, HubIcon;
+        public string PingLabel = "Ping";
         public float Speed = 100f;
         public SuiteShell Shell;
         // What the shell's rows gave back, for the checks.
@@ -66,7 +67,8 @@ namespace LayoutProbe
         // With HubEdit, a second button opens Edit layout and brings the hub back when the editor closes.
         public override IList<SuiteHubButton> HubButtons()
         {
-            var l = new List<SuiteHubButton> { new SuiteHubButton { Id = "ping", Label = "Ping", Click = () => Calls.Add("ping") } };
+            var l = new List<SuiteHubButton> { new SuiteHubButton { Id = "ping", Label = PingLabel, Click = () => Calls.Add("ping"),
+                Icon = HubIcon ? Background.FromTexture2D(Texture2D.whiteTexture) : default(Background) } };
             if (HubEdit) l.Add(new SuiteHubButton { Id = "edit", Label = "Edit", Click = () => Shell.EditLayout(), Showing = () => Showing });
             return l;
         }

@@ -18,6 +18,7 @@ namespace PrismLib.UI.Toolkit
         private Facet.Window _window;
         // Every button in the row, with its Visible (null: always).
         private readonly List<KeyValuePair<VisualElement, Func<bool>>> _row = new List<KeyValuePair<VisualElement, Func<bool>>>();
+        private VisualElement _rowElement;
         // Settings opened the menu: its next close brings the hub back.
         private bool _trip;
         // A clicked button whose Showing the hub waits on, with SuiteModel.StepLayout's frame count and sighting.
@@ -25,6 +26,7 @@ namespace PrismLib.UI.Toolkit
         private int _frames;
         private bool _seen;
         private bool _disposed;
+        private bool _hintLogged;
 
         /// Builds nothing.
         public SuiteHub(SuiteShell shell)
@@ -45,20 +47,32 @@ namespace PrismLib.UI.Toolkit
             if (_disposed) return;
             if (_surface == null) Build();
             if (_window == null) return;
-            int shown = 0;
             foreach (var b in _row)
             {
                 bool on = b.Value == null || Facet.Safe.Get(Host, "SuiteHubButton.Visible", b.Value, true);
                 b.Key.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
-                if (on) shown++;
             }
-            var sz = Facet.Theme.For(_window.Root).Sizes;
-            Rect r = _window.Rect;
-            float width = Mathf.Max(MinWidth, shown * ButtonWidth + Mathf.Max(0, shown - 1) * sz.Gap + 2f * sz.Pad);
-            float height = sz.TitleBarHeight + ButtonHeight + 2f * sz.Pad + 12f + 1.6f * sz.Small;   // title bar, body, footer
-            if (r.width != width || r.height != height) _window.Rect = new Rect(r.x, r.y, width, height);
+            Fit();
             SetHint();
             _surface.Visible = true;
+        }
+
+        // The window's size from its visible buttons; a row taller than one button (a label wrapped onto more lines,
+        // here or after a relabel) makes it taller.
+        private void Fit()
+        {
+            if (_window == null) return;   // a layout event after Dispose
+            int shown = 0;
+            foreach (var b in _row)
+                if (b.Key.style.display.value != DisplayStyle.None) shown++;
+            var sz = Facet.Theme.For(_window.Root).Sizes;
+            float row = _rowElement.layout.height;
+            float body = row > ButtonHeight ? row : ButtonHeight;   // NaN before the first layout
+            Rect r = _window.Rect;
+            // Each button carries half a gap on either side; the body pads and the window's card border lines the rest.
+            float width = Mathf.Max(MinWidth, shown * (ButtonWidth + sz.Gap) + 2f * (sz.Pad + sz.Line));
+            float height = sz.TitleBarHeight + body + 2f * (sz.Pad + sz.Line) + 12f + 1.6f * sz.Small;   // title bar, body, footer
+            if (r.width != width || r.height != height) _window.Rect = new Rect(r.x, r.y, width, height);
         }
 
         public bool Hide()
@@ -69,14 +83,17 @@ namespace PrismLib.UI.Toolkit
         }
 
         /// The mod's hotkey: closes the hub and the menu, however the menu was opened, and ends any trip; with
-        /// neither showing, shows the hub.
+        /// neither showing, shows the hub. While an editor is up (a button's Showing, or Edit layout's step-aside)
+        /// it only ends the trip: nothing comes back, and the next press shows the hub.
         public void Toggle()
         {
+            bool away = _waiting != null || _shell.WaitingForLayout;
             _trip = false;
             _waiting = null;
+            _shell.EndLayoutWait();
             bool hid = Hide();
             hid |= _shell.Hide();
-            if (!hid) Show();
+            if (!hid && !away) Show();
         }
 
         /// Per frame while a clicked button's Showing is waited on: when what it opened goes, the hub shows again.
@@ -108,6 +125,9 @@ namespace PrismLib.UI.Toolkit
             SuiteShell.AddLogo(w, a.Logo);
             var row = Facet.Ui.Row(w.Body);
             row.style.justifyContent = Justify.Center;
+            row.style.flexShrink = 0f;
+            _rowElement = row;
+            Facet.Events.On(row, (GeometryChangedEvent _) => Fit());
             IList<SuiteHubButton> buttons = Facet.Safe.Get(Host, "SuiteAdapter.HubButtons", a.HubButtons, null);
             if (buttons != null)
                 foreach (var b in buttons)
@@ -141,7 +161,10 @@ namespace PrismLib.UI.Toolkit
             var b = Facet.Ui.Btn("", click, row);
             b.name = name;
             b.style.width = ButtonWidth;
-            b.style.height = ButtonHeight;
+            float gap = Facet.Theme.For(b).Sizes.Gap / 2f;   // even on both sides, so the centred row stays centred
+            b.style.marginLeft = gap;
+            b.style.marginRight = gap;
+            b.style.minHeight = ButtonHeight;
             b.style.flexDirection = FlexDirection.Column;
             b.style.alignItems = Align.Center;
             b.style.justifyContent = Justify.Center;
@@ -156,6 +179,12 @@ namespace PrismLib.UI.Toolkit
             }
             var text = Facet.Ui.Text(label, b);
             text.pickingMode = PickingMode.Ignore;
+            // A host's translation can be longer than the button is wide: it wraps, centred, instead of running out.
+            text.style.whiteSpace = WhiteSpace.Normal;
+            text.style.textOverflow = TextOverflow.Clip;
+            text.style.alignSelf = Align.Stretch;
+            text.style.flexShrink = 0f;
+            text.style.unityTextAlign = TextAnchor.MiddleCenter;
             _row.Add(new KeyValuePair<VisualElement, Func<bool>>(b, visible));
         }
 
@@ -188,7 +217,8 @@ namespace PrismLib.UI.Toolkit
                 try { hint = string.Format(Host.Translate(english), keys); }
                 catch (FormatException)
                 {
-                    Host.Log("[Menu] the hub's hint does not format in this language, so it shows in English");
+                    if (!_hintLogged) Host.Log("[Menu] the hub's hint does not format in this language, so it shows in English");
+                    _hintLogged = true;
                     hint = string.Format(english, keys);
                 }
             }
@@ -212,6 +242,7 @@ namespace PrismLib.UI.Toolkit
             var s = _surface;
             _surface = null;
             _window = null;
+            _rowElement = null;
             _row.Clear();
             if (s != null) s.Dispose();
         }

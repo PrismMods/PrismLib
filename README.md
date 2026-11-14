@@ -220,7 +220,9 @@ A mod drives it through a `SuiteAdapter` subclass.
   back once what it opened closes (call `hub.Tick()` each frame). Settings opens the shell, and the
   shell's next close shows the hub again, once; Edit layout stepping the menu aside is no close.
   `Toggle()` is the hotkey: it closes the hub and the menu however the menu was opened, ending any
-  trip, and shows the hub only when neither was showing. Escape and Close hide it; `Dispose` brings
+  trip, and shows the hub only when neither was showing. While an editor is up (a hub button's
+  `Showing`, or Edit layout stepping the menu aside) it only ends the trip: nothing comes back when
+  the editor closes, and the next press shows the hub. Escape and Close hide it; `Dispose` brings
   nothing back. Quartz builds no `SuiteHub`: its classic reposition screen stays its hub.
 
 `tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:`, `pages:` and `hub:` checks).
