@@ -68,6 +68,10 @@
         <Compile Include="Toolkit\GradientEditor.cs" />
         <Compile Include="Toolkit\History.cs" />
         <Compile Include="Toolkit\LayoutMath.cs" />
+        <Compile Include="Toolkit\SuiteModel.cs" />
+        <Compile Include="Toolkit\SuiteAdapter.cs" />
+        <Compile Include="Toolkit\SuiteShell.cs" />
+        <Compile Include="Toolkit\SuiteShell.Rail.cs" />
         <Compile Include="Toolkit\EditTarget.cs" />
         <Compile Include="Toolkit\LayoutEditor.cs" />
         <Compile Include="Toolkit\LayoutEditor.Grips.cs" />

@@ -157,6 +157,42 @@ It contains:
   weight is not named "Regular", which otherwise fail to load on the Steam Linux runtime.
 - **Update toast** — `Toast` and `ToastStack`, below.
 
+### The suite shell
+
+`SuiteShell` is the Prism suite's menu: one Facet `SettingsWindow` whose rail holds three ruled groups
+of categories, whose categories open a page or a tab row of pages, with search in the title bar, three
+sidebar modes, the last page remembered, Escape, and a round trip to a layout editor ("Edit layout").
+A mod drives it through a `SuiteAdapter` subclass.
+
+- **The shell owns the frame:** the window, rail, tab rows, search box, sidebar modes, stored state,
+  Escape and the layout round trip. It dresses the adapter host's theme with `Suite.Wear` once, when
+  constructed.
+- **The adapter owns the content:** its Facet host, `Categories()` (asked at build and on every
+  `Open`; a category added or removed later joins the same `Nav`), `BuildPage`, search rows, the
+  logo, scale, opacity, input blocking, and the hooks around Edit layout (`OnLeaving`,
+  `OpenLayoutEditor`, `LayoutEditorShowing`, `ReturnFromLayout`, `OnReturning`).
+  `EditLayout(open, showing)` makes the same trip for another editor.
+- **Words:** every shell label is a stable id with an English fallback, passed through
+  `SuiteAdapter.Key(id, english)` and translated by the mod's own host. They never go through
+  PrismLib.UI's `Words`; these words are the mod's.
+- **Store keys** (through the host's `Read`/`Write`): `menu.page` (the last page), `menu.sidebar`
+  (`1` always shown, `2` icons only, absent: can be folded), `menu.compact` (`1` while folded by the
+  rail's button) and Facet's `window.<WindowId>`. A shell built ahead and never shown stores no rect.
+- **`Dispose` raises no `Hidden`**, so a mod shutting down with its menu open brings nothing back
+  behind it. Every other hide does, including the one Edit layout starts (`WaitingForLayout` is
+  already true then).
+- An adapter member the shell reads from `Tick` or Escape (`LayoutEditorShowing`, `KeepEscape`,
+  `ReturnFromLayout`, `OnReturning`) may throw: it is logged once through the host and the shell
+  carries on (the window comes back; Escape hides).
+- A host for the shell wants more than `Translate`, `Language`, `Read` and `Write`: its own accent on
+  its theme, `HostOptions.Cursor`, `HostOptions.WheelSpeed` and `HostOptions.Log`, or the window
+  falls back to Facet's defaults for them.
+- **Loading:** a mod reaches `SuiteShell` only past a NoInlining probe of the type, and a mod class
+  deriving from `SuiteAdapter` loads only past it: an older PrismLib.UI may be the one loaded. A
+  member added to `SuiteAdapter` or `SuiteShell` after their first release needs its own probe.
+
+`tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:` checks).
+
 ### Update toast
 
 ```csharp

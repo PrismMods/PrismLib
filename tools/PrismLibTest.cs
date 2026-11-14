@@ -339,6 +339,30 @@ static class PrismLibTest
         Words.Language = null;
         Check(Words.Own("Undo") == "Undo", "in English PrismLib's words stay English");
 
+        Console.WriteLine("suite shell");
+        Func<string, bool> has = k => k == "things.beta";
+        Check(SuiteModel.LastPage("things.beta", has, "start.home") == "things.beta", "a known page reopens");
+        Check(SuiteModel.LastPage("gone.page", has, "start.home") == "start.home" && SuiteModel.LastPage(null, has, "start.home") == "start.home"
+              && SuiteModel.LastPage("", has, "start.home") == "start.home", "gone, unset or empty: home");
+        var tabs = new List<KeyValuePair<string, string>> { Kv("things.alpha", "alpha"), Kv("things.off", "beta") };
+        Check(SuiteModel.TabIndex(tabs, "things.beta", "beta") == 1, "a stub takes its feature's tab");
+        Check(SuiteModel.TabIndex(tabs, "things.alpha", null) == 0 && SuiteModel.TabIndex(tabs, "x", null) == -1, "by key, else Facet's memory");
+        Check(SuiteModel.TabIndex(tabs, "things.off", "alpha") == 1, "a key match beats an earlier feature match");
+        var shared = new List<KeyValuePair<string, string>> { Kv("a.one", "kv"), Kv("a.two", "kv") };
+        Check(SuiteModel.TabIndex(shared, "x", "kv") == 0, "pages sharing a feature: the first");
+        Check(SuiteModel.ParseSidebar("1") == 1 && SuiteModel.ParseSidebar("2") == 2 && SuiteModel.ParseSidebar(null) == 0
+              && SuiteModel.ParseSidebar("0") == 0 && SuiteModel.ParseSidebar("x") == 0, "sidebar modes parse, anything else is 0");
+        Check(SuiteModel.FormatSidebar(0) == null && SuiteModel.FormatSidebar(1) == "1" && SuiteModel.FormatSidebar(2) == "2"
+              && SuiteModel.FormatSidebar(7) == null, "mode 0 and junk remove the key");
+        Check(SuiteModel.Compact(2, null) && SuiteModel.Compact(0, "1") && !SuiteModel.Compact(0, null) && !SuiteModel.Compact(1, "1"),
+              "icons only always, foldable when stored, never when always shown");
+        int f = 0; bool seen = false;
+        Check(SuiteModel.StepLayout(ref f, ref seen, true) == LayoutReturn.Wait && seen, "the editor showing: wait");
+        Check(SuiteModel.StepLayout(ref f, ref seen, false) == LayoutReturn.Back, "and gone: back");
+        f = 0; seen = false; int waits = 0; LayoutReturn r;
+        while ((r = SuiteModel.StepLayout(ref f, ref seen, false)) == LayoutReturn.Wait) waits++;
+        Check(waits == 119 && r == LayoutReturn.BackLate, "never shown: back late on the 120th frame");
+
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
     }
@@ -346,6 +370,8 @@ static class PrismLibTest
     static int Count<T>(IEnumerable<T> e) { int n = 0; foreach (var _ in e) n++; return n; }
 
     static string First(List<string> l) { return l.Count > 0 ? l[0] : null; }
+
+    static KeyValuePair<string, string> Kv(string k, string v) { return new KeyValuePair<string, string>(k, v); }
 
     // Label, section, page, tooltip — the shape of a Quartz settings row.
     static readonly string[][] Rows =
