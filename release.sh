@@ -47,7 +47,7 @@ xbuild /p:Configuration=Release /verbosity:minimal PrismLib.UI/PrismLib.UI.cspro
 DLL="PrismLib/bin/Release/PrismLib.dll"
 UIDLL="PrismLib.UI/bin/Release/PrismLib.UI.dll"
 
-mcs -r:"$DLL" -out:/tmp/prismlibtest.exe tools/PrismLibTest.cs PrismLib.UI/Toolkit/LayoutMath.cs PrismLib.UI/Toolkit/Words.cs PrismLib.UI/Toolkit/SuiteModel.cs
+mcs -r:"$DLL" -out:/tmp/prismlibtest.exe tools/PrismLibTest.cs PrismLib.UI/Toolkit/LayoutMath.cs PrismLib.UI/Toolkit/Words.cs PrismLib.UI/Toolkit/SuiteModel.cs PrismLib.UI/Toolkit/KeyLayoutText.cs PrismLib.UI/Toolkit/KeyLayoutMath.cs
 cp "$DLL" /tmp/
 mono /tmp/prismlibtest.exe
 

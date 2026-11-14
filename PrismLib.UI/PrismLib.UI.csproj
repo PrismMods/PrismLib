@@ -91,6 +91,13 @@
         <Compile Include="Toolkit\FontFix.cs" />
         <Compile Include="Toolkit\RestartPrompt.cs" />
         <Compile Include="Toolkit\MacKeys.cs" />
+        <Compile Include="Toolkit\KeyLayoutText.cs" />
+        <Compile Include="Toolkit\KeyLayoutMath.cs" />
+        <Compile Include="Toolkit\KeyLayoutModel.cs" />
+        <Compile Include="Toolkit\KeyLayoutEditor.cs" />
+        <Compile Include="Toolkit\KeyLayoutEditor.Canvas.cs" />
+        <Compile Include="Toolkit\KeyLayoutEditor.Strip.cs" />
+        <Compile Include="Toolkit\KeyLayoutSwitcher.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using PrismLib;
 using PrismLib.UI.Toolkit;
@@ -363,9 +364,34 @@ static class PrismLibTest
         while ((r = SuiteModel.StepLayout(ref f, ref seen, false)) == LayoutReturn.Wait) waits++;
         Check(waits == 119 && r == LayoutReturn.BackLate, "never shown: back late on the 120th frame");
 
+        KeyLayout();
+
         Console.WriteLine(_fail == 0 ? "ALL PASS" : _fail + " FAILED");
         return _fail == 0 ? 0 : 1;
     }
+
+    static void KeyLayout()
+    {
+        Console.WriteLine("key layout");
+        var ids = KeyLayoutText.Ids;
+        Check(ids.Count == ids.Distinct().Count(), "key layout ids are unique");
+        Check(ids.All(i => KeyLayoutText.English(i) != i && KeyLayoutText.English(i).All(c => c < 128)), "every id has an ASCII English fallback");
+        Check(KeyLayoutText.English("kle.nope") == "kle.nope", "an unknown id falls back to itself");
+        var b = new[] { Box(10, 0, 20, 20), Box(40, 5, 10, 30), Box(0, 50, 60, 10) };
+        Check(KeyLayoutMath.Align(b, KeyLayoutMath.Edge.Left).All(x => x.X == 0f), "align left meets the leftmost edge");
+        Check(KeyLayoutMath.Align(b, KeyLayoutMath.Edge.Right).All(x => x.X + x.W == 60f), "align right meets the rightmost edge");
+        Check(KeyLayoutMath.Align(b, KeyLayoutMath.Edge.Top).All(x => x.Y == 0f), "align top meets the highest edge");
+        Check(KeyLayoutMath.Align(b, KeyLayoutMath.Edge.Bottom).All(x => x.Y + x.H == 60f), "align bottom meets the lowest edge");
+        var row = new[] { Box(0, 0, 10, 10), Box(100, 0, 10, 10), Box(13, 0, 10, 10), Box(30, 0, 20, 10) };
+        var s = KeyLayoutMath.Spread(row, true);
+        Check(s[0].X == 0f && s[1].X == 100f, "spread keeps the outermost two");
+        Check(Math.Abs((s[2].X - 10f) - (s[3].X - (s[2].X + 10f))) < 0.001f && Math.Abs((s[3].X - s[2].X - 10f) - (100f - s[3].X - 20f)) < 0.001f, "spread makes equal gaps");
+        Check(KeyLayoutMath.Spread(row.Take(2).ToArray(), true)[1].X == 100f, "spread leaves two boxes alone");
+        var keys = new[] { Box(50, 2, 20, 20), Box(0, 0, 20, 20), Box(0, 30, 20, 20), Box(25, -3, 20, 20) };
+        Check(KeyLayoutMath.ReadingOrder(keys).SequenceEqual(new[] { 1, 3, 0, 2 }), "reading order goes by rows, then left to right");
+    }
+
+    static KeyLayoutMath.Box Box(float x, float y, float w, float h) { return new KeyLayoutMath.Box(x, y, w, h); }
 
     static int Count<T>(IEnumerable<T> e) { int n = 0; foreach (var _ in e) n++; return n; }
 
