@@ -80,7 +80,7 @@ namespace PrismLib.UI.Toolkit
                 var nav = sw.Nav;
                 sw.Window.ShowSearch(_adapter.Key("suite.search", "Search"), q => nav.Filter(q));
                 nav.AddSearchSource(_adapter.SearchRows);
-                nav.OnCompactChanged = c => Host.Write(CompactStore, c ? "1" : null);
+                nav.CompactChanged += c => Host.Write(CompactStore, c ? "1" : null);
                 nav.Collapsible = false;   // the sidebar mode alone decides whether the rail shows
                 ApplySidebar();
                 PinMaster(sw.Window);

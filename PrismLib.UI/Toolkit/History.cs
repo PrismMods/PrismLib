@@ -16,8 +16,8 @@ namespace PrismLib.UI.Toolkit
         private static readonly Func<string, string> _translate = Words.T;
 
         /* AfterApply stays this class's own field (mods and SettingsPanel assign it with =), chained
-           onto Facet's once; Facet's own refresh is internal and runs first either way (ruling R14).
-           ponytail: a Facet-native consumer assigning Facet.History.AfterApply with = drops this hook. */
+           onto Facet's AfterApply event once, so another mod's handler never drops it; Facet's own
+           refresh runs first either way. */
         static History() { Facet.History.AfterApply += () => { var a = AfterApply; if (a != null) a(); }; }
 
         /// True while an undo or redo is being applied. Widgets check it and stay quiet.

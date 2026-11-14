@@ -121,7 +121,7 @@ namespace PrismLib.UI.Toolkit
             surface.Visible = false;   // shown by Show, once sized
             var w = new Facet.Window(surface.Root, id, a.Title, new Rect(0f, 0f, MinWidth, 160f));
             _window = w;
-            w.OnRaise = () => surface.BringToFront();
+            w.Raised += () => surface.BringToFront();
             SuiteShell.AddLogo(w, a.Logo);
             var row = Facet.Ui.Row(w.Body);
             row.style.justifyContent = Justify.Center;
@@ -158,7 +158,7 @@ namespace PrismLib.UI.Toolkit
         // An empty-text button holding an icon and a label: a Button that gains a child loses its own text's measure.
         private void Add(VisualElement row, string name, string label, Background icon, Action click, Func<bool> visible)
         {
-            var b = Facet.Ui.Btn("", click, row);
+            var b = Facet.Ui.Btn(row, "", click);
             b.name = name;
             b.style.width = ButtonWidth;
             float gap = Facet.Theme.For(b).Sizes.Gap / 2f;   // even on both sides, so the centred row stays centred
@@ -177,7 +177,7 @@ namespace PrismLib.UI.Toolkit
                 image.style.backgroundImage = icon;
                 b.Add(image);
             }
-            var text = Facet.Ui.Text(label, b);
+            var text = Facet.Ui.Text(b, label);
             text.pickingMode = PickingMode.Ignore;
             // A host's translation can be longer than the button is wide: it wraps, centred, instead of running out.
             text.style.whiteSpace = WhiteSpace.Normal;

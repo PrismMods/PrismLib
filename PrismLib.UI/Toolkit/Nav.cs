@@ -68,6 +68,11 @@ namespace PrismLib.UI.Toolkit
         /// stay aligned as the rail is resized or collapsed.
         public Action<float> OnInsetChanged;
 
+        /* The last inset Facet reported. Facet tells its handlers the current inset as they are added (here, in
+           the constructor, before OnInsetChanged can be set) and later only on a change, so a caller that sets
+           OnInsetChanged after construction applies this once itself. */
+        internal float LastInset;
+
         public bool RailOpen => _f.RailOpen;
 
         public Nav(VisualElement parent, IEnumerable<NavItem> items, float railWidth = 200f)
@@ -78,7 +83,7 @@ namespace PrismLib.UI.Toolkit
             try { using (PrismHost.Use()) _f = new Facet.Nav(parent, _roots.ConvertAll(Mirror), railWidth); }
             finally { _constructing = was; }
             Wrapping.Add(_f, this);
-            _f.OnInsetChanged = inset => { var h = OnInsetChanged; if (h != null) h(inset); };
+            _f.InsetChanged += inset => { LastInset = inset; var h = OnInsetChanged; if (h != null) h(inset); };
             Last = this;
         }
 

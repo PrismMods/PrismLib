@@ -27,12 +27,16 @@ namespace PrismLib.UI.Toolkit
         {
             VisualElement left = page, right = null;
             if (preview != null)
-                left = Facet.Controls.Columns(page, out right, o =>
+            {
+                var cols = Facet.Controls.Columns(page, o =>
                 {
                     o.Left = 1.25f;
                     o.Right = 1f;
                     o.StackBelow = 760f;
                 });
+                left = cols.Left;
+                right = cols.Right;
+            }
             Facet.Controls.PageHeader(left, title, on, o =>
             {
                 o.Id = title;

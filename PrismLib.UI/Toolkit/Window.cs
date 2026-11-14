@@ -51,7 +51,7 @@ namespace PrismLib.UI.Toolkit
         public Window(VisualElement parent, string id, string title, Rect initial, Action onClose = null)
         {
             Inner = new Facet.Window(parent, id, title, initial);
-            Inner.OnRaise = () => { var r = OnRaise; if (r != null) r(); };
+            Inner.Raised += () => { var r = OnRaise; if (r != null) r(); };
             if (onClose != null) Inner.CloseRequested += _ => onClose();
         }
 

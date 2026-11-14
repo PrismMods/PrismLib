@@ -50,6 +50,10 @@ namespace PrismLib.UI.Toolkit
             s.RowPadY = 6f;
             // A page stands a Pad further under its tab row than Facet's Gap, so it reads apart from the tabs.
             s.TabGap = s.Gap + s.Pad;
+            // The editor parts at Facet's own sizes: the canvas's handles, edges, hit area and outline, dialogs, cards.
+            s.CanvasHandle = 10f; s.CanvasEdgeLong = 18f; s.CanvasEdgeShort = 8f; s.CanvasHit = 18f; s.CanvasOutline = 3f;
+            s.DialogMinWidth = 280f; s.DialogMaxWidth = 420f;
+            s.CardWidth = 168f;
 
             var k = t.Looks;
             k.Button = new Look { Bg = Role.RowHover, Text = Role.Text, Border = Role.Line, HoverBg = Role.RowAlt, PressedBg = Role.Row,

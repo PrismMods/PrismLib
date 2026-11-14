@@ -62,20 +62,20 @@ namespace PrismLib.UI.Toolkit
         public static Label Text(string text, VisualElement parent = null, float? size = null, Color? color = null)
         {
             Label l;
-            using (PrismHost.Use()) l = Facet.Ui.Text(text, parent, size);
+            using (PrismHost.Use()) l = Facet.Ui.Text(parent, text, size);
             if (color.HasValue) { Facet.Paint.Forget(l); l.style.color = color.Value; }
             return l;
         }
 
         public static Label Muted(string text, VisualElement parent = null)
         {
-            using (PrismHost.Use()) return Facet.Ui.Muted(text, parent);
+            using (PrismHost.Use()) return Facet.Ui.Muted(parent, text);
         }
 
         /// Hover, pressed and selected (Highlight) are Facet.Paint's, not the caller's.
         public static Button Btn(string text, Action onClick, VisualElement parent = null)
         {
-            using (PrismHost.Use()) return Facet.Ui.Btn(text, onClick, parent);
+            using (PrismHost.Use()) return Facet.Ui.Btn(parent, text, onClick);
         }
 
         /// Strip a button's background entirely, hover included — for chrome affordances that
@@ -92,7 +92,7 @@ namespace PrismLib.UI.Toolkit
         /// A virtualized list: ListView recycles rows, so a 50k-line log costs what a 50-line one does.
         public static ListView List(Func<IList> source, Action<VisualElement, int> bind, VisualElement parent = null)
         {
-            using (PrismHost.Use()) return Facet.Ui.List(source, bind, parent);
+            using (PrismHost.Use()) return Facet.Ui.List(parent, source, bind);
         }
 
         // ── style helpers: UI Toolkit splits these across four properties each ──

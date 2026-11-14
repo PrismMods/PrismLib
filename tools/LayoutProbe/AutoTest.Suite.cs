@@ -233,12 +233,13 @@ namespace LayoutProbe
             var worn = looks.Select(f => f.GetValue(probe.Looks)).ToList();
             Check(looks.Length == 23 && worn.All(l => l != null) && worn.Distinct().Count() == worn.Count, "Suite.Wear sets all 23 Looks, each its own Look",
                   looks.Length + " fields; unset: " + string.Join(", ", looks.Where(f => f.GetValue(probe.Looks) == null).Select(f => f.Name).ToArray()));
-            Check(sizes.Length == 30 && sizes.All(f => !float.IsNaN((float)f.GetValue(probe.Sizes))), "Suite.Wear sets all 30 Sizes",
+            Check(sizes.Length == 38 && sizes.All(f => !float.IsNaN((float)f.GetValue(probe.Sizes))), "Suite.Wear sets all 38 Sizes",
                   sizes.Length + " fields; unset: " + string.Join(", ", sizes.Where(f => float.IsNaN((float)f.GetValue(probe.Sizes))).Select(f => f.Name).ToArray()));
             Check(probe.Sizes.ControlPad == 5f && probe.Sizes.FieldPad == 4f && probe.Sizes.ItemHeight == 38f, "with ControlPad 5, FieldPad 4 and ItemHeight 38",
                   probe.Sizes.ControlPad + "/" + probe.Sizes.FieldPad + "/" + probe.Sizes.ItemHeight);
-            var mine = new[] { Facet.Role.Accent, Facet.Role.Focus, Facet.Role.AccentText };
-            Check(roles.All(r => (probe[r] == magenta) == mine.Contains(r)), "it sets every neutral role and leaves Accent, Focus and AccentText alone",
+            // Guide (the canvas's snap guides) is a fixed accent like the selection colour, not a neutral.
+            var mine = new[] { Facet.Role.Accent, Facet.Role.Focus, Facet.Role.AccentText, Facet.Role.Guide };
+            Check(roles.All(r => (probe[r] == magenta) == mine.Contains(r)), "it sets every neutral role and leaves Accent, Focus, AccentText and Guide alone",
                   string.Join(", ", roles.Where(r => (probe[r] == magenta) != mine.Contains(r)).Select(r => r.ToString()).ToArray()));
             Facet.Theme dark = null; string threw = "";
             try { dark = Suite.Wear(Facet.Theme.Dark); } catch (Exception e) { threw = e.Message; }

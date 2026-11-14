@@ -165,6 +165,7 @@ namespace PrismLib.UI.Toolkit
                 _nav = new Nav(_window.Body, _navPages());
                 _window.ShowSearch(Words.Own("Search settings…"), q => _nav.Filter(q));
                 _nav.OnInsetChanged = inset => _window.SetContentInset(inset);
+                _window.SetContentInset(_nav.LastInset); // Facet reported the first inset before the handler was set
                 _status = Ui.Muted("", _window.Footer);
                 _status.style.flexGrow = 1f;
                 _surface.Visible = false;

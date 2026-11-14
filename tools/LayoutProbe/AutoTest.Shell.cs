@@ -146,7 +146,7 @@ namespace LayoutProbe
             demo.Host.RelabelSurfaces();
             yield return null;
 
-            Func<VisualElement> railButton = () => Rail(shell)?.Q("rail-button");
+            Func<VisualElement> railButton = () => { var b = shell.Window?.Root.Q("sidebar-toggle"); return b != null && b.resolvedStyle.display != DisplayStyle.None ? b : null; };
             shell.SidebarMode = 1;
             yield return null;
             Check(!shell.Nav.CompactButton && railButton() == null && !shell.Nav.Compact && demo.Store[SuiteShell.SidebarStore] == "1",
@@ -245,14 +245,14 @@ namespace LayoutProbe
                   "shell: stored state from an earlier build", r + " fresh " + s.FreshGeometry + " at " + s.CurrentPage + " compact " + s.Nav.Compact);
             s.SidebarMode = 0;
             yield return null;
-            Tap(Rail(s)?.Q("rail-button"));
+            Tap(s.Window?.Root.Q("sidebar-toggle"));
             yield return null;
             s.Dispose();
             s = new SuiteShell(demo2);
             shells.Add(s);
             s.Open();
             yield return null;
-            Check(s.Nav.Compact && s.Nav.CompactButton && Rail(s)?.Q("rail-button") != null, "shell: a rail folded with the button stays folded in a later build");
+            Check(s.Nav.Compact && s.Nav.CompactButton && s.Window?.Root.Q("sidebar-toggle") != null, "shell: a rail folded with the button stays folded in a later build");
             s.Dispose();
             demo.Store[SuiteShell.PageStore] = "gone.page";
             s = new SuiteShell(demo2);

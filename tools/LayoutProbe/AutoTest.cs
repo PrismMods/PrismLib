@@ -614,6 +614,10 @@ namespace LayoutProbe
             var views = root?.Query<ScrollView>().ToList();
             var rail = views != null && views.Count > 1 ? views[0] : null;
             var content = views != null && views.Count > 1 ? views[1] : null;
+            // The rail starts open at 200, so the content pane starts at 207 and the header's title block matches it
+            var titleBlock = root?.Query<Label>().ToList().FirstOrDefault(l => l.text == "Probe Menu")?.parent;
+            Check(titleBlock != null && Mathf.Abs(titleBlock.resolvedStyle.width - 207f) < 0.5f, "the header's title block lines up with the content pane from the first open",
+                  titleBlock == null ? "no title" : "width " + titleBlock.resolvedStyle.width);
             Check(facetActive, "a page builds with Facet's Nav.Active set (Widgets.SubPage reaches it)");
             Check(LabelIn(rail, "PROBE OVERLAY") != null && LabelIn(rail, "PROBE INTERFACE") != null, "both NavItem.Headings head the rail");
 
