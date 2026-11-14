@@ -94,6 +94,7 @@ namespace PrismLib.UI.Toolkit
                 nav.OnCompactChanged = c => Host.Write(CompactStore, c ? "1" : null);
                 nav.Collapsible = false;   // the sidebar mode alone decides whether the rail shows
                 ApplySidebar();
+                PinMaster(sw.Window);
                 sw.Surface.Hidden += OnHidden;
                 sw.Surface.EscapeHandler = OnEscape;
             }

@@ -1,5 +1,6 @@
 // A generic suite adapter for the shell checks: a few categories and pages over an in-memory store, with
-// switches the checks flip (key capture, the layout editor showing, a throwing member).
+// switches the checks flip (key capture, the layout editor showing, a throwing member). With Shell set, its pages
+// also use the shell's page frames and Settings rows.
 using System;
 using System.Collections.Generic;
 using PrismLib.UI.Toolkit;
@@ -17,6 +18,13 @@ namespace LayoutProbe
         public string Lang = "en";
         public string Id = "probe.menu";
         public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true, SecretShown;
+        public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown;
+        public float Speed = 100f;
+        public SuiteShell Shell;
+        // What the shell's rows gave back, for the checks.
+        public Facet.Control<int> SidebarControl;
+        public Facet.Control<float> SpeedControl;
+        public VisualElement StartLayout;
         readonly Facet.Host _host;
         readonly Background _logo;
 
@@ -45,6 +53,8 @@ namespace LayoutProbe
         public override bool LayoutEditorShowing { get { if (ThrowShowing) throw new InvalidOperationException("probe"); return Showing; } }
         public override bool ReturnFromLayout => ReturnOk;
         public override bool CanEditLayout => EditOk;
+        public override Facet.Bind<bool> Master => HasMaster ? Facet.Bind.To(() => MasterOn, v => MasterOn = v) : null;
+        public override string MasterLabel => "Demo on";
         public override void OnLeaving() { Calls.Add("leaving"); }
         public override void OpenLayoutEditor() { Calls.Add("open-editor"); }
         public override void OnReturning() { Calls.Add("returning"); }
@@ -81,6 +91,36 @@ namespace LayoutProbe
             panel.Add(new Label(page.Key));
             // A row named after its page: search indexes rows, not page titles.
             Facet.Controls.Toggle(panel, page.Label, Facet.Bind.Value(false), o => o.Id = page.Key + ".row");
+            if (Shell != null) ShellRows(panel, page.Key);
+        }
+
+        void ShellRows(VisualElement p, string key)
+        {
+            var s = Shell;
+            switch (key)
+            {
+                case "start.home":
+                    s.LayoutRow(Facet.Controls.Card(p, null), "start-layout");
+                    if (p.panel != null) StartLayout = p.Q("start-layout");
+                    break;
+                case "options.main":
+                    var sidebar = s.SidebarRow(s.SettingsCard(p, "Look"));
+                    var motion = s.SettingsCard(p, "Motion");
+                    s.SmoothRow(motion, Facet.Bind.To(() => Smooth, v => Smooth = v));
+                    s.PrismLinkRow(motion, () => Calls.Add("prism"), () => PrismShown);
+                    var speed = s.ScrollSpeedRow(s.SettingsCard(p, "Behaviour"), Facet.Bind.To(() => Speed, v => Speed = v));
+                    s.ClassicMenuRow(s.SettingsCard(p, "Other"), () => Calls.Add("classic"));
+                    if (p.panel != null) { SidebarControl = sidebar; SpeedControl = speed; }   // not the search index's copy
+                    break;
+                case "things.alpha":
+                    s.FeatureFrame(p, "Alpha", Facet.Bind.To(() => AlphaOn, v => AlphaOn = v), "About alpha",
+                                   c => c.Add(new Label("cards")), r => r.Add(new Label("preview")));
+                    break;
+                case "things.off":
+                    s.Header(p, "Beta", Facet.Bind.To(() => BetaOn, v => BetaOn = v), () => "off");
+                    s.ClassicCard(p, () => Calls.Add("open"), true);
+                    break;
+            }
         }
 
         public override IEnumerable<Facet.SearchIndex.Entry> SearchRows()

@@ -72,6 +72,7 @@
         <Compile Include="Toolkit\SuiteAdapter.cs" />
         <Compile Include="Toolkit\SuiteShell.cs" />
         <Compile Include="Toolkit\SuiteShell.Rail.cs" />
+        <Compile Include="Toolkit\SuiteShell.Pages.cs" />
         <Compile Include="Toolkit\EditTarget.cs" />
         <Compile Include="Toolkit\LayoutEditor.cs" />
         <Compile Include="Toolkit\LayoutEditor.Grips.cs" />

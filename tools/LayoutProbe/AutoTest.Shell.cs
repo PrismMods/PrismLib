@@ -64,6 +64,7 @@ namespace LayoutProbe
             demo.Store[SuiteShell.PageStore] = "options.main";
             var shell = new SuiteShell(demo);
             shells.Add(shell);
+            demo.Shell = shell;   // its pages use the shell's rows, built before the shell holds its window
             shell.Hidden += countHidden;
             shell.Prebuild();
             Check(!shell.Visible && !demo.Store.ContainsKey("window.probe.menu"), "shell: a shell built ahead and not shown stores no window rect",
@@ -73,6 +74,8 @@ namespace LayoutProbe
                   "shell: Prebuild opens the stored page, read before the first page stores itself", shell.CurrentPage);
             Check(demo.Built.Contains("start.home") && LabelIn(Content(shell), "options.main") != null,
                   "shell: the page built during Prebuild has its rows", string.Join(",", demo.Built.ToArray()));
+            Check(demo.StartLayout != null && demo.StartLayout.style.display != DisplayStyle.None,
+                  "shell: the page built during Prebuild has its shell-made rows", demo.StartLayout == null ? "no row" : "hidden");
 
             shell.Open();
             Rect want = default(Rect), got = default(Rect);
@@ -381,6 +384,149 @@ namespace LayoutProbe
             Check(us <= 2.0, "shell: [perf] suite shell hidden tick within 2 us", us.ToString("0.000") + " us");
 
             foreach (var x in shells) x.Dispose();
+            yield return null;
+        }
+
+        // Up to a second for the surface's refresher to re-read a row's conditions.
+        static IEnumerator Until(Func<bool> ok) { for (int i = 0; i < 60 && !ok(); i++) yield return null; }
+
+        static bool Shown(VisualElement e) => e != null && e.style.display.value != DisplayStyle.None;
+
+        static Button Glyph(SuiteShell s, string glyph) =>
+            s.Window.TitleBarRight.Query<Button>().ToList().FirstOrDefault(b => b.text != null && b.text.Contains(glyph));
+
+        IEnumerator Type(TextField f, string text)
+        {
+            f.Focus();
+            yield return null;
+            f.value = text;
+            f.Blur();
+            yield return Frames(2);
+        }
+
+        // The page frames, the classic card, the Settings rows and the master switch, on a shell of their own.
+        IEnumerator SuitePageChecks()
+        {
+            var demo = new DemoSuite("LayoutProbeSuitePages") { Id = "probe.pages" };
+            var shell = new SuiteShell(demo);
+            demo.Shell = shell;
+            shell.Open("options.main");
+            yield return Frames(3);
+            var content = Content(shell);
+
+            var cards = content.Query<VisualElement>().ToList().Where(e => e.name != null && e.name.StartsWith("menu-settings-")).Select(e => e.name).ToList();
+            Check(cards.SequenceEqual(new[] { "menu-settings-Look", "menu-settings-Motion", "menu-settings-Behaviour", "menu-settings-Other" }),
+                  "pages: Settings cards carry their ids", string.Join(",", cards.ToArray()));
+
+            demo.SidebarControl.Set(2);
+            yield return null;
+            Check(shell.SidebarMode == 2 && shell.Nav.Compact, "pages: the sidebar row picks a mode", shell.SidebarMode + " / " + shell.Nav.Compact);
+            demo.SidebarControl.Set(0);
+            yield return null;
+
+            var number = content.Q<TextField>("Scroll speed-number");
+            var slider = content.Q("Scroll speed")?.Q<Slider>();
+            yield return Type(number, "500");
+            bool hi = demo.Speed == 300f && number.value == "300 px";
+            yield return Type(number, "10");
+            bool lo = demo.Speed == 20f;
+            yield return Type(number, "120.4");
+            bool mid = demo.Speed == 120f;
+            demo.SpeedControl.Set(500f);
+            bool unclamped = demo.Speed == 500f;
+            demo.SpeedControl.Set(120f);
+            Check(hi && lo && mid && unclamped && slider != null && slider.lowValue == 0f && slider.highValue == 1f, "pages: scroll speed is 20–300 px",
+                  hi + " " + lo + " " + mid + " " + unclamped + " / " + demo.Speed + " / " + (slider == null ? "no slider" : slider.lowValue + ".." + slider.highValue));
+
+            Tap(content.Q("Smooth Scrolling-input"));
+            bool on = demo.Smooth;
+            Tap(content.Q("Smooth Scrolling-input"));
+            Check(on && !demo.Smooth, "pages: smooth switch writes its bind");
+
+            var link = content.Q("Animation duration");
+            bool hiddenLink = !Shown(link);
+            demo.PrismShown = true;
+            yield return Until(() => Shown(link));
+            demo.Calls.Clear();
+            var linkButton = link?.Q<Button>();
+            if (linkButton != null) Submit(linkButton);
+            Check(hiddenLink && Shown(link) && demo.Calls.Contains("prism"), "pages: the Prism link shows only when it can open",
+                  hiddenLink + " / " + Shown(link) + " / " + string.Join(",", demo.Calls.ToArray()));
+
+            var classicButton = content.Q("Classic menu")?.Q<Button>();
+            if (classicButton != null) Submit(classicButton);
+            Check(demo.Calls.Contains("classic"), "pages: the classic-menu link opens", string.Join(",", demo.Calls.ToArray()));
+
+            // Undo from the title bar: a value unlike the current one, from an empty history.
+            Facet.History.Clear();
+            float before = demo.Speed, after = before == 200f ? 180f : 200f;
+            demo.SpeedControl.Set(after);
+            yield return null;
+            Submit(Glyph(shell, "↶"));
+            yield return Until(() => number.value == before.ToString("0") + " px");
+            bool undone = demo.Speed == before && number.value == before.ToString("0") + " px";
+            Submit(Glyph(shell, "↷"));
+            yield return Until(() => number.value == after.ToString("0") + " px");
+            Check(undone && demo.Speed == after && number.value == after.ToString("0") + " px", "pages: a scroll-speed change undoes from the title bar",
+                  undone + " / " + demo.Speed + " / " + number.value);
+
+            var bar = shell.Window.TitleBarRight;
+            var master = bar.Q("menu-master");
+            int undoAt = bar.IndexOf(Glyph(shell, "↶"));
+            Tap(master?.Q("menu-master-input"));
+            bool flipped = demo.MasterOn;
+            Check(master != null && bar.IndexOf(master) == 0 && undoAt > 0 && flipped, "pages: the master switch is pinned in the title bar",
+                  (master == null ? "none" : bar.IndexOf(master) + " before ↶ at " + undoAt) + " / " + flipped);
+            Facet.History.Clear();
+            Tap(master?.Q("menu-master-input"));
+            bool off = !demo.MasterOn;
+            Submit(Glyph(shell, "↶"));
+            yield return null;
+            Check(off && !demo.MasterOn && !Facet.History.CanUndo, "pages: the master switch is no undo step", off + " / " + demo.MasterOn);
+            var bare = new DemoSuite("LayoutProbeSuiteNoMaster") { Id = "probe.nomaster", HasMaster = false };
+            var plain = new SuiteShell(bare);
+            plain.Prebuild();
+            Check(plain.Window != null && plain.Window.TitleBarRight.Q("menu-master") == null, "pages: a shell without a master switch pins none");
+            plain.Dispose();
+
+            shell.Window.Rect = new Rect(10f, 10f, 1400f, 800f);
+            shell.Go("things.alpha");
+            yield return Frames(4);
+            content = Content(shell);
+            var header = content.Q("Alpha");
+            var left = header?.parent;
+            var cols = left?.parent;
+            var right = cols != null && cols.childCount > 1 ? cols[1] : null;
+            float wide = cols == null ? -1f : cols.layout.width;
+            bool sides = right != null && LabelIn(left, "cards") != null && LabelIn(right, "preview") != null
+                         && right.worldBound.x >= left.worldBound.xMax - 1f;
+            float ratio = right == null || right.layout.width <= 0f ? -1f : left.layout.width / right.layout.width;
+            Check(wide >= 800f && sides && Near(ratio, 1.25f, 0.05f), "pages: a feature page has its two columns",
+                  "width " + wide + " ratio " + ratio + " sides " + sides);
+            for (float w = 1100f; w >= 500f && cols != null && !(cols.layout.width > 0f && cols.layout.width < 760f); w -= 100f)
+            {
+                shell.Window.Rect = new Rect(10f, 10f, w, 800f);
+                yield return Frames(3);
+            }
+            yield return Frames(3);
+            bool stacked = right != null && cols.layout.width < 760f && right.worldBound.y >= left.worldBound.yMax - 1f;
+            Check(stacked, "pages: a narrow feature page stacks its columns", "width " + (cols == null ? -1f : cols.layout.width));
+
+            shell.Go("things.off");
+            yield return Frames(2);
+            content = Content(shell);
+            var head = content.Q("menu-header");
+            demo.Calls.Clear();
+            var open = content.Q("menu-classic")?.Q<Button>();
+            if (open != null) Submit(open);
+            Check(Texts(head).Contains("off") && content.Q("menu-classic") != null && Shown(content.Q("menu-classic-layout")) && demo.Calls.Contains("open"),
+                  "pages: a classic page shows its card and layout row", string.Join("|", Texts(head).ToArray()) + " / " + string.Join(",", demo.Calls.ToArray()));
+            demo.EditOk = false;
+            yield return Until(() => !Shown(content.Q("menu-classic-layout")));
+            Check(content.Q("menu-classic-layout") != null && !Shown(content.Q("menu-classic-layout")), "pages: the layout row hides while layout cannot be edited");
+            demo.EditOk = true;
+
+            shell.Dispose();
             yield return null;
         }
     }

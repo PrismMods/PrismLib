@@ -41,7 +41,7 @@ namespace PrismLib.UI.Toolkit
             return mode == 1 ? "1" : mode == 2 ? "2" : null;
         }
 
-        /// Icons only always; can be folded when "1" is stored; never when always shown.
+        /// Always hidden: always; Toggleable: when "1" is stored; Always visible: never.
         public static bool Compact(int mode, string storedCompact)
         {
             return mode == 2 || mode == 0 && storedCompact == "1";

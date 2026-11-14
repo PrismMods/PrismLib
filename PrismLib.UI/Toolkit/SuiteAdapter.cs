@@ -49,6 +49,7 @@ namespace PrismLib.UI.Toolkit
         public abstract string HomePage { get; }
         /// Asked at build and on every Open.
         public abstract IList<SuiteCategory> Categories();
+        /// Also called on a detached panel (panel.panel == null) when the search index reads the page.
         public abstract void BuildPage(VisualElement panel, SuitePage page);
         /// The 18x18 "menu-logo" leading the title bar.
         public virtual Background? Logo { get { return null; } }
@@ -63,6 +64,10 @@ namespace PrismLib.UI.Toolkit
         /// A key capture owns the keyboard: Escape keeps the window.
         public virtual bool KeepEscape { get { return false; } }
         public virtual bool CanEditLayout { get { return false; } }
+        /// A master switch pinned first in the title bar's right block ("menu-master"), or none. Not undoable.
+        public virtual Facet.Bind<bool> Master { get { return null; } }
+        /// The master switch's word, which the host translates.
+        public virtual string MasterLabel { get { return null; } }
         /// Before the window hides for Edit layout.
         public virtual void OnLeaving() { }
         /// After it hides.

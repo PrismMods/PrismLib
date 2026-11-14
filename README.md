@@ -193,7 +193,27 @@ A mod drives it through a `SuiteAdapter` subclass.
   deriving from `SuiteAdapter` loads only past it: an older PrismLib.UI may be the one loaded. A
   member added to `SuiteAdapter` or `SuiteShell` after their first release needs its own probe.
 
-`tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:` checks).
+- **Pages** build with the shell's frames: `Header` (a stub or classic page, `menu-header`),
+  `FeatureFrame` (header and cards, with a preview in a right column that stacks below 760),
+  `ClassicCard` (the "still in the classic menu" card, `menu-classic`, plus `menu-classic-layout`) and
+  `LayoutRow` (shown while `CanEditLayout`). The classic-menu round trip is the mod's: its `open`
+  hides the shell and brings it back when the classic panel closes.
+- **The Settings page** uses `SettingsCard` (`menu-settings-<title>`) and the shared rows
+  `SidebarRow`, `SmoothRow`, `PrismLinkRow`, `ScrollSpeedRow` (20–300 px; only typed values clamp)
+  and `ClassicMenuRow`, each row's Id being the adapter's key for its word. Cards go in this order:
+  1. Menu: hotkey, show at startup, block input;
+  2. Appearance: accent, scale, opacity, Sidebar;
+  3. Animation: Smooth Scrolling and the Prism link (Animation duration);
+  4. Behaviour: scroll speed;
+  5. Language;
+  6. Maintenance;
+  7. Experimental and the classic-menu link;
+  8. Credits.
+- **`Master`** (with `MasterLabel`) pins the mod's on/off switch first in the title bar's right
+  block, `menu-master`. It is no undo step. **`ApplyLook()`** re-reads scale, opacity and input
+  blocking: call it when one of them changes.
+
+`tools/LayoutProbe` drives it through a generic `DemoSuite` (the `shell:` and `pages:` checks).
 
 ### Update toast
 

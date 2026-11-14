@@ -399,6 +399,7 @@ namespace LayoutProbe
             yield return TopazMenu();
             yield return GradientSync();
             yield return SuiteShellChecks();
+            yield return SuitePageChecks();
 
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;
