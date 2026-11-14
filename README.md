@@ -171,7 +171,9 @@ A mod drives it through a `SuiteAdapter` subclass.
   `Open`; a category added or removed later joins the same `Nav`), `BuildPage`, search rows, the
   logo, scale, opacity, input blocking, and the hooks around Edit layout (`OnLeaving`,
   `OpenLayoutEditor`, `LayoutEditorShowing`, `ReturnFromLayout`, `OnReturning`).
-  `EditLayout(open, showing)` makes the same trip for another editor.
+  `EditLayout(open, showing)` makes the same trip for another editor. The window comes back only if
+  it was showing when the trip began. A page whose `Visible` is false is off its tab row and no `Go`
+  target; a category with no visible page is off the rail.
 - **Words:** every shell label is a stable id with an English fallback, passed through
   `SuiteAdapter.Key(id, english)` and translated by the mod's own host. They never go through
   PrismLib.UI's `Words`; these words are the mod's.

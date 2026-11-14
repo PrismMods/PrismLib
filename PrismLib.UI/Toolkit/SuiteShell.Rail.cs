@@ -143,9 +143,20 @@ namespace PrismLib.UI.Toolkit
             {
                 if (c == null || c.Group < 0 || c.Group > 2) continue;
                 foreach (var p in Pages(c))
-                    if (p != null && p.Key == key) { category = c; return p; }
+                    if (p != null && p.Key == key && Shown(p)) { category = c; return p; }
             }
             return null;
+        }
+
+        private bool Shown(SuitePage p)
+        {
+            return p != null && (p.Visible == null || Facet.Safe.Get(Host, "SuitePage.Visible", p.Visible, false));
+        }
+
+        private bool AnyShown(SuiteCategory c)
+        {
+            foreach (var p in Pages(c)) if (Shown(p)) return true;
+            return false;
         }
 
         private Facet.NavItem CategoryItem(string key)
@@ -154,7 +165,7 @@ namespace PrismLib.UI.Toolkit
             item.VisibleWhen = () =>
             {
                 var c = Cat(key);
-                return c != null && (c.Visible == null || c.Visible()) && Pages(c).Count > 0;
+                return c != null && (c.Visible == null || c.Visible()) && AnyShown(c);
             };
             item.Revision = () => _adapter.Revision + _changes;
             // A category without tabs is its one page, which can change under it: asked when the hit lands.

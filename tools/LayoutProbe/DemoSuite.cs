@@ -16,11 +16,11 @@ namespace LayoutProbe
         public readonly List<string> Calls = new List<string>();
         public string Lang = "en";
         public string Id = "probe.menu";
-        public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true;
+        public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true, SecretShown;
         readonly Facet.Host _host;
         readonly Background _logo;
 
-        static readonly Dictionary<string, string> Korean = new Dictionary<string, string> { { "Search", "찾기" }, { "Alpha", "알파" } };
+        static readonly Dictionary<string, string> Korean = new Dictionary<string, string> { { "Search", "찾기" }, { "Find", "검색" }, { "Alpha", "알파" } };
 
         public DemoSuite(string hostName = "LayoutProbeSuite", Dictionary<string, string> store = null)
         {
@@ -48,8 +48,11 @@ namespace LayoutProbe
         public override void OnLeaving() { Calls.Add("leaving"); }
         public override void OpenLayoutEditor() { Calls.Add("open-editor"); }
         public override void OnReturning() { Calls.Add("returning"); }
+        // Not the English fallback: the shell's search word must come through Key.
+        public override string Key(string id, string english) => id == "suite.search" ? "Find" : english;
 
-        static SuitePage Page(string key, string label, string feature = null) => new SuitePage { Key = key, Label = label, Feature = feature };
+        static SuitePage Page(string key, string label, string feature = null, Func<bool> visible = null) =>
+            new SuitePage { Key = key, Label = label, Feature = feature, Visible = visible };
 
         static SuiteCategory Category(string key, string label, int group, bool tabs, params SuitePage[] pages)
         {
@@ -62,8 +65,10 @@ namespace LayoutProbe
             var l = new List<SuiteCategory>
             {
                 Category("start", "Start", 0, false, Page("start.home", "Home")),
-                Category("things", "Things", 1, true, Page("things.alpha", "Alpha", "alpha"), Page("things.beta", "Beta", "beta"), Page("things.off", "Off", "beta")),
+                Category("things", "Things", 1, true, Page("things.alpha", "Alpha", "alpha"), Page("things.beta", "Beta", "beta"), Page("things.off", "Off", "beta"),
+                         Page("things.secret", "Secret", null, () => SecretShown)),
                 Category("options", "Options", 2, false, Page("options.main", "Main")),
+                Category("vault", "Vault", 2, false, Page("vault.page", "Vault", null, () => SecretShown)),
                 Category("aside", "Aside", -1, false, Page("aside.page", "Aside")),
             };
             if (Extra) l.Add(Category("more", "More", 1, false, Page("more.page", "More")));

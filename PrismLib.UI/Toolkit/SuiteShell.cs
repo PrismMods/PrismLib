@@ -19,6 +19,8 @@ namespace PrismLib.UI.Toolkit
         private Func<bool> _waitShowing;
         private int _frames;
         private bool _seen;
+        // The window was on screen when Edit layout began: only then does the wait's end bring it back.
+        private bool _reopen;
         // One bit per adapter member that has thrown from Tick or Escape: each is logged once.
         private int _threw;
 
@@ -52,15 +54,16 @@ namespace PrismLib.UI.Toolkit
         {
             if (_sw != null) return;
             var host = Host;
-            // Read before the Nav opens its first page, which stores itself.
+            // Read before the Nav opens its first page, which stores itself, and lays out the rail.
             string last = SuiteModel.LastPage(host.Read(PageStore), k => OnRail(k) != null, _adapter.HomePage);
-            FreshGeometry = host.Read("window." + _adapter.WindowId) == null;
+            bool compact = SuiteModel.Compact(SuiteModel.ParseSidebar(host.Read(SidebarStore)), host.Read(CompactStore));
             var groups = BuildGroups();
             float rail = _adapter.RailWidth;
             var sw = Facet.SettingsWindow.Open(host, _adapter.WindowId, _adapter.Title, groups, o =>
             {
                 o.Search = false;   // the shell shows it, for the adapter's word
                 o.RailWidth = rail;
+                o.CompactRail = compact;
             });
             sw.Surface.Visible = false;   // before anything listens: this hide is no one's close
             if (sw.Window == null)
@@ -68,6 +71,8 @@ namespace PrismLib.UI.Toolkit
                 sw.Dispose();   // SettingsWindow logged why
                 return;
             }
+            // The window's own word: it also places from the rect this session kept, which the store may not hold.
+            FreshGeometry = !sw.Window.HasStoredGeometry;
             _sw = sw;
             try
             {
@@ -98,6 +103,9 @@ namespace PrismLib.UI.Toolkit
                 _sw = null;
                 CurrentPage = null;
                 TabRow = null;
+                _currentFeature = null;
+                _items.Clear();   // they belong to the dead Nav
+                _builtCategories = null;
                 throw;
             }
             if (CurrentPage != last) Go(last);
@@ -111,7 +119,6 @@ namespace PrismLib.UI.Toolkit
             if (CategoryKeys() != _builtCategories) RebuildRail();
             if (pageKey != null) Go(pageKey);
             ApplyLook();
-            _sw.Surface.BlocksGameInput = _adapter.BlockInput;
             _sw.Surface.Visible = true;
         }
 
@@ -122,15 +129,17 @@ namespace PrismLib.UI.Toolkit
             return true;
         }
 
-        /// The adapter's scale and opacity.
+        /// The adapter's scale, opacity and input blocking: call it when one of them changes.
         public void ApplyLook()
         {
             if (Window == null) return;
             Window.Scale = _adapter.Scale;
             Window.Root.style.opacity = _adapter.Opacity;
+            _sw.Surface.BlocksGameInput = _adapter.BlockInput;
         }
 
-        /// "Edit layout": the window steps aside for the adapter's layout editor, and comes back when that session ends.
+        /// "Edit layout": the window steps aside for the adapter's layout editor, and comes back when that session ends
+        /// if it was showing.
         public void EditLayout() { EditLayout(_adapter.OpenLayoutEditor, _editorShowing); }
 
         /// The same round trip for another editor: `open` starts it and `showing` says whether it is still up.
@@ -140,8 +149,9 @@ namespace PrismLib.UI.Toolkit
             _waitShowing = showing ?? _editorShowing;
             _frames = 0;
             _seen = false;
+            bool again = WaitingForLayout && _reopen;
             WaitingForLayout = true;   // before Hide: a Hidden listener can tell this hide apart
-            Hide();
+            _reopen = Hide() || again;   // a shut (or never-built) window stays shut when the wait ends
             if (open != null) open();
         }
 
@@ -168,7 +178,8 @@ namespace PrismLib.UI.Toolkit
             _frames = 0;
             _seen = false;
             if (r == LayoutReturn.BackLate)
-                Host.Log("[Menu] the layout editor did not appear within " + SuiteModel.LayoutWaitFrames + " frames of Edit layout: the window comes back");
+                Host.Log("[Menu] the layout editor did not appear within " + SuiteModel.LayoutWaitFrames + " frames of Edit layout, so the wait ends");
+            if (!_reopen) return;
             bool back = true;
             try { back = _adapter.ReturnFromLayout; }
             catch (Exception e) { Threw(2, "ReturnFromLayout", e); }

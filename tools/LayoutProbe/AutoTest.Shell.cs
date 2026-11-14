@@ -43,6 +43,15 @@ namespace LayoutProbe
             }
         }
 
+        // A text on screen under root: no element between them is display:none (a hidden tab keeps its cell).
+        static bool ShownText(VisualElement root, string text) => root != null && root.Query<TextElement>().ToList().Any(t =>
+        {
+            if (t.text != text) return false;
+            for (VisualElement e = t; e != null && e != root; e = e.parent)
+                if (e.style.display.value == DisplayStyle.None) return false;
+            return true;
+        });
+
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
         IEnumerator SuiteShellChecks()
@@ -115,7 +124,7 @@ namespace LayoutProbe
             shell.Go("aside.page");
             Check(shell.CurrentPage == "start.home", "shell: an off-rail page key does nothing", shell.CurrentPage);
 
-            Check(Placeholder(shell.Window.Search) == demo.Host.Translate("Search"), "shell: search shows the adapter's word",
+            Check(Placeholder(shell.Window.Search) == demo.Host.Translate("Find"), "shell: search shows the adapter's word",
                   Placeholder(shell.Window.Search));
             shell.Window.Search.value = "Gizmo";
             yield return null;
@@ -128,7 +137,7 @@ namespace LayoutProbe
             demo.Lang = "ko";
             demo.Host.RelabelSurfaces();
             yield return null;
-            Check(Placeholder(shell.Window.Search) == "찾기" && Texts(shell.TabRow?.Element).Contains("알파"), "shell: relabels with the host",
+            Check(Placeholder(shell.Window.Search) == "검색" && Texts(shell.TabRow?.Element).Contains("알파"), "shell: relabels with the host",
                   Placeholder(shell.Window.Search) + " / " + string.Join("|", Texts(shell.TabRow?.Element).ToArray()));
             demo.Lang = "en";
             demo.Host.RelabelSurfaces();
@@ -179,12 +188,43 @@ namespace LayoutProbe
             Check(!rail.Contains("More") && shell.CurrentPage == "start.home" && ReferenceEquals(shell.Nav, navBefore),
                   "shell: removing the open page's category goes home", string.Join("|", rail.ToArray()) + " at " + shell.CurrentPage);
 
+            shell.Go("things.alpha");
+            shell.Go("things.secret");
+            rail = Texts(Rail(shell));
+            Check(shell.CurrentPage == "things.alpha" && !rail.Contains("Vault") && !ShownText(shell.TabRow?.Element, "Secret"),
+                  "shell: a hidden page is no Go target, and a category of hidden pages stays off the rail",
+                  string.Join("|", rail.ToArray()) + " at " + shell.CurrentPage);
+            demo.SecretShown = true;
+            shell.RebuildRail();
+            yield return null;
+            rail = Texts(Rail(shell));
+            Check(rail.Contains("Vault") && ShownText(shell.TabRow?.Element, "Secret") && shell.CurrentPage == "things.alpha" && ReferenceEquals(shell.Nav, navBefore),
+                  "shell: a page that shows in the open category joins its rail and tab row on a rebuild",
+                  string.Join("|", rail.ToArray()) + " at " + shell.CurrentPage);
+            demo.SecretShown = false;
+            shell.RebuildRail();
+            yield return null;
+
             // Stored state: a later build (another host name, so the rect comes from the store) opens as this one was left.
             shell.Go("things.alpha");
             shell.Window.Rect = new Rect(100f, 80f, 900f, 600f);
             shell.SidebarMode = 2;
             shell.Dispose();
             Check(demo.Store.ContainsKey("window.probe.menu"), "shell: a shown window stores its rect");
+            // The same host again, its stored rect deleted: the window still places from the rect this session kept.
+            string keptRect = demo.Store["window.probe.menu"];
+            demo.Store.Remove("window.probe.menu");
+            var again = new SuiteShell(demo);
+            shells.Add(again);
+            again.Prebuild();
+            bool freshAgain = again.FreshGeometry;
+            again.Open();
+            yield return Frames(3);
+            var ra = again.Window.Rect;
+            bool atKept = Near(ra.x, 100f, 1f) && Near(ra.y, 80f, 1f) && Near(ra.width, 900f, 1f) && Near(ra.height, 600f, 1f);
+            Check(freshAgain != atKept, "shell: FreshGeometry says where a rebuilt window opens", ra + " fresh " + freshAgain);
+            again.Dispose();
+            demo.Store["window.probe.menu"] = keptRect;
             var demo2 = new DemoSuite("LayoutProbeSuite2", demo.Store);
             var s = new SuiteShell(demo2);
             shells.Add(s);
@@ -260,6 +300,19 @@ namespace LayoutProbe
             demo2.Showing = false; s.Tick();
             Check(!s.Visible && !s.WaitingForLayout && !demo2.Calls.Contains("returning"), "shell: a session that should not return leaves the window shut");
             demo2.ReturnOk = true;
+
+            demo2.Calls.Clear();
+            s.EditLayout();   // s is shut
+            demo2.Showing = true; s.Tick();
+            demo2.Showing = false; s.Tick();
+            var never = new SuiteShell(demo2);
+            shells.Add(never);
+            never.EditLayout();
+            demo2.Showing = true; never.Tick();
+            demo2.Showing = false; never.Tick();
+            Check(!s.Visible && !s.WaitingForLayout && never.Window == null && !never.Visible && !never.WaitingForLayout && !demo2.Calls.Contains("returning"),
+                  "shell: Edit layout on a shut or never-built window returns to nothing",
+                  s.Visible + " / " + (never.Window != null) + " / " + string.Join(",", demo2.Calls.ToArray()));
 
             s.Open();
             yield return null;
