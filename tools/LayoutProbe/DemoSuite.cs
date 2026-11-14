@@ -19,6 +19,10 @@ namespace LayoutProbe
         public string Id = "probe.menu";
         public bool Extra, Capturing, Showing, ReturnOk = true, ThrowShowing, ThrowKeep, EditOk = true, SecretShown;
         public bool HasMaster = true, MasterOn, AlphaOn, BetaOn, Smooth, PrismShown, HubEdit, HubIcon;
+        // Split adds a category without tabs whose first page is hidden; ThrowVisible makes its Visible and a tab's throw.
+        public bool Split, ThrowVisible;
+        // HubOwn adds a hub button whose own editor (no Edit layout) stays up while OwnShowing.
+        public bool HubOwn, OwnShowing, OwnShown = true;
         public string PingLabel = "Ping";
         public float Speed = 100f;
         public SuiteShell Shell;
@@ -70,6 +74,8 @@ namespace LayoutProbe
             var l = new List<SuiteHubButton> { new SuiteHubButton { Id = "ping", Label = PingLabel, Click = () => Calls.Add("ping"),
                 Icon = HubIcon ? Background.FromTexture2D(Texture2D.whiteTexture) : default(Background) } };
             if (HubEdit) l.Add(new SuiteHubButton { Id = "edit", Label = "Edit", Click = () => Shell.EditLayout(), Showing = () => Showing });
+            if (HubOwn) l.Add(new SuiteHubButton { Id = "own", Label = "Own", Click = () => { Calls.Add("own"); OwnShowing = true; },
+                Showing = () => OwnShowing, Visible = () => OwnShown });
             return l;
         }
 
@@ -88,13 +94,27 @@ namespace LayoutProbe
             {
                 Category("start", "Start", 0, false, Page("start.home", "Home")),
                 Category("things", "Things", 1, true, Page("things.alpha", "Alpha", "alpha"), Page("things.beta", "Beta", "beta"), Page("things.off", "Off", "beta"),
-                         Page("things.secret", "Secret", null, () => SecretShown)),
+                         Page("things.secret", "Secret", null, () => SecretShown), Page("things.thrown", "Thrown", null, Throws(false))),
                 Category("options", "Options", 2, false, Page("options.main", "Main")),
                 Category("vault", "Vault", 2, false, Page("vault.page", "Vault", null, () => SecretShown)),
                 Category("aside", "Aside", -1, false, Page("aside.page", "Aside")),
             };
             if (Extra) l.Add(Category("more", "More", 1, false, Page("more.page", "More")));
+            if (Split)
+            {
+                var split = Category("split", "Split", 2, false, Hit(Page("split.hidden", "Hidden", null, () => false)), Hit(Page("split.shown", "Shown")));
+                split.Visible = Throws(true);
+                l.Add(split);
+            }
             return l;
+        }
+
+        Func<bool> Throws(bool otherwise) => () => { if (ThrowVisible) throw new InvalidOperationException("probe"); return otherwise; };
+
+        SuitePage Hit(SuitePage p)
+        {
+            p.OnHit = _ => Calls.Add("hit " + p.Key);
+            return p;
         }
 
         public override void BuildPage(VisualElement panel, SuitePage page)

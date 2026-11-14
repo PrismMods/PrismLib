@@ -72,7 +72,17 @@ namespace PrismLib.UI.Toolkit
             // Each button carries half a gap on either side; the body pads and the window's card border lines the rest.
             float width = Mathf.Max(MinWidth, shown * (ButtonWidth + sz.Gap) + 2f * (sz.Pad + sz.Line));
             float height = sz.TitleBarHeight + body + 2f * (sz.Pad + sz.Line) + 12f + 1.6f * sz.Small;   // title bar, body, footer
-            if (r.width != width || r.height != height) _window.Rect = new Rect(r.x, r.y, width, height);
+            // As the window will clamp them, so a Fit that changes nothing sets no rect (each set is a store write).
+            width = Mathf.Max(width, Facet.Window.MinWidth);
+            height = Mathf.Max(height, Facet.Window.MinHeight);
+            if (r.width == width && r.height == height) return;
+            // A hub left centred stays centred as it grows or shrinks; one the player moved keeps its place.
+            Vector2 panel = _surface.Root.layout.size;   // NaN before the first layout: nothing is centred yet
+            bool cx = Mathf.Abs(r.center.x - panel.x / 2f) <= 1f, cy = Mathf.Abs(r.center.y - panel.y / 2f) <= 1f;
+            _window.Rect = new Rect(r.x, r.y, width, height);
+            if (!cx && !cy) return;
+            Rect n = _window.Rect;   // the size as the window clamped it
+            _window.Rect = new Rect(cx ? r.center.x - n.width / 2f : n.x, cy ? r.center.y - n.height / 2f : n.y, n.width, n.height);
         }
 
         public bool Hide()

@@ -173,7 +173,9 @@ A mod drives it through a `SuiteAdapter` subclass.
   `OpenLayoutEditor`, `LayoutEditorShowing`, `ReturnFromLayout`, `OnReturning`).
   `EditLayout(open, showing)` makes the same trip for another editor. The window comes back only if
   it was showing when the trip began. A page whose `Visible` is false is off its tab row and no `Go`
-  target; a category with no visible page is off the rail.
+  target; a category with no visible page is off the rail. A category without tabs is its first
+  visible page: that page builds, and a search hit on the category reaches it. A `Visible` that
+  throws is logged and counts as false, on the rail and in the tab row alike.
 - **Words:** every shell label is a stable id with an English fallback, passed through
   `SuiteAdapter.Key(id, english)` and translated by the mod's own host. They never go through
   PrismLib.UI's `Words`; these words are the mod's.
@@ -223,7 +225,8 @@ A mod drives it through a `SuiteAdapter` subclass.
   trip, and shows the hub only when neither was showing. While an editor is up (a hub button's
   `Showing`, or Edit layout stepping the menu aside) it only ends the trip: nothing comes back when
   the editor closes, and the next press shows the hub. Escape and Close hide it; `Dispose` brings
-  nothing back. Quartz builds no `SuiteHub`: its classic reposition screen stays its hub.
+  nothing back. A hub left centred stays centred when its size changes (a button shown or hidden, a
+  label that wraps); one the player moved keeps its place. Quartz builds no `SuiteHub`: its classic reposition screen stays its hub.
 
 **For mods.** How a mod plugs in, with no shell change:
 - **The door.** One NoInlining probe touches `typeof(SuiteShell)` inside a try, caches the answer and

@@ -45,7 +45,7 @@ namespace PrismLib.UI.Toolkit
         public Background Icon { get; set; }
         /// 0, 1 or 2 is a rail group; anything else keeps it off the rail, and Go ignores its pages.
         public int Group { get; set; }
-        /// Its pages are a tab row; false: its first page is the category.
+        /// Its pages are a tab row; false: its first shown page is the category.
         public bool Tabs { get; set; }
         public Func<bool> Visible { get; set; }
         /// Asked on each build, never cached across one.

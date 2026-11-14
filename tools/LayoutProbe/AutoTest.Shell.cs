@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using PrismLib.UI.Toolkit;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -215,6 +216,30 @@ namespace LayoutProbe
                   "shell: a page that shows in the open category joins its rail and tab row on a rebuild",
                   string.Join("|", rail.ToArray()) + " at " + shell.CurrentPage);
             demo.SecretShown = false;
+            shell.RebuildRail();
+            yield return null;
+
+            // A category without tabs is its first shown page: that page builds, and a search hit on the category reaches it.
+            demo.Split = true;
+            shell.RebuildRail();
+            yield return null;
+            shell.Go("split.shown");
+            demo.Calls.Clear();
+            var items = (Dictionary<string, Facet.NavItem>)typeof(SuiteShell).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(shell);
+            Facet.NavItem splitItem;
+            if (items.TryGetValue("split", out splitItem) && splitItem.OnHit != null) splitItem.OnHit(null);
+            Check(shell.CurrentPage == "split.shown" && demo.Calls.SequenceEqual(new[] { "hit split.shown" }),
+                  "shell: a category without tabs is its first shown page, built and hit", shell.CurrentPage + " / " + string.Join(",", demo.Calls.ToArray()));
+            // A Visible that throws hides its category on the rail and its tab in the row, as Shown does.
+            shell.Go("things.alpha");
+            demo.ThrowVisible = true;
+            shell.RebuildRail();
+            yield return null;
+            rail = Texts(Rail(shell));
+            Check(rail.Contains("Things") && !rail.Contains("Split") && ShownText(shell.TabRow?.Element, "Alpha") && !ShownText(shell.TabRow?.Element, "Thrown"),
+                  "shell: a Visible that throws hides its category and its tab", string.Join("|", rail.ToArray()) + " / tabs " + string.Join("|", Texts(shell.TabRow?.Element).ToArray()));
+            demo.ThrowVisible = false;
+            demo.Split = false;
             shell.RebuildRail();
             yield return null;
 
@@ -615,6 +640,14 @@ namespace LayoutProbe
             Check(fresh && fits && centred, "hub: the window fits its buttons, centred",
                   fresh + " / centre " + mid + " panel " + panel + " / " + fitWhy);
 
+            // A Show that changes nothing about the window leaves its rect alone: nothing is written to the host.
+            demo.Store.Remove("window.probe.hubmenu.hub");
+            hub.Hide();
+            hub.Show();
+            yield return Frames(3);
+            Check(hub.Visible && !demo.Store.ContainsKey("window.probe.hubmenu.hub"), "hub: showing it again writes no rect",
+                  hub.Visible + " / " + (demo.Store.ContainsKey("window.probe.hubmenu.hub") ? demo.Store["window.probe.hubmenu.hub"] : "none"));
+
             demo.Calls.Clear();
             Submit(first);
             Check(!hub.Visible && demo.Calls.SequenceEqual(new[] { "ping" }), "hub: an adapter button hides the hub and runs",
@@ -701,7 +734,7 @@ namespace LayoutProbe
             hub.Hide();
             yield return null;
 
-            var demo2 = new DemoSuite("LayoutProbeHub2") { Id = "probe.hubmenu2", HubEdit = true };
+            var demo2 = new DemoSuite("LayoutProbeHub2") { Id = "probe.hubmenu2", HubEdit = true, HubOwn = true };
             var shell2 = new SuiteShell(demo2);
             demo2.Shell = shell2;
             var hub2 = new SuiteHub(shell2);
@@ -746,6 +779,19 @@ namespace LayoutProbe
             Check(quiet && stays && next && quiet2 && stays2 && next2, "hub: the hotkey while an editor is up ends the trip and shows nothing",
                   quiet + " " + stays + " " + next + " / " + quiet2 + " " + stays2 + " " + next2);
             yield return null;
+            // The same from a button whose own editor is no Edit layout: only the hub is waiting.
+            Submit(HubButton(hub2, "hub-own"));
+            bool ownAway = !hub2.Visible && !shell2.WaitingForLayout && demo2.OwnShowing;
+            hub2.Toggle();
+            bool quiet3 = !hub2.Visible && !shell2.Visible;
+            demo2.OwnShowing = false; hub2.Tick();
+            bool stays3 = !hub2.Visible;
+            hub2.Toggle();
+            bool next3 = hub2.Visible;
+            hub2.Hide();
+            Check(ownAway && quiet3 && stays3 && next3, "hub: the hotkey while a button's own editor is up ends the trip and shows nothing",
+                  ownAway + " " + quiet3 + " " + stays3 + " " + next3);
+            yield return null;
             hub2.Dispose();
             shell2.Dispose();
             yield return null;
@@ -781,6 +827,35 @@ namespace LayoutProbe
             shell3.Dispose();
             yield return null;
 
+            // A centred hub that grows (a button's Visible turned on) stays centred; one the player moved keeps its place.
+            var demo4 = new DemoSuite("LayoutProbeHub4") { Id = "probe.hubmenu4", HubOwn = true, OwnShown = false };
+            var shell4 = new SuiteShell(demo4);
+            var hub4 = new SuiteHub(shell4);
+            hub4.Show();
+            yield return Frames(3);
+            var win4 = HubWindow(hub4);
+            float w0 = win4 == null ? 0f : win4.worldBound.width;
+            var fw = (Facet.Window)typeof(SuiteHub).GetField("_window", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(hub4);
+            hub4.Hide();
+            demo4.OwnShown = true;
+            hub4.Show();
+            yield return Frames(3);
+            Vector2 m4 = win4 == null ? Vector2.zero : win4.worldBound.center, p4 = hub4.Surface.Root.worldBound.center;
+            bool grew4 = win4 != null && win4.worldBound.width > w0 + 50f;
+            bool centred4 = Mathf.Abs(m4.x - p4.x) <= 1f && Mathf.Abs(m4.y - p4.y) <= 1f;
+            fw.Rect = new Rect(20f, 30f, fw.Rect.width, fw.Rect.height);
+            hub4.Hide();
+            demo4.OwnShown = false;
+            hub4.Show();
+            yield return Frames(3);
+            Rect moved = fw.Rect;
+            bool kept4 = Near(moved.x, 20f, 1f) && Near(moved.y, 30f, 1f) && moved.width < w0 + 50f;
+            Check(grew4 && centred4 && kept4, "hub: a centred hub stays centred as it grows, a moved one keeps its place",
+                  "from " + w0 + " to " + (win4 == null ? "no window" : win4.worldBound.ToString()) + " centre " + m4 + " panel " + p4 + " / moved " + moved);
+            hub4.Dispose();
+            shell4.Dispose();
+            yield return null;
+
             hub.Show();
             yield return null;
             Submit(HubButton(hub, "hub-settings"));
@@ -810,6 +885,14 @@ namespace LayoutProbe
             double ms = sw.Elapsed.TotalMilliseconds;
             Main.Log("[perf] suite hub first show " + ms.ToString("0.0") + " ms");
             Check(ph.Visible && ms <= 50.0, "hub: [perf] suite hub first show within 50 ms", ms.ToString("0.0") + " ms");
+            for (int i = 0; i < 1000; i++) ph.Tick();   // warm up
+            // A collection inside the loop would hide growth, so the count must not move either.
+            int gcs = GC.CollectionCount(0);
+            long mem = GC.GetTotalMemory(false);
+            for (int i = 0; i < 300000; i++) ph.Tick();
+            long grewBytes = GC.GetTotalMemory(false) - mem;
+            int ran = GC.CollectionCount(0) - gcs;
+            Check(grewBytes < 4096 && ran == 0, "hub: an idle Tick allocates nothing", grewBytes + " bytes, " + ran + " collections over 300000 ticks");
             ph.Dispose();
             ps.Dispose();
             yield return null;

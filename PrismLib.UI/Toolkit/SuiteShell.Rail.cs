@@ -7,7 +7,7 @@ namespace PrismLib.UI.Toolkit
 {
     /* The rail and its pages. Three ruled groups built once for the shell's life, so whoever holds Nav reads live
        state; a category added or removed refills the groups in place. A category with Tabs is a tab row of its pages,
-       one without is its first page. */
+       one without is its first shown page. A Visible that throws hides its category or page, wherever it is asked. */
     public sealed partial class SuiteShell
     {
         /// The open category's tab row, or null.
@@ -153,10 +153,10 @@ namespace PrismLib.UI.Toolkit
             return p != null && (p.Visible == null || Facet.Safe.Get(Host, "SuitePage.Visible", p.Visible, false));
         }
 
-        private bool AnyShown(SuiteCategory c)
+        private SuitePage FirstShown(SuiteCategory c)
         {
-            foreach (var p in Pages(c)) if (Shown(p)) return true;
-            return false;
+            foreach (var p in Pages(c)) if (Shown(p)) return p;
+            return null;
         }
 
         private Facet.NavItem CategoryItem(string key)
@@ -165,7 +165,7 @@ namespace PrismLib.UI.Toolkit
             item.VisibleWhen = () =>
             {
                 var c = Cat(key);
-                return c != null && (c.Visible == null || c.Visible()) && AnyShown(c);
+                return c != null && (c.Visible == null || Facet.Safe.Get(Host, "SuiteCategory.Visible", c.Visible, false)) && FirstShown(c) != null;
             };
             item.Revision = () => _adapter.Revision + _changes;
             // A category without tabs is its one page, which can change under it: asked when the hit lands.
@@ -174,8 +174,8 @@ namespace PrismLib.UI.Toolkit
                 var c = Cat(key);
                 if (c == null) return;
                 if (c.OnHit != null) { c.OnHit(h); return; }
-                var pages = Pages(c);
-                if (!c.Tabs && pages.Count > 0 && pages[0] != null && pages[0].OnHit != null) pages[0].OnHit(h);
+                var first = c.Tabs ? null : FirstShown(c);
+                if (first != null && first.OnHit != null) first.OnHit(h);
             };
             return item;
         }
@@ -188,13 +188,14 @@ namespace PrismLib.UI.Toolkit
 
         private void BuildCategory(VisualElement p, SuiteCategory c)
         {
-            var pages = Pages(c);
             if (c == null || !c.Tabs)
             {
                 if (p.panel != null) TabRow = null;
-                if (pages.Count > 0) BuildPage(p, pages[0]);
+                var first = FirstShown(c);
+                if (first != null) BuildPage(p, first);
                 return;
             }
+            var pages = Pages(c);
             var keyed = new List<KeyValuePair<string, string>>(pages.Count);
             var items = new List<Facet.NavItem>(pages.Count);
             foreach (var pg in pages)
@@ -202,7 +203,7 @@ namespace PrismLib.UI.Toolkit
                 if (pg == null) continue;
                 var page = pg;
                 keyed.Add(new KeyValuePair<string, string>(page.Key, page.Feature));
-                items.Add(new Facet.NavItem(page.Label, b => BuildPage(b, page)) { VisibleWhen = page.Visible, OnHit = page.OnHit });
+                items.Add(new Facet.NavItem(page.Label, b => BuildPage(b, page)) { VisibleWhen = page.Visible == null ? null : (Func<bool>)(() => Shown(page)), OnHit = page.OnHit });
             }
             int tab = _going != null
                 ? SuiteModel.TabIndex(keyed, _going.Key, _going.Feature)
