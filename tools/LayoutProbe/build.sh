@@ -11,10 +11,10 @@ UI=../../PrismLib.UI/bin/Release/PrismLib.UI.dll
 R=()   # an array: the game path has spaces
 for a in mscorlib System System.Core netstandard UnityEngine.CoreModule UnityEngine.UIModule UnityEngine.UI \
          UnityEngine.InputLegacyModule UnityEngine.UIElementsModule UnityEngine.TextCoreTextEngineModule \
-         UnityEngine.TextCoreFontEngineModule UnityEngine.IMGUIModule Unity.TextMeshPro; do
+         UnityEngine.TextCoreFontEngineModule UnityEngine.TextRenderingModule UnityEngine.IMGUIModule Unity.TextMeshPro; do
     if [ -f "$M/$a.dll" ]; then R+=("-r:$M/$a.dll"); fi
 done
-mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" -r:"../../lib/$FACET.dll" LayoutProbe.cs AutoTest.cs AutoTest.Suite.cs AutoTest.Shell.cs AutoTest.Filter.cs DemoSuite.cs Perf.cs
+mcs -target:library -out:LayoutProbe.dll -nostdlib "${R[@]}" -r:"$G/UserLibs/UnityModManager.dll" -r:"$UI" -r:"../../lib/$FACET.dll" LayoutProbe.cs AutoTest.cs AutoTest.Suite.cs AutoTest.Shell.cs AutoTest.Filter.cs AutoTest.HubLook.cs DemoSuite.cs Perf.cs
 mkdir -p "$G/UMMMods/LayoutProbe"
 cp LayoutProbe.dll Info.json "$UI" "../../lib/$FACET.dll" "$G/UMMMods/LayoutProbe/"
 rm -f "$G/UMMMods/LayoutProbe/probe.log"

@@ -24,6 +24,8 @@ namespace PrismLib.UI.Toolkit
         public static Color TextMuted   = new Color(0.58f, 0.58f, 0.62f, 1f);
         public static Color Accent      = new Color(0.604f, 0.706f, 1f, 1f);
         public static Color Danger      = new Color(0.886f, 0.404f, 0.427f, 1f);
+        /// The translucent wash a hotkey window draws over the whole screen behind it (HubLook).
+        public static Color Wash        = new Color(0f, 0f, 0f, 0.45f);
 
         /* Sharp, not rounded: the suite's corners are 2px everywhere, switch knobs included, so the
            framework looks like the mods' square-edged panels rather than like a third product. */

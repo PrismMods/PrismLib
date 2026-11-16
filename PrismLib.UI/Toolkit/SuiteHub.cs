@@ -11,7 +11,8 @@ namespace PrismLib.UI.Toolkit
        the same trip through whatever it opened (Tick). Built on first Show, kept until Dispose. */
     public sealed class SuiteHub : IDisposable
     {
-        private const float ButtonWidth = 104f, ButtonHeight = 64f, IconSize = 24f, MinWidth = 360f;
+        // The buttons are the shared hub buttons (HubLook).
+        private const float ButtonWidth = HubLook.ButtonWidth, ButtonHeight = HubLook.ButtonHeight, IconSize = 24f, MinWidth = 360f;
 
         private readonly SuiteShell _shell;
         private Facet.Surface _surface;
@@ -19,6 +20,8 @@ namespace PrismLib.UI.Toolkit
         // Every button in the row, with its Visible (null: always).
         private readonly List<KeyValuePair<VisualElement, Func<bool>>> _row = new List<KeyValuePair<VisualElement, Func<bool>>>();
         private VisualElement _rowElement;
+        // The big logo over the row, with the mod's wordmark (null without an adapter logo).
+        private VisualElement _logo;
         // Settings opened the menu: its next close brings the hub back.
         private bool _trip;
         // A clicked button whose Showing the hub waits on, with SuiteModel.StepLayout's frame count and sighting.
@@ -55,6 +58,7 @@ namespace PrismLib.UI.Toolkit
             Fit();
             SetHint();
             _surface.Visible = true;
+            HubLook.FadeIn(_surface);
         }
 
         // The window's size from its visible buttons; a row taller than one button (a label wrapped onto more lines,
@@ -68,6 +72,7 @@ namespace PrismLib.UI.Toolkit
             var sz = Facet.Theme.For(_window.Root).Sizes;
             float row = _rowElement.layout.height;
             float body = row > ButtonHeight ? row : ButtonHeight;   // NaN before the first layout
+            if (_logo != null) body += _logo.style.height.value.value + _logo.style.marginBottom.value.value;
             Rect r = _window.Rect;
             // Each button carries half a gap on either side; the body pads and the window's card border lines the rest.
             float width = Mathf.Max(MinWidth, shown * (ButtonWidth + sz.Gap) + 2f * (sz.Pad + sz.Line));
@@ -133,6 +138,14 @@ namespace PrismLib.UI.Toolkit
             _window = w;
             w.Raised += () => surface.BringToFront();
             SuiteShell.AddLogo(w, a.Logo);
+            if (a.Logo.HasValue)
+            {
+                // The hub leads with the mod's logo at the shared size, its name under it, as the old hotkey hub did.
+                _logo = new VisualElement { name = "hub-logo", pickingMode = PickingMode.Ignore };
+                _logo.style.backgroundImage = new StyleBackground(a.Logo.Value);
+                w.Body.Add(_logo);
+                HubLook.Logo(_logo, a.Title == null ? null : a.Title.ToUpperInvariant());
+            }
             var row = Facet.Ui.Row(w.Body);
             row.style.justifyContent = Justify.Center;
             row.style.flexShrink = 0f;
@@ -148,7 +161,12 @@ namespace PrismLib.UI.Toolkit
                 }
             Add(row, "hub-settings", a.Key("suite.hub.settings", "Settings"), null, OpenSettings, null);
             Add(row, "hub-close", a.Key("suite.hub.close", "Close"), null, () => Hide(), null);
+            HubLook.Buttons(row);
             Facet.Words.OnRelabel(w.Footer, SetHint);
+            // Every mod's hotkey window wears the same look: the wash behind it, no chrome, centred labels.
+            HubLook.Wear(surface, w.Root);
+            HubLook.Bare(w.TitleBarRight.parent);
+            HubLook.Bare(w.Footer);
             if (!w.HasStoredGeometry)
             {
                 // Centred on the first layout that knows the panel's size.
@@ -176,8 +194,6 @@ namespace PrismLib.UI.Toolkit
             b.style.marginRight = gap;
             b.style.minHeight = ButtonHeight;
             b.style.flexDirection = FlexDirection.Column;
-            b.style.alignItems = Align.Center;
-            b.style.justifyContent = Justify.Center;
             if (icon != null)
             {
                 var image = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -253,6 +269,7 @@ namespace PrismLib.UI.Toolkit
             _surface = null;
             _window = null;
             _rowElement = null;
+            _logo = null;
             _row.Clear();
             if (s != null) s.Dispose();
         }

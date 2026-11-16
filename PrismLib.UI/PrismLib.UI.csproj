@@ -74,6 +74,7 @@
         <Compile Include="Toolkit\SuiteShell.Rail.cs" />
         <Compile Include="Toolkit\SuiteShell.Pages.cs" />
         <Compile Include="Toolkit\SuiteHub.cs" />
+        <Compile Include="Toolkit\HubLook.cs" />
         <Compile Include="Toolkit\EditTarget.cs" />
         <Compile Include="Toolkit\LayoutEditor.cs" />
         <Compile Include="Toolkit\LayoutEditor.Grips.cs" />

@@ -402,6 +402,7 @@ namespace LayoutProbe
             yield return SuiteShellChecks();
             yield return SuitePageChecks();
             yield return SuiteHubChecks();
+            yield return HubLookChecks();
             yield return FilterChecks();
 
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
