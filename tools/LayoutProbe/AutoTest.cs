@@ -537,6 +537,26 @@ namespace LayoutProbe
                   "a schema panel with its own Matcher lists that matcher's hits", search == null ? "no search box" : "asked " + asked + ": " + labels());
             sp.Matcher = wasMatcher;
 
+            // A pointer click leaves no focus ring on a button; a text field keeps its focus (and caret)
+            if (search != null) { search.value = ""; yield return null; }
+            var go = root?.Q("Probe action")?.Q<Button>();
+            var probeText = root?.Q("Probe text")?.Q<TextField>();
+            Func<VisualElement, bool> holds = el => { for (var f = root?.focusController?.focusedElement as VisualElement; f != null; f = f.parent) if (f == el) return true; return false; };
+            foreach (var target in new VisualElement[] { go, probeText })
+            {
+                if (target == null) continue;
+                var at = target.worldBound.center;
+                using (var pd = PointerDownEvent.GetPooled(new Event { type = EventType.MouseDown, button = 0, clickCount = 1, mousePosition = at })) root.panel.visualTree.SendEvent(pd);
+                if (!holds(target)) target.Focus();   // as a real click would, so the check is on what the pointer-up does
+                using (var pu = PointerUpEvent.GetPooled(new Event { type = EventType.MouseUp, button = 0, clickCount = 1, mousePosition = at })) root.panel.visualTree.SendEvent(pu);
+                yield return null; yield return null;
+                if (target == go)
+                    Check(!holds(go), "focus: a clicked button keeps no focus ring", "focused " + root.focusController.focusedElement);
+                else
+                    Check(holds(probeText), "focus: a clicked text field keeps focus", "focused " + root.focusController.focusedElement);
+            }
+            if (go == null || probeText == null) Check(false, "focus: a clicked button keeps no focus ring; a clicked text field keeps focus", "no Go button or Probe text field");
+
             Words.Language = () => "ko";
             sp.Reload();
             if (search != null) { search.value = "ㅍ"; yield return null; }

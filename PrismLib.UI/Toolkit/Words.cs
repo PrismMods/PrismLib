@@ -62,6 +62,14 @@ namespace PrismLib.UI.Toolkit
             catch (FormatException) { return string.Format(englishFormat, args); }
         }
 
+        /// Builds with only `owner`'s table translating (see above).
+        internal static void As(string owner, Action build)
+        {
+            var was = Owner;
+            Owner = owner;
+            try { build(); } finally { Owner = was; }
+        }
+
         /// PrismLib's own words, from its own table only.
         internal static string Own(string english)
         {
@@ -110,6 +118,7 @@ namespace PrismLib.UI.Toolkit
             { "Run", "실행" },
             { "Undo", "실행 취소" },
             { "Redo", "다시 실행" },
+            { "All", "전체" },
             { "Undo {0}", "실행 취소: {0}" },
             { "Redo {0}", "다시 실행: {0}" },
             { "Sure?", "정말요?" },

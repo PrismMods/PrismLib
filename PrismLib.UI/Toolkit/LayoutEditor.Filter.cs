@@ -41,6 +41,8 @@ namespace PrismLib.UI.Toolkit
                 _filterBar.style.translate = new Translate(Length.Percent(-50), 0);
                 _filterTabs = new Tabs(_filterBar, i => Filter = i <= 0 || i >= _filterNames.Count ? null : _filterNames[i]);
                 _filterTabs.Element.pickingMode = PickingMode.Ignore;
+                // Facet.Tabs leaves a TabGap for a page below; here the card's padding already closes it (Facet workaround).
+                _filterTabs.Element.style.marginBottom = 0;
             }
             catch (Exception e) { FilterOff(e); }
         }
@@ -60,7 +62,7 @@ namespace PrismLib.UI.Toolkit
                     _filterNames.Clear();
                     _filterNames.Add("All");   // the words path the editor's "Done" takes
                     _filterNames.AddRange(LayoutMath.FilterTabs(_owners, _filter));
-                    _filterTabs.Rebuild(_filterNames);
+                    Words.As(Words.Self, () => _filterTabs.Rebuild(_filterNames));
                     // Only the buttons take the pointer: a press between or under them reaches the frame below.
                     var row = _filterTabs.Element;
                     for (int i = 0; i < row.childCount; i++) row[i].pickingMode = PickingMode.Ignore;

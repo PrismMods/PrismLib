@@ -88,6 +88,22 @@ namespace LayoutProbe
             return ok ? null : "logo " + l + " wordmark '" + mark.text + "' " + m + " size " + mark.resolvedStyle.fontSize + " first button " + first.worldBound;
         }
 
+        // The wordmark and every hub button's text resolve bold, and the surface's face has a real weight-700 face for it.
+        static string BoldWrong(VisualElement window, VisualElement root)
+        {
+            if (window == null || root == null) return "no window";
+            var texts = window.Query<Button>().ToList().Where(b => b.name != null && b.name.StartsWith("hub-"))
+                .SelectMany(b => b.Query<TextElement>().ToList()).ToList();
+            Label mark = window.Q<Label>(HubLook.WordmarkName);
+            if (mark != null) texts.Add(mark);
+            var thin = texts.Where(t => t.resolvedStyle.unityFontStyleAndWeight != FontStyle.Bold).Select(t => t.name + " '" + t.text + "'").ToArray();
+            var face = root.style.unityFontDefinition.value.fontAsset;
+            var bold = Facet.Fonts.BoldFace(face);
+            if (texts.Count == 0 || mark == null || thin.Length > 0 || bold == null)
+                return "texts " + texts.Count + " wordmark " + (mark != null) + " not bold: " + string.Join(", ", thin) + " face " + (face == null ? "none" : face.name) + " bold " + (bold == null ? "none" : bold.name);
+            return null;
+        }
+
         // Hover and press lay more white over a hub button than rest does; focus rings it in the text colour.
         static string StatesWrong(Button b)
         {
@@ -160,6 +176,8 @@ namespace LayoutProbe
             Check(why == null, "hub look: every hub button has the old hub's size, corners and text on a solid fill, the last one neutral", why ?? "");
             why = LogoWrong(win, demo.Title.ToUpperInvariant());
             Check(why == null, "hub look: the hub leads with the logo at the shared size and the mod's wordmark under it", why ?? "");
+            why = BoldWrong(win, hub.Surface == null ? null : hub.Surface.Root);
+            Check(why == null, "hub look: the wordmark and every button label are bold, in a real bold face", why ?? "");
             Check(hub.Surface != null && Near(hub.Surface.Root.resolvedStyle.opacity, 1f, 0.01f), "hub look: the hub has faded in",
                   hub.Surface == null ? "no surface" : hub.Surface.Root.resolvedStyle.opacity.ToString());
             yield return Shot("prism-suitehub-demo");

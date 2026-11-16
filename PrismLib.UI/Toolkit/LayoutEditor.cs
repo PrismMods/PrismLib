@@ -47,12 +47,13 @@ namespace PrismLib.UI.Toolkit
         public LayoutEditor(Func<IEnumerable<EditTarget>> source, UnityEngine.TextCore.Text.FontAsset font = null)
         {
             _source = source ?? (() => new EditTarget[0]);
-            _surface = new Surface("PrismLayoutEditor", Layer.Modal, font);
+            // PrismLib's words, whoever opens it: Quartz's table maps "Undo" and "All" to other senses.
+            _surface = new Surface("PrismLayoutEditor", Layer.Modal, font, Facet.Host.Named(PrismHost.Owner(Words.Self)));
             _surface.Hidden += OnSurfaceHidden;     // Escape hides the surface directly
             _th = _surface.Theme;
             var sz = _th.Twin.Sizes;
             _radius = sz.Radius; _gap = sz.Gap; _body = sz.Body; _small = sz.Small; _tagH = sz.Small + 6f;
-            Build();
+            Words.As(Words.Self, Build);
             _surface.Visible = false;
         }
 

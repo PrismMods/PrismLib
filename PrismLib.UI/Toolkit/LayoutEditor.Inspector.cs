@@ -91,8 +91,8 @@ namespace PrismLib.UI.Toolkit
 
             var undoRow = Ui.Row(_inspector);
             undoRow.style.marginTop = _gap;
-            Ui.Btn(Words.Own("Undo"), () => History.Undo(), undoRow).name = "layout-undo";
-            Ui.Btn(Words.Own("Redo"), () => History.Redo(), undoRow).name = "layout-redo";
+            Ui.Btn("Undo", () => History.Undo(), undoRow).name = "layout-undo";
+            Ui.Btn("Redo", () => History.Redo(), undoRow).name = "layout-redo";
         }
 
         partial void SelectionChangedExtras()

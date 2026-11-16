@@ -214,7 +214,7 @@ namespace PrismLib.UI.Toolkit
             {
                 if (r == null) continue;
                 var e = new Entry { Row = r };
-                As(r.Owner, () => e.Shown = Localised(r));
+                Words.As(r.Owner, () => e.Shown = Localised(r));
                 e.Page = string.IsNullOrEmpty(r.Page) ? Words.Own("General") : e.Shown.Page;
                 e.Label = Texts(r.Label, e.Shown.Label);
                 e.Context = Texts(r.Group, e.Shown.Group, r.Page, e.Page, r.Owner);
@@ -247,7 +247,7 @@ namespace PrismLib.UI.Toolkit
                 var run = new List<Facet.Field>();
                 for (; i < shown.Count && shown[i].Row.Owner == owner; i++)
                     run.Add(Field(shown[i], q.Length > 0 ? Head(shown[i]) : shown[i].Row.Group));
-                As(owner, () => Facet.Form.Build(_body, run, o => o.Cards = true));
+                Words.As(owner, () => Facet.Form.Build(_body, run, o => o.Cards = true));
             }
 
             if (shown.Count == 0) Ui.Muted(q.Length > 0 ? Words.OwnF("No setting matches '{0}'", q) : Words.Own("Nothing here yet"), _body);
@@ -327,14 +327,6 @@ namespace PrismLib.UI.Toolkit
             Color c;
             if (v != null && ColorUtility.TryParseHtmlString(Convert.ToString(v), out c)) return c;
             return Tokens.Accent;
-        }
-
-        /// Builds with only the row's own mod translating it (see Words).
-        private static void As(string owner, Action build)
-        {
-            var was = Words.Owner;
-            Words.Owner = owner;
-            try { build(); } finally { Words.Owner = was; }
         }
 
         /* Rows arrive in English (PrismLib's own always do). Translated on the way in, into a copy,

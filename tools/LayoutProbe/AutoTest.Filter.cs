@@ -20,8 +20,52 @@ namespace LayoutProbe
 
         Button FilterTab(string text) => FilterBar?.Query<Button>().ToList().FirstOrDefault(b => b.text == text);
 
-        // "All" is translated the way the editor's "Done" is, so the check reads it through the same path.
-        static string AllText() => Ui.Btn("All", null).text;
+        // The editor's "All" is PrismLib's word, whoever else translates "All".
+        static string AllText() => Words.Own("All");
+
+        // Stands in for a mod whose table maps the editor's words to another sense (Quartz's "Undo", "All").
+        static bool _wrongWords;
+        static bool _wrongAdded;
+
+        static string ButtonText(VisualElement root, string name) => root?.Q<Button>(name)?.text;
+
+        IEnumerator EditorWordsChecks()
+        {
+            if (!_wrongAdded)
+            {
+                _wrongAdded = true;
+                Words.AddTranslator(s => _wrongWords && (s == "Undo" || s == "Redo" || s == "All") ? "WRONG" : null);
+            }
+            var wasLanguage = Words.Language;
+            var host = Facet.Host.Named(PrismHost.Owner(Words.Self));
+            _wrongWords = true;
+            try
+            {
+                foreach (var lang in new[] { "en", "ko" })
+                {
+                    Words.Language = () => lang;
+                    host?.RelabelSurfaces();   // what a language switch does to an open window
+                    Editor.Reload();
+                    yield return Frames(2);
+                    var tabs = FilterTabTexts();
+                    string got = ButtonText(Root, "layout-undo") + " | " + ButtonText(Root, "layout-redo") + " | " + tabs.FirstOrDefault();
+                    string want = lang == "en" ? "Undo | Redo | All" : "실행 취소 | 다시 실행 | 전체";
+                    Check(got == want, lang == "en" ? "layout editor: Undo, Redo and All stay in PrismLib's words"
+                                                    : "and in PrismLib's Korean after a language flip", got);
+                }
+            }
+            finally { _wrongWords = false; Words.Language = wasLanguage; }
+            host?.RelabelSurfaces();
+            Editor.Reload();
+            yield return Frames(2);
+
+            // Bottom gap equals top gap: Facet.Tabs' TabGap below the row is gone.
+            var bar = FilterBar;
+            var row = FilterTab(AllText())?.parent;
+            float top = 0f, bottom = 0f;
+            if (bar != null && row != null) { top = row.worldBound.yMin - bar.worldBound.yMin; bottom = bar.worldBound.yMax - row.worldBound.yMax; }
+            Check(row != null && Mathf.Abs(bottom - top) <= 1f, "layout editor: no gap under the filter tabs", "top=" + top.ToString("0.0") + " bottom=" + bottom.ToString("0.0"));
+        }
 
         float[] FrameOpacities() => Root.Query("layout-frame").ToList().Select(f => f.resolvedStyle.opacity).ToArray();
 
@@ -136,6 +180,8 @@ namespace LayoutProbe
             yield return Frames(2);
             op = FrameOpacities();
             Check(Editor.Filter == null && op.Length == 3 && op.All(o => Near(o, 1f, 0.01f)), "filter: All moves everything again", "filter=" + Editor.Filter + " op=" + Joined(op));
+
+            yield return EditorWordsChecks();
 
             Editor.Visible = false; yield return null;
             A.Cx = a0.x; A.Cy = a0.y; B.Cx = b0.x; B.Cy = b0.y; C.Cx = c0.x; C.Cy = c0.y;

@@ -59,10 +59,15 @@ namespace PrismLib.UI.Toolkit
 
         /// name is used for the GameObject, so it shows up in a hierarchy dump as "<Mod>Prism…".
         public Surface(string name, Layer layer, FontAsset font = null)
+            : this(name, layer, font, PrismHost.Instance) { }
+
+        /// On another of PrismLib's hosts (PrismHost.Owner), so relabels translate in that owner's table.
+        internal Surface(string name, Layer layer, FontAsset font, Facet.Host host)
         {
             Layer = layer;
             Theme.Default.Refresh();   // a surface built outside Theme.Use wears the accent pushed so far
-            Inner = new Facet.Surface(PrismHost.Instance, name, (Facet.Layer)layer, font);
+            Inner = new Facet.Surface(host, name, (Facet.Layer)layer, font);
+            FocusRing.PointerBlurs(Inner.Root);
             Ui.OpenWindows = Facet.Ui.OpenWindows;
         }
 

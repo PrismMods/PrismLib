@@ -109,6 +109,7 @@ namespace PrismLib.UI.Toolkit
                 foreach (var t in b.Query<TextElement>().ToList())
                 {
                     if (own.HasValue) { Facet.Paint.Forget(t); t.style.color = ink; }
+                    t.style.unityFontStyleAndWeight = FontStyle.Bold;   // the face's real weight 700, as Facet's headers
                     if (t == b) continue;
                     t.style.fontSize = ButtonTextSize;
                     if (!own.HasValue) Facet.Paint.Fg(t, neutral ? Facet.Role.Text : Facet.Role.AccentText);
@@ -156,6 +157,7 @@ namespace PrismLib.UI.Toolkit
             l.style.right = (LogoSize - ButtonWidth) / 2f;
             l.style.fontSize = WordmarkSize;
             l.style.letterSpacing = WordmarkSpacing;
+            l.style.unityFontStyleAndWeight = FontStyle.Bold;
             l.style.color = Wordmark;
             l.style.unityTextAlign = TextAnchor.MiddleCenter;
             l.style.whiteSpace = WhiteSpace.NoWrap;
