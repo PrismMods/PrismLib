@@ -8,6 +8,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("QuartzTeam")]
 [assembly: AssemblyProduct("PrismLib.UI")]
 [assembly: ComVisible(false)]
-[assembly: AssemblyVersion("0.3.12.0")]
-[assembly: AssemblyFileVersion("0.3.12.0")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("LayoutProbe")]   // the in-game autotest drives internal key reads

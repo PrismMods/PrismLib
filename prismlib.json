@@ -1,9 +1,14 @@
 {
-    "version": "0.3.12",
-    "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.12/PrismLib.dll",
-    "sha256": "f7b9ba246341e574526dba59f3a3d8058a74f167e168ffc48c911b4c00b859ef",
+    "version": "1.0.0",
+    "url": "https://github.com/PrismMods/PrismLib/releases/download/v1.0.0/PrismLib.dll",
+    "sha256": "8460b5e0959e5092961399ff332cd1ae791ee1f4859df271b88099e973ee2117",
     "ui": {
-        "url": "https://github.com/PrismMods/PrismLib/releases/download/v0.3.12/PrismLib.UI.dll",
-        "sha256": "d09eb9d4dc598fdcfb680c619deb30fe815f3dfbfd5de251f54e1656392c3e6c"
+        "url": "https://github.com/PrismMods/PrismLib/releases/download/v1.0.0/PrismLib.UI.dll",
+        "sha256": "3dab2887a2c05c16758f203a6974df517d8d16953b1b853542e5824323ff0052"
+    },
+    "facet": {
+        "name": "Facet.0.2.dll",
+        "url": "https://github.com/PrismMods/PrismLib/releases/download/v1.0.0/Facet.0.2.dll",
+        "sha256": "28b60e0614f1fca8eac409e783ff082e18672a50598e67514f6ada73216a6211"
     }
 }
