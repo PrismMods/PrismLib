@@ -93,11 +93,27 @@ namespace PrismLib.UI.Toolkit
 
         private string ZoomText() => Mathf.RoundToInt(Canvas.Zoom * 100f) + "%";
 
+        private ScrollView _inspectorScroll;
+        private VisualElement _inspector;
+
+        /// Moves the inspector (title and tabs) out from under the canvas into host, such as a settings column that scrolls
+        /// it: the canvas then takes the editor's whole height. It keeps rebuilding on a new selection there.
+        public void InspectorIn(VisualElement host)
+        {
+            if (host == null) throw new ArgumentNullException("host");
+            host.Add(_inspector);
+            _inspectorScroll.RemoveFromHierarchy();
+            // The canvas takes the height the inspector left: Facet sizes the stage by its aspect, and growing past that
+            // style height is the flex layout's, so its aspect pass leaves it be.
+            Canvas.Root.style.flexGrow = 1f;
+            Canvas.Stage.parent.style.flexGrow = 1f;
+        }
+
         private void BuildInspector()
         {
-            var scroll = Facet.Ui.Scroll(Root);
+            var scroll = _inspectorScroll = Facet.Ui.Scroll(Root);
             scroll.style.maxHeight = Length.Percent(InspectorShare);
-            var container = new VisualElement { name = "kle-inspector" };
+            var container = _inspector = new VisualElement { name = "kle-inspector" };
             scroll.Add(container);
             // While the canvas holds the pointer the inspector keeps its build: a marquee changes the selection every frame,
             // and a rebuild over a hundred keys each frame stutters. The pass after the release rebuilds it.

@@ -20,6 +20,9 @@ namespace PrismLib.UI.Toolkit
         /// Owns the switcher window and translates every label.
         public abstract Facet.Host Host { get; }
 
+        // The last editor built over this model: the switcher opens centred over it.
+        internal VisualElement EditorRoot;
+
         /// What Facet is handed for this id (a host key).
         public abstract string Label(string id, string english);
 

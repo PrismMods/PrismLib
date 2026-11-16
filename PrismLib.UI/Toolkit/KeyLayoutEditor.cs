@@ -30,6 +30,10 @@ namespace PrismLib.UI.Toolkit
         public Facet.MenuBar Menu { get; private set; }
         public Facet.StatusLine Status { get; private set; }
 
+        /// True flips the wheel's pan on both axes (Facet's Canvas.InvertWheelPan, read at each step); null or false
+        /// keeps Facet's direction.
+        public Func<bool> InvertPan { get => Canvas.InvertWheelPan; set => Canvas.InvertWheelPan = value; }
+
         /// The bar's five top items, for checks.
         public IReadOnlyList<Facet.MenuItem> Menus => _menus;
 
@@ -57,6 +61,7 @@ namespace PrismLib.UI.Toolkit
             Root.style.flexShrink = 1f;   // in a filled column the inspector's scroll gets only what is left
             Root.style.minHeight = 0f;
             parent.Add(Root);
+            _model.EditorRoot = Root;
 
             _menus = BuildMenus();
             Menu = Facet.Controls.MenuBar(Root, _menus);

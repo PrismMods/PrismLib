@@ -24,6 +24,7 @@ namespace PrismLib.UI.Toolkit
         private readonly Action<string> _edit;
         private readonly Action _afterApply;
         private readonly Facet.Surface _surface;
+        private readonly Facet.Window _window;
         private readonly Facet.CardGrid<Card> _hands, _feet;
         // Rebuilt by Refresh, so a grid's refresh pass reads them without allocating.
         private List<Card> _handCards = new List<Card>(), _footCards = new List<Card>();
@@ -39,7 +40,7 @@ namespace PrismLib.UI.Toolkit
 
             var surface = new Facet.Surface(model.Host, "KeyLayoutSwitcher." + model.Host.Name, Facet.Layer.Window);
             _surface = surface;
-            var w = new Facet.Window(surface.Root, KeyLayoutText.Switcher, L(KeyLayoutText.Switcher), new Rect(0f, 0f, 640f, 520f));
+            var w = _window = new Facet.Window(surface.Root, KeyLayoutText.Switcher, L(KeyLayoutText.Switcher), new Rect(0f, 0f, 640f, 520f));
             w.Raised += () => surface.BringToFront();   // so the editor's menu keys stop while this is in front, and back
             if (!w.HasStoredGeometry)
             {
@@ -50,8 +51,7 @@ namespace PrismLib.UI.Toolkit
                     var size = surface.Root.layout.size;
                     if (!surface.Visible || !(size.x > 0f && size.y > 0f)) return;
                     Facet.Events.Off(surface.Root, laid);
-                    var r = w.Rect;
-                    w.Rect = new Rect((size.x - r.width) / 2f, (size.y - r.height) / 2f, r.width, r.height);
+                    Centre(size);
                 };
                 Facet.Events.On(surface.Root, laid);
             }
@@ -80,10 +80,25 @@ namespace PrismLib.UI.Toolkit
 
         public bool Visible => _surface.Visible;
 
+        /// Shows it above every other window, even one raised over it while it showed (the editor's own window takes the
+        /// press on its Layouts button). Shown from hidden, it opens centred over the editor.
         public void Show()
         {
+            bool was = _surface.Visible;
             _surface.Visible = true;
+            _surface.BringToFront();
+            if (!was) Centre(_surface.Root.layout.size);
             Refresh();
+        }
+
+        // Over the last editor built on the model when it is on a panel, else over the screen (size: the switcher's panel).
+        private void Centre(Vector2 size)
+        {
+            var r = _window.Rect;
+            var ed = _model.EditorRoot;
+            Vector2 c = ed != null && ed.panel != null && ed.worldBound.width > 0f ? ed.worldBound.center : size / 2f;
+            if (c == Vector2.zero) return;   // no editor and no layout yet: the first GeometryChanged places it
+            _window.Rect = new Rect(c.x - r.width / 2f, c.y - r.height / 2f, r.width, r.height);
         }
 
         public void Hide() { _surface.Visible = false; }
