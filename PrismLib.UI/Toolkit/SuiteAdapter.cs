@@ -85,6 +85,8 @@ namespace PrismLib.UI.Toolkit
         public virtual Facet.Bind<bool> Master { get { return null; } }
         /// The master switch's word, which the host translates.
         public virtual string MasterLabel { get { return null; } }
+        /// With an icon the master switch is instead a power button pinned under the rail, as Quartz's classic menu had.
+        public virtual Background? MasterIcon { get { return null; } }
         /// Before the window hides for Edit layout.
         public virtual void OnLeaving() { }
         /// After it hides.

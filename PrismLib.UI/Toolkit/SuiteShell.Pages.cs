@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace PrismLib.UI.Toolkit
@@ -157,6 +158,11 @@ namespace PrismLib.UI.Toolkit
         {
             var master = _adapter.Master;
             if (master == null) return;
+            if (_adapter.MasterIcon.HasValue)
+            {
+                PinPower(window, master, _adapter.MasterIcon.Value);
+                return;
+            }
             var c = Facet.Controls.Toggle(window.TitleBarRight, _adapter.MasterLabel, master, o =>
             {
                 o.Id = "menu-master";
@@ -169,6 +175,43 @@ namespace PrismLib.UI.Toolkit
             row.style.minHeight = 0f;
             row.style.marginBottom = 0f;
             row.style.alignSelf = Align.Center;
+        }
+
+        private const float PowerHeight = 48f;
+
+        // The master switch as a power button pinned under the rail's list ("menu-master"), red while off. It sits in the
+        // rail's own hierarchy, so the compact strip keeps it and a rail rebuild (which clears the list) leaves it.
+        private static void PinPower(Facet.Window window, Facet.Bind<bool> master, Background icon)
+        {
+            var rail = window.Body.Q<ScrollView>();   // the Nav builds its rail before its page scroll
+            if (rail == null) return;
+            var b = new VisualElement { name = "menu-master" };
+            b.style.position = Position.Absolute;
+            b.style.left = 0f;
+            b.style.right = 0f;
+            b.style.bottom = 0f;
+            b.style.height = PowerHeight;
+            b.style.alignItems = Align.Center;
+            b.style.justifyContent = Justify.Center;
+            var glyph = new VisualElement { name = "menu-master-icon", pickingMode = PickingMode.Ignore };
+            glyph.style.width = 22f;
+            glyph.style.height = 22f;
+            glyph.style.backgroundImage = new StyleBackground(icon);
+            b.Add(glyph);
+            rail.hierarchy.Add(b);
+            rail.contentContainer.style.paddingBottom = PowerHeight;   // the list scrolls clear of the button
+            bool hover = false;
+            void Paint()
+            {
+                b.style.backgroundColor = master.Get() ? new Color(0f, 0f, 0f, hover ? 0.2f : 0.1f)
+                    : new Color(1f, 0.478f, 0.271f, hover ? 1f : 0.85f);
+                glyph.style.unityBackgroundImageTintColor = new Color(1f, 1f, 1f, hover ? 0.9f : 0.6f);
+            }
+            Paint();
+            b.RegisterCallback<MouseEnterEvent>(_ => { hover = true; Paint(); });
+            b.RegisterCallback<MouseLeaveEvent>(_ => { hover = false; Paint(); });
+            b.RegisterCallback<ClickEvent>(_ => { master.Set(!master.Get()); Paint(); });
+            b.schedule.Execute(Paint).Every(250);   // the mod may flip it elsewhere (a self-test, a refused press)
         }
     }
 }

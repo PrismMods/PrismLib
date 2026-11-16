@@ -212,7 +212,8 @@ A mod drives it through a `SuiteAdapter` subclass.
   7. Experimental and the classic-menu link;
   8. Credits.
 - **`Master`** (with `MasterLabel`) pins the mod's on/off switch first in the title bar's right
-  block, `menu-master`. It is no undo step. **`ApplyLook()`** re-reads scale, opacity and input
+  block, `menu-master`; with a `MasterIcon` it is instead a power button pinned under the rail, red
+  while off. It is no undo step. **`ApplyLook()`** re-reads scale, opacity and input
   blocking: call it when one of them changes.
 
 - **The hub** (`SuiteHub`, over a shell) is the small window a mod's hotkey opens: the adapter's
