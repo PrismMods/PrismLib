@@ -16,6 +16,7 @@ namespace PrismLib.UI.Toolkit
         public static void PointerBlurs(VisualElement root)
         {
             if (root == null || !Roots.Add(root)) return;
+            RowToggle.Wire(root);   // every surface wired here: a lone switch's row takes clicks too
             bool pointer = false;
             root.RegisterCallback<PointerDownEvent>(_ => pointer = true, TrickleDown.TrickleDown);
             // Keys go to the focused element or, with none, the panel's own root above this one: listen there.
