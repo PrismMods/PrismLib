@@ -55,6 +55,12 @@ echo "game       $GAME"
 echo "mods       $MODS"
 for repo in $REPO_LIST; do [ -d "$repo/lib" ] && echo "repo       $repo/lib"; done
 [ -n "$REPO_LIST" ] || echo "repo       (none)"
+# The bootstrap sources each repo vendors must match ours (a repo that has not adopted one yet is skipped).
+VENDORED=""
+for repo in $REPO_LIST; do
+    for f in "$repo"/*/Util/PrismBootstrap.cs "$repo"/*/Util/PrismGate.cs "$repo"/*/Util/PrismSettingRows.cs; do [ -f "$f" ] && VENDORED="$VENDORED $f"; done
+done
+[ -z "$VENDORED" ] || tools/check-vendored.sh $VENDORED || echo "WARNING: copy bootstrap/ over the STALE files above"
 
 # The shared PrismLib.dll lives in each loader's folder (UMM's, and MelonLoader's Mods/PrismLib that
 # CamDisplay's ML build reads): refresh every one that exists, and always the one chosen above.

@@ -72,12 +72,30 @@ namespace LayoutProbe
 
         static Vector2 Ctr(Box b) => new Vector2(b.Cx, b.Cy);
 
+        // The shared settings rows' key capture: armed with no Prism window open it must not wait for the
+        // next key, or a capture whose window closed under it binds whatever the player presses next.
+        void CaptureChecks(bool windowOpen)
+        {
+            int released = 0;
+            PrismLib.Bootstrap.PrismSettingRows.Release = () => released++;
+            PrismLib.Bootstrap.PrismSettingRows.Capturer(() => "A", _ => { })(_ => { });
+            bool armed = PrismLib.Bootstrap.PrismSettingRows.Capturing;
+            PrismLib.Bootstrap.PrismSettingRows.Tick();
+            bool still = PrismLib.Bootstrap.PrismSettingRows.Capturing;
+            string detail = "armed " + armed + ", after tick " + still + ", released " + released + ", window open " + Ui.AnyWindowOpen;
+            if (windowOpen) Check(Ui.AnyWindowOpen && armed && still && released == 0, "a key capture with its window open waits for a key", detail);
+            else Check(!Ui.AnyWindowOpen && armed && !still && released == 1, "a key capture whose window closed is cancelled on the next tick", detail);
+            PrismLib.Bootstrap.PrismSettingRows.Cancel();
+            PrismLib.Bootstrap.PrismSettingRows.Release = null;
+        }
+
 
         IEnumerator Start()
         {
             for (int i = 0; i < 30; i++) yield return null;
             float W = Screen.width, H = Screen.height;
             Main.Log("AUTOTEST start screen " + W + "x" + H);
+            CaptureChecks(false);
             yield return Perf.Run((ok, what, detail) => Check(ok, what, detail));
 
             // Open
@@ -85,6 +103,7 @@ namespace LayoutProbe
             Editor.Visible = true;
             for (int i = 0; i < 5; i++) yield return null;
             Check(Editor.Visible && Root != null && K() > 0f, "editor opens with a laid-out panel", "k=" + K());
+            CaptureChecks(true);
 
             // Select without moving
             A.Cx = W * 0.3f; A.Cy = H * 0.62f; B.Cx = W * 0.7f; B.Cy = H * 0.62f;
