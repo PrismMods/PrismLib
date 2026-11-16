@@ -354,7 +354,8 @@ namespace LayoutProbe
             for (int i = 0; i < 5; i++) yield return null;
             Check(Ui.AnyWindowOpen && Facet.Input.AnyWindowOpen, "Facet counts the open editor as a window, as Ui does",
                   "Ui " + Ui.AnyWindowOpen + ", Facet " + Facet.Input.AnyWindowOpen);
-            Check(Root != null && Facet.Host.For(Root).Name == "PrismLib", "the editor is a Facet surface of the PrismLib host",
+            // PrismLib's own-words host (PrismHost.Owner("PrismLib")), so a relabel translates in PrismLib's table alone.
+            Check(Root != null && Facet.Host.For(Root).Name == "PrismLib/PrismLib", "the editor is a Facet surface of the PrismLib host",
                   Root == null ? "no root" : Facet.Host.For(Root).Name);
 
             // An Escape answered by Facet alone (a Facet-native host's poll) still closes the editor properly
