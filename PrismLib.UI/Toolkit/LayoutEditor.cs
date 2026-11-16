@@ -15,7 +15,10 @@ namespace PrismLib.UI.Toolkit
 
        Selection follows Quartz: a press on an unselected frame selects it; a press on the
        selected frame drags it; a click without movement on overlapping frames moves the
-       selection one layer down, so a covered element is always reachable. */
+       selection one layer down, so a covered element is always reachable.
+
+       Filter (LayoutEditor.Filter.cs) narrows that to one owner's elements, chosen on a tab bar
+       at the top; the others are dimmed and the pointer passes through them. */
     public sealed partial class LayoutEditor : IDisposable
     {
         private readonly Func<IEnumerable<EditTarget>> _source;
@@ -87,7 +90,8 @@ namespace PrismLib.UI.Toolkit
             _empty.style.display = _all.Count == 0 ? DisplayStyle.Flex : DisplayStyle.None;
             // A lone target is selected straight away: there is nothing to choose between, and its
             // side panel only shows for a selection (players took the empty editor for a lost panel).
-            if (_selected == null && _all.Count == 1) { _selected = _all[0]; SelectionChanged(); }
+            if (_selected == null && _all.Count == 1 && Movable(_all[0])) { _selected = _all[0]; SelectionChanged(); }
+            ReloadFilter();
             Tick();
         }
 
@@ -152,6 +156,7 @@ namespace PrismLib.UI.Toolkit
             _layer.RegisterCallback<PointerMoveEvent>(OnMove);
             _layer.RegisterCallback<PointerUpEvent>(OnUp);
             BuildExtras();
+            BuildFilter();
         }
 
         private VisualElement FullLayer()
@@ -221,6 +226,8 @@ namespace PrismLib.UI.Toolkit
             f.Tag.style.display = DisplayStyle.Flex;
             f.Tag.style.left = left;
             f.Tag.style.top = top - tagH - 3f < 0f ? top + b[3] * k + 3f : top - tagH - 3f;
+            float o = Movable(f) ? 1f : Dimmed;
+            f.Box.style.opacity = o; f.Tag.style.opacity = o;
         }
 
         // Frames under a screen point, topmost (last drawn) first.
@@ -230,7 +237,7 @@ namespace PrismLib.UI.Toolkit
             for (int i = _all.Count - 1; i >= 0; i--)
             {
                 var f = _all[i];
-                if (f.Broken || f.B == null) continue;
+                if (f.Broken || f.B == null || !Movable(f)) continue;
                 // In the box's own frame, so a turned box is hit where it is drawn.
                 Vector2 local = Rotate(s - new Vector2(f.B[0], f.B[1]), -RotationOf(f));
                 if (Math.Abs(local.x) <= f.B[2] / 2f && Math.Abs(local.y) <= f.B[3] / 2f) hit.Add(f);
@@ -359,6 +366,8 @@ namespace PrismLib.UI.Toolkit
         partial void EndGesture(Frame f);
         partial void DuringMove(Frame f, Vector2 centre);
         partial void BeginExtra(Vector2 s, int pointerId, ref bool handled);
+        partial void BuildFilter();
+        partial void ReloadFilter();
 
         private void SelectionChanged() => SelectionChangedExtras();
 

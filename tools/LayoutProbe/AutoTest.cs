@@ -16,6 +16,7 @@ namespace LayoutProbe
         internal static Box A, B, C;
         internal static Action<bool> SetEmpty;
         internal static bool CThrows, CNull, OnlyA;
+        internal static string BOwner;
         int _pass, _fail;
         bool _closed;
 
@@ -401,6 +402,7 @@ namespace LayoutProbe
             yield return SuiteShellChecks();
             yield return SuitePageChecks();
             yield return SuiteHubChecks();
+            yield return FilterChecks();
 
             Main.Log("AUTOTEST DONE pass=" + _pass + " fail=" + _fail);
             yield return null;

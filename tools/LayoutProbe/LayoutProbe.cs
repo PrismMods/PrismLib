@@ -117,7 +117,7 @@ namespace LayoutProbe
             var b = _b;
             yield return new EditTarget
             {
-                Owner = "LayoutProbe", Id = "b", Label = "Probe B",
+                Owner = AutoTest.BOwner ?? "LayoutProbe", Id = "b", Label = "Probe B",
                 GetBox = b.Get, MoveTo = (x, y) => { b.Cx = x; b.Cy = y; },
                 GetScale = () => b.Scale, SetScale = s => b.Scale = s,
             };

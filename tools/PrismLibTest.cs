@@ -300,6 +300,12 @@ static class PrismLibTest
         Check(empty, "Unregister removes the owner's targets");
         int opens = 0; Layout.OpenRequested += () => opens++; Layout.RequestOpen();
         Check(opens == 1, "RequestOpen raises OpenRequested");
+        string seenOwner = "unset"; Action look = () => seenOwner = Layout.RequestedOwner; Layout.OpenRequested += look;
+        Layout.RequestOpen("Sapphire");
+        Check(seenOwner == "Sapphire", "a request names the owner the host reads while it is raised");
+        Layout.RequestOpen();
+        Check(seenOwner == null, "a request naming no owner reads as null (All)");
+        Layout.OpenRequested -= look;
         var lc = a.ClaimState(StateKey.LayoutEditor, "editor");
         Check(lc != null && b.ClaimState(StateKey.LayoutEditor, "editor") == null, "LayoutEditor is an ordinary first-come claim");
         lc.Release();
@@ -319,6 +325,12 @@ static class PrismLibTest
         var cr = LayoutMath.ClampCrop(new float[] { 0.7f, -0.2f, 0.6f, 0.1f });
         Check(Math.Abs(cr[0] - 0.7f) < 1e-5 && Math.Abs(cr[2] - 0.25f) < 1e-5, "left kept, right clamped so 5% stays visible");
         Check(cr[1] == 0f && Math.Abs(cr[3] - 0.1f) < 1e-5, "negative crop clamps to 0");
+        Check(string.Join(",", LayoutMath.FilterTabs(new[] { "Quartz", "CamDisplay", "Quartz" }, null).ToArray()) == "Quartz,CamDisplay",
+              "the filter's tabs are each owner once, in first-seen order");
+        Check(string.Join(",", LayoutMath.FilterTabs(new[] { "CamDisplay" }, "Quartz").ToArray()) == "CamDisplay,Quartz",
+              "a filter naming an owner with no target keeps its tab, last");
+        Check(LayoutMath.Movable("Quartz", null) && LayoutMath.Movable("Quartz", "Quartz") && !LayoutMath.Movable("CamDisplay", "Quartz"),
+              "All moves everything; a tab moves only its owner's elements");
 
         Console.WriteLine("words");
         // This exe stands in for a mod: its translator is owned by this assembly's name.

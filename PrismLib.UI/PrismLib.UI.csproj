@@ -79,6 +79,7 @@
         <Compile Include="Toolkit\LayoutEditor.Grips.cs" />
         <Compile Include="Toolkit\LayoutEditor.Inspector.cs" />
         <Compile Include="Toolkit\LayoutEditor.Crop.cs" />
+        <Compile Include="Toolkit\LayoutEditor.Filter.cs" />
         <Compile Include="Toolkit\Widgets.cs" />
         <Compile Include="Toolkit\Window.cs" />
         <Compile Include="Toolkit\SearchIndex.cs" />

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace PrismLib.UI.Toolkit
 {
@@ -61,6 +62,21 @@ namespace PrismLib.UI.Toolkit
             c[3] = Clamp(c[3], 0f, 1f - MinVisible - c[1]);
             return c;
         }
+
+        /// The filter bar's owners after "All": each distinct owner in first-seen order, then
+        /// `filter` if it is none of them, so a player sent to an owner with no target still sees its tab.
+        public static List<string> FilterTabs(IEnumerable<string> owners, string filter)
+        {
+            var tabs = new List<string>();
+            if (owners != null)
+                foreach (var o in owners)
+                    if (!string.IsNullOrEmpty(o) && !tabs.Contains(o)) tabs.Add(o);
+            if (!string.IsNullOrEmpty(filter) && !tabs.Contains(filter)) tabs.Add(filter);
+            return tabs;
+        }
+
+        /// A target of `owner` can be moved under `filter` (null is All).
+        public static bool Movable(string owner, string filter) => filter == null || owner == filter;
 
         private static float Clamp(float v, float lo, float hi) => v < lo ? lo : v > hi ? hi : v;
     }

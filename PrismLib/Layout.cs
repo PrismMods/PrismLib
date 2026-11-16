@@ -31,6 +31,7 @@ namespace PrismLib
     }
 
     /// Every mod's movable elements, for the one layout editor the LayoutEditor claim holder draws.
+    /// A request may name the owner whose tab the editor opens on.
     public static class Layout
     {
         private sealed class Owned { public string Owner; public LayoutTarget Target; }
@@ -76,7 +77,14 @@ namespace PrismLib
                 return _all.ConvertAll(o => new KeyValuePair<string, LayoutTarget>(o.Owner, o.Target));
         }
 
-        public static void RequestOpen() => Raise(OpenRequested);
+        /// The owner the request being raised named, or null for every mod's elements. A host reads it inside its
+        /// OpenRequested handler and opens the editor on that owner's tab.
+        public static string RequestedOwner { get; private set; }
+
+        /// Asks the editor's host to open it on `owner`'s tab (null: All).
+        public static void RequestOpen(string owner) { RequestedOwner = owner; Raise(OpenRequested); }
+
+        public static void RequestOpen() => RequestOpen(null);   // signature kept: older mods call it
 
         private static void Raise(Action a)
         {
