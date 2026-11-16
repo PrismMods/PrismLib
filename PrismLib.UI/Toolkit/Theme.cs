@@ -18,6 +18,9 @@ namespace PrismLib.UI.Toolkit
         // Declared before Default, whose constructor adds to it.
         private static readonly ConditionalWeakTable<Facet.Theme, Theme> _of = new ConditionalWeakTable<Facet.Theme, Theme>();
 
+        // Derives the AccentText for an accent (Facet keeps that rule internal); never worn, so SetAccent notifies no one.
+        private static readonly Facet.Theme _scratch = new Facet.Theme();
+
         public static readonly Theme Default = new Theme(true, true, Suite.Wear(new Facet.Theme()));
 
         /// The Facet scheme this one reads and writes. Not named Facet: that would hide the namespace here.
@@ -55,14 +58,23 @@ namespace PrismLib.UI.Toolkit
         public Color Accent
         {
             get { return _tokens ? Tokens.Accent : Twin[Facet.Role.Accent]; }
-            set { if (_tokens) Tokens.Accent = value; Twin[Facet.Role.Accent] = value; Twin[Facet.Role.Focus] = value; }
+            set { if (_tokens) Tokens.Accent = value; Paint(value); }
+        }
+
+        /// Accent, Focus and the AccentText that reads on it, without a re-theme.
+        private void Paint(Color accent)
+        {
+            _scratch.SetAccent(accent);
+            Twin[Facet.Role.Accent] = accent; Twin[Facet.Role.Focus] = accent;
+            Twin[Facet.Role.AccentText] = _scratch[Facet.Role.AccentText];
         }
 
         /// Default's twin takes Tokens.Accent as it is now: the one colour a mod's push reaches.
         internal void Refresh()
         {
-            if (!_tokens) return;
-            Twin[Facet.Role.Accent] = Tokens.Accent; Twin[Facet.Role.Focus] = Tokens.Accent;
+            // Runs on every For(): repaint only when a push moved the accent.
+            if (!_tokens || Twin[Facet.Role.Accent] == Tokens.Accent) return;
+            Paint(Tokens.Accent);
         }
 
         /// A whole scheme from one colour (Quartz's derivation; see Facet.Theme.FromAccent), in the suite's sizes and looks.
@@ -81,8 +93,7 @@ namespace PrismLib.UI.Toolkit
             // Tokens first: a handler of the re-theme below may ask For(), which refreshes from it.
             if (_tokens) Tokens.Accent = accent;
             Suite.Wear(Twin);
-            Twin[Facet.Role.Accent] = accent; Twin[Facet.Role.Focus] = accent;
-            Twin.Notify();
+            Twin.SetAccent(accent);   // Accent, Focus and the AccentText that reads on it; notifies once
         }
 
         /// Give `e` and everything under it this scheme. Null clears it.

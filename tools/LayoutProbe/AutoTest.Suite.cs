@@ -255,10 +255,27 @@ namespace LayoutProbe
                 Check(rc.Twin[Facet.Role.Accent] == green && rc.Twin[Facet.Role.Focus] == green && Same(rc.Twin[Facet.Role.Panel], window) && Same(rc.Twin[Facet.Role.Rail], sidebar)
                       && rc.Twin.Looks.Group != null && fired == 1, "Recolour on a suite theme sets accent and Focus, keeps the suite's neutrals, and fires Changed",
                       "accent " + rc.Twin[Facet.Role.Accent] + ", focus " + rc.Twin[Facet.Role.Focus] + ", panel " + rc.Twin[Facet.Role.Panel] + ", fired " + fired);
+                // AccentText follows: a light accent and a dark one each get the text Facet derives for them.
+                var navy = new Color(0.05f, 0.08f, 0.3f, 1f);
+                var onGreen = rc.Twin[Facet.Role.AccentText];
+                rc.Recolour(navy);
+                var onNavy = rc.Twin[Facet.Role.AccentText];
+                Check(Same(onGreen, Facet.Theme.FromAccent(green)[Facet.Role.AccentText]) && Same(onNavy, Facet.Theme.FromAccent(navy)[Facet.Role.AccentText]),
+                      "Recolour on a suite theme sets AccentText to the text that reads on the new accent",
+                      "on green " + onGreen + ", on navy " + onNavy);
                 var tokAccent = Tokens.Accent;
                 Theme.Default.Recolour(green);
                 Check(Tokens.Accent == green && Theme.Default.Twin[Facet.Role.Accent] == green && Same(Theme.Default.Twin[Facet.Role.Panel], window),
                       "Recolour on Default also sets Tokens.Accent", Tokens.Accent + " / " + Theme.Default.Twin[Facet.Role.Accent]);
+                // A mod's pushed accent (Tokens.Accent, read on For) and the Accent setter carry AccentText too.
+                Tokens.Accent = navy;
+                var forDefault = Theme.For(null);
+                var own = new Theme();
+                own.Accent = navy;   // a dark accent: Facet's default AccentText is dark, so only a derived one reads
+                Check(forDefault == Theme.Default && Same(Theme.Default.Twin[Facet.Role.AccentText], Facet.Theme.FromAccent(navy)[Facet.Role.AccentText])
+                      && Same(own.Twin[Facet.Role.AccentText], Facet.Theme.FromAccent(navy)[Facet.Role.AccentText]),
+                      "A pushed accent and the Accent setter set AccentText to the text that reads on the accent",
+                      "Default on navy " + Theme.Default.Twin[Facet.Role.AccentText] + ", set to navy " + own.Twin[Facet.Role.AccentText]);
                 Tokens.Accent = tokAccent; Theme.Default.Refresh();
             }
 
