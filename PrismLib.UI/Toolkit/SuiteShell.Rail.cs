@@ -216,6 +216,8 @@ namespace PrismLib.UI.Toolkit
         {
             if (p.panel != null)   // on screen, not the search index's throwaway
             {
+                // A new page fades in; a rebuild of the one shown (a language switch, a list change) does not flash.
+                if (page.Key != CurrentPage) Facet.Anim.FadeIn(p, Facet.Anim.Fast);
                 CurrentPage = page.Key;
                 _currentFeature = page.Feature;
                 Host.Write(PageStore, page.Key);

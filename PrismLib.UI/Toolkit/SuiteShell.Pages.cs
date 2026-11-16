@@ -13,11 +13,20 @@ namespace PrismLib.UI.Toolkit
         /// A stub or classic page's header, "menu-header"; a given description is re-read on every refresh.
         public Facet.Control<bool> Header(VisualElement page, string title, Facet.Bind<bool> on, Func<string> description = null)
         {
-            return Facet.Controls.PageHeader(page, title, on, o =>
+            return Wraps(Facet.Controls.PageHeader(page, title, on, o =>
             {
                 o.Id = "menu-header";
                 if (description != null) o.DescriptionText = description;
-            });
+            }));
+        }
+
+        // Facet draws a page's description on one line, cut off: a page's whole explanation goes there, so it wraps.
+        private static Facet.Control<bool> Wraps(Facet.Control<bool> header)
+        {
+            if (header == null) return null;
+            int i = 0;
+            header.Root.Query<Label>().ForEach(l => { if (i++ > 0) l.style.whiteSpace = WhiteSpace.Normal; });   // the first is the title
+            return header;
         }
 
         /// A feature page: its header (Id = title) and cards; with a preview, two columns, header and cards left and
@@ -37,11 +46,11 @@ namespace PrismLib.UI.Toolkit
                 left = cols.Left;
                 right = cols.Right;
             }
-            Facet.Controls.PageHeader(left, title, on, o =>
+            Wraps(Facet.Controls.PageHeader(left, title, on, o =>
             {
                 o.Id = title;
                 o.Description = description;
-            });
+            }));
             if (cards != null) cards(left);
             if (preview != null) preview(right);
         }
