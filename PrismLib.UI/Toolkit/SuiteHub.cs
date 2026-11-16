@@ -132,6 +132,7 @@ namespace PrismLib.UI.Toolkit
                 return;
             }
             surface.Visible = false;   // shown by Show, once sized
+            FocusRing.PointerBlurs(surface.Root);
             var w = new Facet.Window(surface.Root, id, a.Title, new Rect(0f, 0f, MinWidth, 160f));
             _window = w;
             w.Raised += () => surface.BringToFront();

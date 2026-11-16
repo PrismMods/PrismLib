@@ -67,6 +67,32 @@ namespace PrismLib.UI.Toolkit
             items.style.left = 0f;
             items.style.top = 0f;
             items.pickingMode = PickingMode.Ignore;
+            Facet.Events.On(Canvas.Stage, (GeometryChangedEvent e) => Resized(e.oldRect.size, e.newRect.size));
+        }
+
+        /* Facet views the items once, at the stage's first size. The stage grows and shrinks after that (the column fills
+           the window once the inspector moves out, the page lays out again after a switch), so a resize keeps the view's
+           centre where it was, and if no element is on the stage any more it views them again. */
+        private void Resized(Vector2 from, Vector2 to)
+        {
+            if (from.x <= 0f || from.y <= 0f || to.x <= 0f || to.y <= 0f || from == to) return;
+            Canvas.Pan += (to - from) * 0.5f;
+            if (!AnyOnStage(to)) Canvas.ResetView();
+        }
+
+        /// Some element's box, at the canvas's zoom and pan, overlaps a stage of this size (true with no elements).
+        internal bool AnyOnStage(Vector2 stage)
+        {
+            var list = _model.Elements();
+            if (list == null || list.Count == 0) return true;
+            var view = new Rect(Vector2.zero, stage);
+            float z = Canvas.Zoom;
+            foreach (var e in list)
+            {
+                var r = _model.GetRect(e);
+                if (view.Overlaps(new Rect(Canvas.Pan + r.position * z, r.size * z))) return true;
+            }
+            return false;
         }
 
         private static VisualElement Layer(VisualElement parent, string name)

@@ -53,6 +53,12 @@ namespace PrismLib.UI.Toolkit
             return ed;
         }
 
+        // Facet's menu titles' look (Ui.Bare is internal to Facet).
+        private static readonly Facet.Look BareTitle = new Facet.Look
+        {
+            Text = Facet.Role.Text, HoverBg = Facet.Role.RowHover, PressedBg = Facet.Role.RowAlt, SelectedBg = Facet.Role.RowHover
+        };
+
         private void Frame(VisualElement parent)
         {
             Root = new VisualElement { name = "kle-root" };
@@ -68,6 +74,12 @@ namespace PrismLib.UI.Toolkit
             Menu.Root.name = "kle-menubar";
             var layouts = Facet.Ui.Btn(Menu.Left, L(KeyLayoutText.Layouts), () => { if (_openSwitcher != null) _openSwitcher(); });
             layouts.name = "kle-layouts";
+            // A title like File and Edit, its text on the editor's left edge over the first tab's: no box, no focus ring. Its
+            // lit box keeps the titles' inner padding and reaches that far left of the edge instead.
+            Facet.Paint.Look(layouts, BareTitle);
+            layouts.style.marginLeft = -Facet.Theme.For(layouts).Sizes.ControlPad;
+            layouts.style.marginRight = 0f;
+            Menu.Root.style.paddingLeft = 0f;
 
             BuildStrip();
             BuildCanvas();

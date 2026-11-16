@@ -1,6 +1,7 @@
 // The layout editor's owner filter: B belongs to a second owner ("Gamma") for this section, so the
 // tab bar has two owners to switch between. Every box's centre and the filter are put back at the end.
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using PrismLib.UI.Toolkit;
 using UnityEngine;
@@ -59,12 +60,22 @@ namespace LayoutProbe
             Editor.Reload();
             yield return Frames(2);
 
-            // Bottom gap equals top gap: Facet.Tabs' TabGap below the row is gone.
+            // Bottom gap equals top gap: Facet.Tabs' TabGap below the stack of tabs is gone.
             var bar = FilterBar;
-            var row = FilterTab(AllText())?.parent;
+            var row = FilterTab(AllText())?.parent?.parent;
             float top = 0f, bottom = 0f;
             if (bar != null && row != null) { top = row.worldBound.yMin - bar.worldBound.yMin; bottom = bar.worldBound.yMax - row.worldBound.yMax; }
             Check(row != null && Mathf.Abs(bottom - top) <= 1f, "layout editor: no gap under the filter tabs", "top=" + top.ToString("0.0") + " bottom=" + bottom.ToString("0.0"));
+
+            // A side rail: at the left edge with Done's margin, centred on the layer's height, its tabs one per line, over the frames.
+            var layer = Root.Q("layout-layer");
+            var railTabs = bar?.Query<Button>().ToList() ?? new List<Button>();
+            bool stacked = railTabs.Count >= 2 && Mathf.Abs(railTabs[1].worldBound.xMin - railTabs[0].worldBound.xMin) <= 1f && railTabs[1].worldBound.yMin >= railTabs[0].worldBound.yMax - 1f;
+            bool side = bar != null && layer != null && bar.worldBound.xMin - layer.worldBound.xMin < 40f && Mathf.Abs(bar.worldBound.center.y - layer.worldBound.center.y) <= 2f;
+            var frame = Root.Q("layout-frame")?.parent;
+            bool over = bar != null && frame != null && bar.parent == frame.parent && bar.parent.IndexOf(bar) > bar.parent.IndexOf(frame);
+            Check(stacked && side && over, "layout editor: the filter is a side rail at the left edge, vertically centred, one tab per line, over the frames",
+                  "bar " + bar?.worldBound + " layer " + layer?.worldBound + " tabs " + string.Join(",", railTabs.Select(t => t.worldBound.ToString()).ToArray()));
         }
 
         float[] FrameOpacities() => Root.Query("layout-frame").ToList().Select(f => f.resolvedStyle.opacity).ToArray();

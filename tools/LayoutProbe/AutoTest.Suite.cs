@@ -52,6 +52,13 @@ namespace LayoutProbe
             var th = Theme.For(Root);
             foreach (var n in new[] { "layout-done", "layout-grip-0", "layout-knob", "layout-anchor-dot", "layout-crop-edge-0" })
                 Check(Radius(Root.Q(n)) == 2f, n + " has the suite's 2px corner", n + " radius " + Radius(Root.Q(n)));
+            var doneB = Root.Q<Button>("layout-done");
+            var layerB = Root.Q("layout-layer");
+            Check(doneB != null && layerB != null && Same(doneB.resolvedStyle.backgroundColor, th.Accent)
+                  && doneB.worldBound.yMin - layerB.worldBound.yMin < 40f && layerB.worldBound.xMax - doneB.worldBound.xMax < 40f
+                  && doneB.parent.IndexOf(doneB) > doneB.parent.IndexOf(Root.Q("layout-frame")?.parent),
+                  "Done is a solid accent button at the top right, over the frames",
+                  doneB == null ? "no Done" : "bg " + doneB.resolvedStyle.backgroundColor + " at " + doneB.worldBound + " in " + layerB?.worldBound);
             var frames = Root.Query("layout-frame").ToList();
             var sel = frames.Where(f => f.style.borderTopWidth.value == 2f && Same(f.resolvedStyle.borderTopColor, th.Accent)).ToList();
             var rest = frames.Except(sel).ToList();

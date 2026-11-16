@@ -40,6 +40,7 @@ namespace PrismLib.UI.Toolkit
 
             var surface = new Facet.Surface(model.Host, "KeyLayoutSwitcher." + model.Host.Name, Facet.Layer.Window);
             _surface = surface;
+            FocusRing.PointerBlurs(surface.Root);
             var w = _window = new Facet.Window(surface.Root, KeyLayoutText.Switcher, L(KeyLayoutText.Switcher), new Rect(0f, 0f, 640f, 520f));
             w.Raised += () => surface.BringToFront();   // so the editor's menu keys stop while this is in front, and back
             if (!w.HasStoredGeometry)

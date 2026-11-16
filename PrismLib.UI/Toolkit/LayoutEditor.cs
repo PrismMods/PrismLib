@@ -148,10 +148,11 @@ namespace PrismLib.UI.Toolkit
 
             var done = Ui.Btn("Done", () => Visible = false, _layer);
             done.name = "layout-done";   // the label is translated (Words.T), the name is not
+            // A solid accent button at a fixed spot, the top right (the filter rail holds the left edge), drawn over every frame.
             done.style.position = Position.Absolute;
-            done.style.bottom = 28; done.style.left = Length.Percent(50);
-            done.style.translate = new Translate(Length.Percent(-50), 0);
+            done.style.top = 12; done.style.right = 24;
             done.style.paddingLeft = 22; done.style.paddingRight = 22;
+            Facet.Paint.Look(done, Facet.Theme.For(done).Looks.AccentButton);
 
             _layer.RegisterCallback<PointerDownEvent>(OnDown);
             _layer.RegisterCallback<PointerMoveEvent>(OnMove);
@@ -175,7 +176,10 @@ namespace PrismLib.UI.Toolkit
             f.Box = new VisualElement { name = "layout-frame", pickingMode = PickingMode.Ignore };
             f.Box.style.position = Position.Absolute;
             Ui.SetBorderWidth(f.Box, 1f);
-            f.Tag = Ui.Text(string.IsNullOrEmpty(t.Label) ? t.Id : t.Label, null, _small, _th.Text);
+            // The owner's own text, shown as it gave it: a key built under this surface's host would be translated again
+            // by PrismLib's table in another mod's language (Korean tags in an English Quartz).
+            f.Tag = Ui.Text("", null, _small, _th.Text);
+            f.Tag.text = string.IsNullOrEmpty(t.Label) ? t.Id : t.Label;
             f.Tag.pickingMode = PickingMode.Ignore;
             f.Tag.style.position = Position.Absolute;
             f.Tag.style.backgroundColor = _th.Panel;

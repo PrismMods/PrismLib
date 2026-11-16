@@ -66,6 +66,7 @@ namespace PrismLib.UI.Toolkit
                 o.CompactRail = compact;
             });
             sw.Surface.Visible = false;   // before anything listens: this hide is no one's close
+            FocusRing.PointerBlurs(sw.Surface.Root);   // Facet makes this surface, so PrismLib's Surface never wired it
             if (sw.Window == null)
             {
                 sw.Dispose();   // SettingsWindow logged why
