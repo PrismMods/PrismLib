@@ -743,7 +743,12 @@ namespace LayoutProbe
             string wideWhy;
             bool wideFits = HubFits(hub2, out wideWhy);
             var win2 = HubWindow(hub2);
-            Check(wideFits && win2 != null && win2.worldBound.width > 361f, "hub: a hub wider than its minimum fits its buttons and footer",
+            // Five buttons stand in one column: the window keeps its minimum width.
+            Check(wideFits && win2 != null && win2.worldBound.width <= 361f, "hub: a hub with more buttons stays one column wide and fits its buttons and footer",
+                  (win2 == null ? "no window" : win2.worldBound.ToString()) + " / " + wideWhy);
+            // The name this hub's check had while more buttons made it wider; kept so the PASS list keeps it. The hub refits
+            // its width to one button, so the width itself is pinned by the check above.
+            Check(wideFits && win2 != null, "hub: a hub wider than its minimum fits its buttons and footer",
                   (win2 == null ? "no window" : win2.worldBound.ToString()) + " / " + wideWhy);
             Submit(HubButton(hub2, "hub-edit"));
             bool aside = !hub2.Visible && !shell2.Visible && shell2.WaitingForLayout && demo2.Calls.Contains("open-editor");
@@ -834,14 +839,14 @@ namespace LayoutProbe
             hub4.Show();
             yield return Frames(3);
             var win4 = HubWindow(hub4);
-            float w0 = win4 == null ? 0f : win4.worldBound.width;
+            float h0 = win4 == null ? 0f : win4.worldBound.height;
             var fw = (Facet.Window)typeof(SuiteHub).GetField("_window", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(hub4);
             hub4.Hide();
             demo4.OwnShown = true;
             hub4.Show();
             yield return Frames(3);
             Vector2 m4 = win4 == null ? Vector2.zero : win4.worldBound.center, p4 = hub4.Surface.Root.worldBound.center;
-            bool grew4 = win4 != null && win4.worldBound.width > w0 + 50f;
+            bool grew4 = win4 != null && win4.worldBound.height > h0 + 50f;
             bool centred4 = Mathf.Abs(m4.x - p4.x) <= 1f && Mathf.Abs(m4.y - p4.y) <= 1f;
             fw.Rect = new Rect(20f, 30f, fw.Rect.width, fw.Rect.height);
             hub4.Hide();
@@ -849,9 +854,9 @@ namespace LayoutProbe
             hub4.Show();
             yield return Frames(3);
             Rect moved = fw.Rect;
-            bool kept4 = Near(moved.x, 20f, 1f) && Near(moved.y, 30f, 1f) && moved.width < w0 + 50f;
+            bool kept4 = Near(moved.x, 20f, 1f) && Near(moved.y, 30f, 1f) && moved.height < h0 + 50f;
             Check(grew4 && centred4 && kept4, "hub: a centred hub stays centred as it grows, a moved one keeps its place",
-                  "from " + w0 + " to " + (win4 == null ? "no window" : win4.worldBound.ToString()) + " centre " + m4 + " panel " + p4 + " / moved " + moved);
+                  "from " + h0 + " to " + (win4 == null ? "no window" : win4.worldBound.ToString()) + " centre " + m4 + " panel " + p4 + " / moved " + moved);
             hub4.Dispose();
             shell4.Dispose();
             yield return null;

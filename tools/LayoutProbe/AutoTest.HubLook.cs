@@ -52,7 +52,7 @@ namespace LayoutProbe
         }
 
         // Every shown button at the hub button's width, at least its height, its corners and text size, on a solid fill: the
-        // accent, the last one the theme's title bar.
+        // accent, the last one the theme's title bar; every label in the text colour for that fill.
         static string ButtonsWrong(VisualElement window)
         {
             if (window == null) return "no window";
@@ -61,12 +61,16 @@ namespace LayoutProbe
             var bad = shown.Where((b, i) =>
             {
                 var r = b.resolvedStyle;
-                Color want = Facet.Theme.For(b)[i == shown.Count - 1 ? Facet.Role.TitleBar : Facet.Role.Accent];
-                bool text = b.Query<TextElement>().ToList().All(t => Near(t.resolvedStyle.fontSize, HubLook.ButtonTextSize, 0.5f));
-                return !Near(b.worldBound.width, HubLook.ButtonWidth, 0.5f) || b.worldBound.height < HubLook.ButtonHeight - 0.5f
+                bool last = i == shown.Count - 1;
+                Color want = Facet.Theme.For(b)[last ? Facet.Role.TitleBar : Facet.Role.Accent], ink = Facet.Theme.For(b)[last ? Facet.Role.Text : Facet.Role.AccentText];
+                bool text = b.Query<TextElement>().ToList().All(t => Near(t.resolvedStyle.fontSize, HubLook.ButtonTextSize, 0.5f)
+                    && Near(t.resolvedStyle.color.r, ink.r, 0.01f) && Near(t.resolvedStyle.color.g, ink.g, 0.01f) && Near(t.resolvedStyle.color.b, ink.b, 0.01f));
+                // Within a screen pixel: the panel snaps edges to whole pixels at its scale.
+                return !Near(b.worldBound.width, HubLook.ButtonWidth, 1f) || b.worldBound.height < HubLook.ButtonHeight - 1f
                        || !Near(r.borderTopLeftRadius, HubLook.ButtonRadius, 0.1f) || !text || r.backgroundColor.a < 0.999f
                        || !Near(r.backgroundColor.r, want.r, 0.01f) || !Near(r.backgroundColor.g, want.g, 0.01f) || !Near(r.backgroundColor.b, want.b, 0.01f);
-            }).Select(b => b.name + " " + b.worldBound.size + " r" + b.resolvedStyle.borderTopLeftRadius + " text " + b.resolvedStyle.fontSize + " fill " + b.resolvedStyle.backgroundColor).ToArray();
+            }).Select(b => b.name + " " + b.worldBound.size + " r" + b.resolvedStyle.borderTopLeftRadius + " text " + b.resolvedStyle.fontSize + " fill " + b.resolvedStyle.backgroundColor
+                + " ink " + string.Join("/", b.Query<TextElement>().ToList().Select(t => t.resolvedStyle.color.ToString()).ToArray())).ToArray();
             return bad.Length == 0 ? null : string.Join(", ", bad);
         }
 
@@ -78,7 +82,7 @@ namespace LayoutProbe
             Button first = window == null ? null : window.Query<Button>().ToList().FirstOrDefault(b => b.name != null && b.name.StartsWith("hub-") && b.resolvedStyle.display != DisplayStyle.None);
             if (logo == null || mark == null || first == null) return "logo " + (logo != null) + " wordmark " + (mark != null) + " button " + (first != null);
             Rect l = logo.worldBound, m = mark.worldBound;
-            bool ok = Near(l.width, HubLook.LogoSize, 0.5f) && Near(l.height, HubLook.LogoSize, 0.5f) && Near(l.center.x, window.worldBound.center.x, 1f)
+            bool ok = Near(l.width, HubLook.LogoSize, 1f) && Near(l.height, HubLook.LogoSize, 1f) && Near(l.center.x, window.worldBound.center.x, 1f)
                       && mark.text == wordmark && Near(mark.resolvedStyle.fontSize, HubLook.WordmarkSize, 0.5f)
                       && m.y >= l.yMax - 0.5f && m.yMax <= first.worldBound.y + 0.5f && Near(m.center.x, l.center.x, 1f);
             return ok ? null : "logo " + l + " wordmark '" + mark.text + "' " + m + " size " + mark.resolvedStyle.fontSize + " first button " + first.worldBound;
@@ -96,6 +100,16 @@ namespace LayoutProbe
             float back = b.style.unityBackgroundImageTintColor.value.a;
             bool ok = hover > rest + 0.03f && Near(back, rest, 0.001f);
             return ok ? null : "tint rest " + rest + " hover " + hover + " back " + back;
+        }
+
+        // A pointer event through the panel, as the player's pointer arrives: picked and handled at once (outside a dispatch),
+        // so it is read before the real pointer's next move can leave the button.
+        static void PointerAt(VisualElement root, EventType t, Vector2 panel)
+        {
+            var ev = new Event { type = t, button = 0, clickCount = 1, mousePosition = panel };
+            EventBase e = t == EventType.MouseDown ? PointerDownEvent.GetPooled(ev)
+                        : t == EventType.MouseUp ? PointerUpEvent.GetPooled(ev) : (EventBase)PointerMoveEvent.GetPooled(ev);
+            using (e) root.panel.visualTree.SendEvent(e);
         }
 
         // Focused (a frame after Focus, as focus events may queue): ringed in the text colour.
@@ -156,7 +170,21 @@ namespace LayoutProbe
             yield return null;
             why = why ?? RingWrong(probed);
             if (probed != null) probed.Blur();
-            Check(why == null, "hub look: hover lightens a hub button and focus rings it", why ?? "");
+            // The pointer moves onto it, presses at its centre and is released far off it, so no click runs: the press lays
+            // more white than hover does, and leaving takes it all off. The panel itself sends the enter and leave.
+            if (why == null && probed != null)
+            {
+                Vector2 at = probed.worldBound.center, off = new Vector2(-1000f, -1000f);
+                PointerAt(hub.Surface.Root, EventType.MouseMove, at);
+                float hover = probed.style.unityBackgroundImageTintColor.value.a;
+                PointerAt(hub.Surface.Root, EventType.MouseDown, at);
+                float press = probed.style.unityBackgroundImageTintColor.value.a;
+                PointerAt(hub.Surface.Root, EventType.MouseUp, off);
+                PointerAt(hub.Surface.Root, EventType.MouseMove, off);
+                float back = probed.style.unityBackgroundImageTintColor.value.a;
+                if (!(hover > 0.03f) || !(press > hover + 0.03f) || back > 0.001f || !hub.Visible) why = "tint hover " + hover + " press " + press + " back " + back + " hub shown " + hub.Visible;
+            }
+            Check(why == null, "hub look: hover lightens a hub button, a press lightens it more and focus rings it", why ?? "");
 
             // Fading in again, after the first, allocates nothing; a collection inside the loop would hide growth.
             for (int i = 0; i < 100; i++) HubLook.FadeIn(hub.Surface);

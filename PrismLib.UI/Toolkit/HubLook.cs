@@ -15,15 +15,17 @@ namespace PrismLib.UI.Toolkit
         /// Each fade's length at the standard motion speed (Anim.Duration scales it; 0 shows at once).
         public const int FadeMs = 200;
         /// A hub button, as the old hotkey hub drew it: 240 wide, at least 56 tall, corners 6, 24-unit text, 8 apart.
-        public const float ButtonWidth = 240f, ButtonHeight = 56f, ButtonRadius = 6f, ButtonTextSize = 24f, ButtonGap = 8f;
+        /// Read-only fields, not constants, so a mod reads the sizes of the copy loaded in game, not the one it built against.
+        public static readonly float ButtonWidth = 240f, ButtonHeight = 56f, ButtonRadius = 6f, ButtonTextSize = 24f, ButtonGap = 8f;
         /// The logo leading the hub, and the wordmark line under it.
-        public const float LogoSize = 120f, WordmarkSize = 28f, WordmarkHeight = 40f;
+        public static readonly float LogoSize = 120f, WordmarkSize = 28f, WordmarkHeight = 40f;
         /// The wordmark's name: the logo's child.
         public const string WordmarkName = "hub-wordmark";
         /// The wordmark's colour: white, barely translucent.
         public static readonly Color Wordmark = new Color(1f, 1f, 1f, 0.92f);
         // The old hub: the wordmark 8 under the logo, the buttons 12 under the wordmark; its letters 0.06 em apart.
-        private const float WordmarkGap = 8f, LogoGap = 12f, WordmarkSpacing = 0.06f * WordmarkSize;
+        private const float WordmarkGap = 8f, LogoGap = 12f;
+        private static readonly float WordmarkSpacing = 0.06f * WordmarkSize;
         // How much white lies over a button's fill: none at rest on the accent; the neutral fill is the theme's title bar
         // lifted a fifth toward white (the old hub's close button sat that far from its panel); hover and press lift more.
         private const float NeutralLift = 0.2f, HoverLift = 0.06f, PressLift = 0.12f;
@@ -76,7 +78,14 @@ namespace PrismLib.UI.Toolkit
         /// Dresses every Button directly in `container` as a hub button: the old hub's size, a solid accent fill (the last
         /// one, Close, a neutral fill), large centred text, and hover, press and focus that show. In a column they stand
         /// ButtonGap apart. Their text children take the hub's text size too. Once, after the buttons are built.
-        public static void Buttons(VisualElement container)
+        public static void Buttons(VisualElement container) { Dress(container, null, null); }
+
+        /// Buttons, in the mod's own fills rather than the theme's: `fill` for every button but the last, `neutral` for
+        /// the last (a mod whose old hub drew its own button colours). Each label takes the theme's text colour while it
+        /// reads on its fill at large-text contrast, else near-black; focus rings in the theme's text colour. Kept until rebuilt.
+        public static void Buttons(VisualElement container, Color fill, Color neutral) { Dress(container, fill, neutral); }
+
+        private static void Dress(VisualElement container, Color? fill, Color? neutralFill)
         {
             if (container == null) return;
             bool row = container.style.flexDirection.keyword == StyleKeyword.Undefined && container.style.flexDirection.value == FlexDirection.Row;
@@ -88,17 +97,35 @@ namespace PrismLib.UI.Toolkit
                 var b = container[i] as Button;
                 if (b == null) continue;
                 bool neutral = i == last;
-                Facet.Paint.Look(b, neutral ? NeutralLook : AccentLook);
+                Color? own = neutral ? neutralFill : fill;
+                if (own.HasValue) Facet.Paint.Forget(b);   // its own colours, which a re-theme must not repaint
+                else Facet.Paint.Look(b, neutral ? NeutralLook : AccentLook);
                 b.style.width = ButtonWidth;
                 b.style.minHeight = ButtonHeight;
                 b.style.fontSize = ButtonTextSize;
-                b.Query<TextElement>().ForEach(SizeText);
+                b.style.flexShrink = 0f;   // never squeezed by a row a pixel short
+                // A label inside the button paints the button's text colour at the hub's size.
+                Color ink = own.HasValue ? Ink(own.Value, Facet.Theme.For(b)[Facet.Role.Text]) : Color.clear;
+                foreach (var t in b.Query<TextElement>().ToList())
+                {
+                    if (own.HasValue) { Facet.Paint.Forget(t); t.style.color = ink; }
+                    if (t == b) continue;
+                    t.style.fontSize = ButtonTextSize;
+                    if (!own.HasValue) Facet.Paint.Fg(t, neutral ? Facet.Role.Text : Facet.Role.AccentText);
+                }
+                if (own.HasValue)
+                {
+                    b.style.backgroundColor = own.Value;
+                    Ring(b, false);
+                    Facet.Events.On(b, FocusIn);
+                    Facet.Events.On(b, FocusOut);
+                }
                 Facet.Ui.SetRadius(b, ButtonRadius);
                 Facet.Ui.SetBorderWidth(b, 2f);   // the focus ring; clear until focused
                 if (!row) { b.style.marginLeft = 0f; b.style.marginRight = 0f; b.style.marginTop = i == first ? 0f : ButtonGap; }
                 // The lift is white laid over the fill as a tinted image, so the fill keeps following the theme.
                 b.style.backgroundImage = Background.FromTexture2D(Texture2D.whiteTexture);
-                if (neutral) b.AddToClassList(NeutralClass);
+                if (neutral && !own.HasValue) b.AddToClassList(NeutralClass);   // lifted off the theme's title bar
                 Lift(b, 0f);
                 Facet.Events.On(b, Enter);
                 Facet.Events.On(b, Leave);
@@ -136,7 +163,25 @@ namespace PrismLib.UI.Toolkit
             return l;
         }
 
-        private static void SizeText(TextElement t) { t.style.fontSize = ButtonTextSize; }
+        // The theme's text colour while it reads on `fill` at the contrast large text needs (3:1, and hub labels are large),
+        // as the old hub's white labels did on its red; near-black on a fill too light for it.
+        private static Color Ink(Color fill, Color light)
+        {
+            return (Luminance(light) + 0.05f) / (Luminance(fill) + 0.05f) >= 3f ? light : new Color(0.06f, 0.06f, 0.08f, 1f);
+        }
+
+        private static float Luminance(Color c)
+        {
+            Color l = c.linear;
+            return 0.2126f * l.r + 0.7152f * l.g + 0.0722f * l.b;
+        }
+
+        // A button in its own colours draws its focus ring itself, in the theme's text colour.
+        private static void Ring(VisualElement b, bool on)
+        {
+            Color c = on ? Facet.Theme.For(b)[Facet.Role.Text] : Color.clear;
+            b.style.borderLeftColor = c; b.style.borderRightColor = c; b.style.borderTopColor = c; b.style.borderBottomColor = c;
+        }
 
         // White over the fill: the neutral fill's own lift, plus hover or press.
         private static void Lift(VisualElement b, float more)
@@ -149,6 +194,8 @@ namespace PrismLib.UI.Toolkit
         private static readonly EventCallback<MouseEnterEvent> Enter = e => Lift((VisualElement)e.currentTarget, HoverLift);
         private static readonly EventCallback<MouseLeaveEvent> Leave = e => Lift((VisualElement)e.currentTarget, 0f);
         private static readonly EventCallback<PointerDownEvent> Down = e => { if (e.button == 0) Lift((VisualElement)e.currentTarget, PressLift); };
+        private static readonly EventCallback<FocusInEvent> FocusIn = e => Ring((VisualElement)e.currentTarget, true);
+        private static readonly EventCallback<FocusOutEvent> FocusOut = e => Ring((VisualElement)e.currentTarget, false);
         private static readonly EventCallback<PointerUpEvent> Up = e => { if (e.button == 0) Lift((VisualElement)e.currentTarget, HoverLift); };
 
         /// Fades the surface's wash and window in from transparent, as the surface shows. Nothing without a wash.

@@ -12,15 +12,16 @@ namespace PrismLib.UI.Toolkit
     public sealed class SuiteHub : IDisposable
     {
         // The buttons are the shared hub buttons (HubLook).
-        private const float ButtonWidth = HubLook.ButtonWidth, ButtonHeight = HubLook.ButtonHeight, IconSize = 24f, MinWidth = 360f;
+        private static readonly float ButtonWidth = HubLook.ButtonWidth, ButtonHeight = HubLook.ButtonHeight;
+        private const float IconSize = 24f, MinWidth = 360f;
 
         private readonly SuiteShell _shell;
         private Facet.Surface _surface;
         private Facet.Window _window;
-        // Every button in the row, with its Visible (null: always).
+        // Every button in the column, with its Visible (null: always).
         private readonly List<KeyValuePair<VisualElement, Func<bool>>> _row = new List<KeyValuePair<VisualElement, Func<bool>>>();
         private VisualElement _rowElement;
-        // The big logo over the row, with the mod's wordmark (null without an adapter logo).
+        // The big logo over the column, with the mod's wordmark (null without an adapter logo).
         private VisualElement _logo;
         // Settings opened the menu: its next close brings the hub back.
         private bool _trip;
@@ -61,21 +62,18 @@ namespace PrismLib.UI.Toolkit
             HubLook.FadeIn(_surface);
         }
 
-        // The window's size from its visible buttons; a row taller than one button (a label wrapped onto more lines,
-        // here or after a relabel) makes it taller.
+        // The window's size from its button column: one button wide, as tall as the visible buttons (a label wrapped onto
+        // more lines, here or after a relabel, makes it taller).
         private void Fit()
         {
             if (_window == null) return;   // a layout event after Dispose
-            int shown = 0;
-            foreach (var b in _row)
-                if (b.Key.style.display.value != DisplayStyle.None) shown++;
             var sz = Facet.Theme.For(_window.Root).Sizes;
             float row = _rowElement.layout.height;
             float body = row > ButtonHeight ? row : ButtonHeight;   // NaN before the first layout
             if (_logo != null) body += _logo.style.height.value.value + _logo.style.marginBottom.value.value;
             Rect r = _window.Rect;
-            // Each button carries half a gap on either side; the body pads and the window's card border lines the rest.
-            float width = Mathf.Max(MinWidth, shown * (ButtonWidth + sz.Gap) + 2f * (sz.Pad + sz.Line));
+            // The body pads and the window's card border lines the column.
+            float width = Mathf.Max(MinWidth, ButtonWidth + 2f * (sz.Pad + sz.Line));
             float height = sz.TitleBarHeight + body + 2f * (sz.Pad + sz.Line) + 12f + 1.6f * sz.Small;   // title bar, body, footer
             // As the window will clamp them, so a Fit that changes nothing sets no rect (each set is a store write).
             width = Mathf.Max(width, Facet.Window.MinWidth);
@@ -137,7 +135,6 @@ namespace PrismLib.UI.Toolkit
             var w = new Facet.Window(surface.Root, id, a.Title, new Rect(0f, 0f, MinWidth, 160f));
             _window = w;
             w.Raised += () => surface.BringToFront();
-            SuiteShell.AddLogo(w, a.Logo);
             if (a.Logo.HasValue)
             {
                 // The hub leads with the mod's logo at the shared size, its name under it, as the old hotkey hub did.
@@ -146,8 +143,10 @@ namespace PrismLib.UI.Toolkit
                 w.Body.Add(_logo);
                 HubLook.Logo(_logo, a.Title == null ? null : a.Title.ToUpperInvariant());
             }
-            var row = Facet.Ui.Row(w.Body);
-            row.style.justifyContent = Justify.Center;
+            // A column, as the old hub stood its buttons: the window stays one button wide however many a mod adds.
+            var row = Facet.Ui.Box(w.Body);
+            row.style.flexDirection = FlexDirection.Column;
+            row.style.alignItems = Align.Center;
             row.style.flexShrink = 0f;
             _rowElement = row;
             Facet.Events.On(row, (GeometryChangedEvent _) => Fit());
